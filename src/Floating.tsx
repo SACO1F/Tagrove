@@ -1,3 +1,14 @@
+import { applyAppearance } from "./appearance";
+import { useLanguage } from "./i18n";
+import { t as ui, tf, msg, type UiCopy } from "./i18n";
+import {
+  TagBranch,
+  GroupManager,
+  GroupAssignDialog,
+  groupedTags,
+  emptyGroups,
+} from "./TagGroups";
+import { useFloatingSort } from "./useFloatingSort";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
@@ -10,22 +21,30 @@ import {
   Download,
   Edit3,
   Trash2,
-  Minus,
   ImagePlus,
   LoaderCircle,
   Plus,
+  Palette,
+  FolderOpen,
   Pin,
   PinOff,
   Tag as TagIcon,
   X,
 } from "lucide-react";
-import { api, Bootstrap, message, Tag } from "./api";
+import { api, Bootstrap, message, Tag, tagSearch } from "./api";
+import { TagAliases } from "./TagAliases";
 import { Modal } from "./components";
 import { ExportTagDialog } from "./ExportTagDialog";
 import { FloatingResizeHandles } from "./FloatingResizeHandles";
 import { useFloatingHistory } from "./useFloatingHistory";
 import "./floating.css";
-import { tagTone } from "./tagColors";
+import "./tag-organize.css";
+import {
+  tagTone,
+  tagStyle,
+  configureTagColors,
+  tagCustomColor,
+} from "./tagColors";
 import { useTagArrival, reducedMotion } from "./microMotion";
 import { FloatingHistory } from "./FloatingHistory";
 import { TaskGlyph } from "./TaskStatus";
@@ -38,17 +57,27 @@ type Annotation = {
   existing: number;
   imported: number;
   names: string[];
+  undoId?: string;
 };
 
 export default function Floating() {
+  useLanguage();
   const [presets, setPresets] = useState<Presets>({ ids: [], tags: [] });
   const ref = useRef(presets);
   const paletteScroll = useRef<HTMLDivElement>(null);
   ref.current = presets;
   const [boot, setBoot] = useState<Bootstrap>();
+  useEffect(() => {
+    if (boot) applyAppearance(boot.settings);
+  }, [
+    boot?.settings.language,
+    boot?.settings.accentColor,
+    boot?.settings.uiFontSize,
+  ]);
   const {
     operations,
     record,
+    markUndone,
     ready: historyReady,
   } = useFloatingHistory(boot?.dataPath);
   useTagArrival(
@@ -60,12 +89,33 @@ export default function Floating() {
   const menuTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const menuTrigger = useRef<HTMLButtonElement>(null);
   useEffect(() => () => clearTimeout(menuTimer.current), []);
+  const [tagQuery, setTagQuery] = useState("");
   const [selected, setSelected] = useState("");
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<{
     tag: Tag;
     mode: "rename" | "delete";
   }>();
+  const [groupTag, setGroupTag] = useState<Tag>();
+  const [managingGroups, setManagingGroups] = useState(false);
+  const [closedGroups, setClosedGroups] = useState<string[]>([]);
+  const [groupMenu, setGroupMenu] = useState<{
+    id: string;
+    name: string;
+    version: number;
+    x: number;
+    y: number;
+  }>();
+  const [groupRename, setGroupRename] = useState<typeof groupMenu>();
+  const [groupName, setGroupName] = useState("");
+  const [groupError, setGroupError] = useState("");
+  const groupTrigger = useRef<HTMLButtonElement | null>(null);
+  const groupMenuAction = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (groupMenu) groupMenuAction.current?.focus();
+  }, [groupMenu]);
+  const [colorTag, setColorTag] = useState<Tag>();
+  const [color, setColor] = useState("#71a58b");
   const [menu, setMenu] = useState<{ tag: Tag; x: number; y: number }>();
   const menuSurface = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -112,17 +162,17 @@ export default function Floating() {
   const [dropTag, setDropTag] = useState("");
   const [incoming, setIncoming] = useState(false);
   const [name, setName] = useState("");
-  const [status, setStatus] = useState({
-    text: "就绪",
+  const [status, setStatus] = useState<{ text: UiCopy; error: boolean }>({
+    text: msg("就绪"),
     error: false,
   });
   const gesture = useRef<
     { id: string; x: number; y: number; started: boolean } | undefined
   >(undefined);
   const notify = useCallback(
-    (text: string, error = false, log = false) => {
+    (text: UiCopy, error = false, log = false, undoId?: string) => {
       setStatus({ text, error });
-      if (log) record(text);
+      if (log) record(ui(text), undoId);
     },
     [record],
   );
@@ -132,6 +182,7 @@ export default function Floating() {
       api<Bootstrap>("bootstrap"),
       api<WindowOptions>("floating.state"),
     ]);
+    configureTagColors(b.settings.tagColors);
     setPresets(p);
     setBoot(b);
     setCollapsed(options.collapsed);
@@ -163,6 +214,9 @@ export default function Floating() {
     void refresh().catch((e) => notify(message(e), true));
     const win = getCurrentWebviewWindow();
     const subscriptions = [
+      listen<{ visible: boolean }>("floating-visibility", ({ payload }) => {
+        if (payload.visible) setClosedGroups([]);
+      }),
       listen(
         "library-changed",
         () => void refresh().catch((e) => notify(message(e), true)),
@@ -181,13 +235,21 @@ export default function Floating() {
           }
           const r = p.result!;
           const target =
-            r.names.length === 1 ? r.names[0] : `${r.names.length} 个文件`;
+            r.names.length === 1
+              ? r.names[0]
+              : tf("{0} 个文件", r.names.length);
           notify(
             r.applied
-              ? `已为 ${target} 添加「${r.tagName}」${r.imported ? "，并加入文件库" : ""}`
-              : `${target} 已有「${r.tagName}」`,
+              ? msg(
+                  "已为 {0} 添加「{1}」{2}",
+                  target,
+                  r.tagName,
+                  r.imported ? msg("，并加入文件库") : "",
+                )
+              : msg("{0} 已有「{1}」", target, r.tagName),
             false,
             true,
+            r.undoId,
           );
         },
       ),
@@ -211,7 +273,7 @@ export default function Floating() {
         setDropTag(p.type === "drop" ? "" : id);
         if (p.type === "drop") {
           if (id) void apply(id, p.paths);
-          else notify("请将文件放到标签上", true);
+          else notify(msg("请将文件放到标签上"), true);
         }
       }),
     ];
@@ -247,7 +309,7 @@ export default function Floating() {
       await save([...new Set([...ref.current.ids, tag.id])]);
       setAdding(false);
       setName("");
-      notify(`已添加「${tag.name}」`, false, true);
+      notify(msg("已添加「{0}」", tag.name), false, true);
     });
   const create = () =>
     void run(async () => {
@@ -256,24 +318,28 @@ export default function Floating() {
       await save([...new Set([...ref.current.ids, tag.id])]);
       setName("");
       setAdding(false);
-      notify(`已添加「${tag.name}」`, false, true);
+      notify(msg("已添加「{0}」", tag.name), false, true);
     });
   const changeTag = () =>
     void run(async () => {
       if (!editing || (editing.mode === "rename" && !name.trim())) return;
-      await api(editing.mode === "rename" ? "tags.rename" : "tags.delete", {
-        id: editing.tag.id,
-        version: editing.tag.version,
-        name: name.trim(),
-      });
+      const result = await api<{ undoId?: string }>(
+        editing.mode === "rename" ? "tags.rename" : "tags.delete",
+        {
+          id: editing.tag.id,
+          version: editing.tag.version,
+          name: name.trim(),
+        },
+      );
       setEditing(undefined);
       await refresh();
       notify(
         editing.mode === "rename"
-          ? `已将「${editing.tag.name}」改为「${name.trim()}」`
-          : `已删除「${editing.tag.name}」`,
+          ? msg("已将「{0}」改为「{1}」", editing.tag.name, name.trim())
+          : msg("已删除「{0}」", editing.tag.name),
         false,
         true,
+        result.undoId,
       );
     });
   const choose = () =>
@@ -281,7 +347,7 @@ export default function Floating() {
       const paths = await open({
         multiple: true,
         directory: false,
-        title: "选择需要标注的文件",
+        title: ui("选择需要标注的文件"),
       });
       if (paths)
         await api("annotation.apply", {
@@ -291,17 +357,83 @@ export default function Floating() {
     });
   const resize = () =>
     void run(async () => {
-      await api("floating.resize", { collapsed: !collapsed });
-      setCollapsed(!collapsed);
+      setGroupMenu(undefined);
+      const next = await api<WindowOptions>("floating.resize", {
+        collapsed: !collapsed,
+      });
+      setCollapsed(next.collapsed);
     });
-  const pinned = presets.ids
+  const groupIds = (id: string) => {
+    const members = boot?.settings.tagGroups?.members ?? {};
+    const group = members[id] ?? "";
+    return ref.current.ids.filter((x) => (members[x] ?? "") === group);
+  };
+  const moveTag = (id: string, delta: number) =>
+    void run(async () => {
+      const ids = [...ref.current.ids];
+      const grouped = groupIds(id);
+      const index = grouped.indexOf(id),
+        next = index + delta;
+      if (index < 0 || next < 0 || next >= grouped.length) return;
+      const from = ids.indexOf(id),
+        to = ids.indexOf(grouped[next]);
+      [ids[from], ids[to]] = [ids[to], ids[from]];
+      await save(ids);
+      notify(msg("标签顺序已保存"));
+    });
+  const sorting = useFloatingSort(
+    paletteScroll,
+    presets.ids,
+    !busy && !tagQuery && !collapsed,
+    async (ids) => {
+      await run(async () => {
+        await save(ids);
+        notify(msg("标签顺序已保存"));
+      });
+    },
+    async (tagId, groupId) => {
+      await run(async () => {
+        const state = boot?.settings.tagGroups ?? emptyGroups;
+        await api("tag-groups.update", {
+          op: "assign",
+          tagId,
+          groupId,
+          version: state.version,
+        });
+        await refresh();
+        setClosedGroups((old) => old.filter((id) => id !== groupId));
+        const tag = presets.tags.find((t) => t.id === tagId);
+        const category = state.groups.find((g) => g.id === groupId);
+        notify(
+          msg(
+            "已将「{0}」移到分类「{1}」",
+            tag?.name ?? "",
+            category?.name ?? ui("未分类"),
+          ),
+        );
+      });
+    },
+  );
+  const pinned = sorting.ids
     .map((id) => presets.tags.find((t) => t.id === id))
     .filter((t): t is Tag => !!t);
+  const visiblePinned = pinned.filter((t) => tagSearch(t, tagQuery));
   return (
     <div
       className={`floating-shell ${collapsed ? "is-collapsed" : ""} ${incoming ? "receiving-files" : ""}`}
       onKeyDown={(e) => {
-        if (e.key === "Escape" && !adding && !editing && !exportTag) {
+        if (
+          e.key === "Escape" &&
+          !adding &&
+          !editing &&
+          !exportTag &&
+          !groupRename
+        ) {
+          if (groupMenu) {
+            setGroupMenu(undefined);
+            groupTrigger.current?.focus();
+            return;
+          }
           void api("floating.cancel");
           gesture.current = undefined;
           setDragTag("");
@@ -316,15 +448,15 @@ export default function Floating() {
       )}
       <header className="floating-titlebar">
         <div className="floating-handle" data-tauri-drag-region>
-          <img src="/icon.svg" alt="" draggable={false} />
+          <img src="/icon.png" alt="" draggable={false} />
           <div data-tauri-drag-region>
-            <strong data-tauri-drag-region>拾签</strong>
+            <strong data-tauri-drag-region>{ui("拾签")}</strong>
           </div>
         </div>
         <button
           className={`float-icon float-pin ${alwaysOnTop ? "is-pinned" : ""}`}
-          title={alwaysOnTop ? "取消置顶" : "置顶浮窗"}
-          aria-label={alwaysOnTop ? "取消置顶" : "置顶浮窗"}
+          data-tooltip={alwaysOnTop ? ui("取消置顶") : ui("置顶浮窗")}
+          aria-label={alwaysOnTop ? ui("取消置顶") : ui("置顶浮窗")}
           aria-pressed={alwaysOnTop}
           disabled={busy}
           onClick={() =>
@@ -338,16 +470,16 @@ export default function Floating() {
         </button>
         <button
           className="float-icon"
-          title="打开工作台"
-          aria-label="打开工作台"
+          data-tooltip={ui("打开工作台")}
+          aria-label={ui("打开工作台")}
           onClick={() => void run(() => api("main.show"))}
         >
           <ArrowUpRight size={17} />
         </button>
         <button
           className="float-icon"
-          title={collapsed ? "展开标签浮窗" : "收起标签浮窗"}
-          aria-label={collapsed ? "展开标签浮窗" : "收起标签浮窗"}
+          data-tooltip={collapsed ? ui("展开标签浮窗") : ui("收起标签浮窗")}
+          aria-label={collapsed ? ui("展开标签浮窗") : ui("收起标签浮窗")}
           disabled={busy}
           onClick={resize}
         >
@@ -355,8 +487,8 @@ export default function Floating() {
         </button>
         <button
           className="float-icon"
-          title="关闭浮窗"
-          aria-label="关闭浮窗"
+          data-tooltip={ui("关闭浮窗")}
+          aria-label={ui("关闭浮窗")}
           disabled={busy}
           onClick={() => void run(() => api("floating.close"))}
         >
@@ -366,118 +498,219 @@ export default function Floating() {
       {!collapsed && (
         <>
           <div className="floating-intro">
-            <h1>常用标签</h1>
-            <small>{pinned.length}</small>
+            <h1>{ui("全部标签")}</h1>
+            <button
+              className="float-icon"
+              aria-label={ui("管理标签分类")}
+              data-tooltip={ui("管理分类")}
+              onClick={() => setManagingGroups(true)}
+            >
+              <FolderOpen size={15} />
+            </button>
           </div>
-          <p className="floating-guide">拖动标签标注文件 · 九宫格编辑</p>
+          <div className="floating-search">
+            <input
+              aria-label={ui("查找标签")}
+              placeholder={ui("查找标签")}
+              value={tagQuery}
+              onChange={(e) => setTagQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "ArrowDown") {
+                  e.preventDefault();
+                  paletteScroll.current
+                    ?.querySelector<HTMLButtonElement>(
+                      '.tag-branch:not([data-closed="true"]) .palette-tag',
+                    )
+                    ?.focus();
+                }
+              }}
+            />
+            {tagQuery && (
+              <button
+                className="float-icon"
+                aria-label={ui("清除标签搜索")}
+                onClick={() => setTagQuery("")}
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
           <div className="palette-stage">
             <div
-              className="palette-chips"
-              aria-label="常用标签"
+              className="palette-chips has-groups"
+              aria-label={ui("全部标签")}
               ref={paletteScroll}
             >
-              {pinned.map((tag) => (
-                <div
-                  key={tag.id}
-                  data-preset-id={tag.id}
-                  data-motion-tag={tag.id}
-                  className={`palette-chip tag-color tone-${tagTone(tag.id)} ${selected === tag.id ? "chosen" : ""} ${dropTag === tag.id ? "drop-active" : ""} ${dragTag === tag.id ? "drag-active" : ""}`}
-                >
-                  <button
-                    className="palette-tag"
-                    aria-label={`标签：${tag.name}`}
-                    aria-pressed={selected === tag.id}
-                    title={`拖动「${tag.name}」到文件`}
-                    disabled={busy}
-                    onClick={() => setSelected(tag.id)}
-                    onPointerDown={(e) => {
-                      if (e.button !== 0) return;
-                      e.currentTarget.setPointerCapture(e.pointerId);
-                      gesture.current = {
-                        id: tag.id,
-                        x: e.clientX,
-                        y: e.clientY,
-                        started: false,
-                      };
-                    }}
-                    onPointerMove={(e) => {
-                      const g = gesture.current;
-                      if (
-                        !g ||
-                        g.started ||
-                        Math.hypot(e.clientX - g.x, e.clientY - g.y) < 5
-                      )
-                        return;
-                      g.started = true;
-                      setDragTag(tag.id);
-                      setSelected(tag.id);
-                      void api("floating.drag", { tagId: tag.id }).catch(
-                        (error) => {
-                          setDragTag("");
-                          notify(message(error), true);
-                        },
+              {groupedTags(
+                visiblePinned,
+                boot?.settings.tagGroups ?? emptyGroups,
+              )
+                .filter((g) => !tagQuery || g.tags.length > 0)
+                .map((category) => (
+                  <TagBranch
+                    key={category.id}
+                    id={category.id}
+                    name={category.id ? category.name : ui(category.name)}
+                    count={category.tags.length}
+                    floating
+                    dropTarget={
+                      sorting.targetGroup === (category.id || "unclassified")
+                    }
+                    forcedOpen={!!tagQuery}
+                    closed={closedGroups.includes(category.id)}
+                    onContextMenu={
+                      category.id
+                        ? (event) => {
+                            event.preventDefault();
+                            groupTrigger.current = event.currentTarget;
+                            setMenu(undefined);
+                            setGroupMenu({
+                              id: category.id,
+                              name: category.name,
+                              version: boot?.settings.tagGroups?.version ?? 0,
+                              x: Math.max(
+                                8,
+                                Math.min(event.clientX, innerWidth - 192),
+                              ),
+                              y: Math.max(
+                                66,
+                                Math.min(event.clientY, innerHeight - 64),
+                              ),
+                            });
+                          }
+                        : undefined
+                    }
+                    onToggle={() => {
+                      setClosedGroups((old) =>
+                        old.includes(category.id)
+                          ? old.filter((id) => id !== category.id)
+                          : [...old, category.id],
                       );
                     }}
-                    onPointerUp={() => {
-                      if (!gesture.current?.started)
-                        gesture.current = undefined;
-                    }}
-                    onLostPointerCapture={() => {
-                      if (!gesture.current?.started)
-                        gesture.current = undefined;
-                    }}
                   >
-                    <TagIcon size={14} />
-                    <span>{tag.name}</span>
-                  </button>
-                  <button
-                    className="tag-more"
-                    aria-label={`管理标签${tag.name}`}
-                    title="修改、导出或删除"
-                    aria-haspopup="menu"
-                    aria-expanded={menu?.tag.id === tag.id}
-                    disabled={busy}
-                    onPointerDown={(e) => e.stopPropagation()}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      clearTimeout(menuTimer.current);
-                      menuTimer.current = undefined;
-                      setMenuClosing(false);
-                      menuTrigger.current = e.currentTarget;
-                      const r = e.currentTarget.getBoundingClientRect();
-                      setMenu({
-                        tag,
-                        x: Math.min(r.right - 184, innerWidth - 196),
-                        y: Math.min(r.bottom + 5, innerHeight - 240),
-                      });
-                    }}
-                  >
-                    <svg
-                      width="15"
-                      height="15"
-                      viewBox="0 0 15 15"
-                      aria-hidden="true"
-                    >
-                      {Array.from({ length: 9 }, (_, i) => (
-                        <circle
-                          key={i}
-                          cx={3 + (i % 3) * 4.5}
-                          cy={3 + Math.floor(i / 3) * 4.5}
-                          r="1"
-                          fill="currentColor"
-                        />
-                      ))}
-                    </svg>
-                  </button>
-                </div>
-              ))}
+                    {category.tags.map((tag) => (
+                      <div
+                        key={tag.id}
+                        data-preset-id={tag.id}
+                        data-motion-tag={tag.id}
+                        style={tagStyle(tag.id)}
+                        className={`palette-chip tag-color tone-${tagTone(tag.id)} ${selected === tag.id ? "chosen" : ""} ${dropTag === tag.id ? "drop-active" : ""} ${dragTag === tag.id ? "drag-active" : ""} ${sorting.ghost?.id === tag.id ? "sort-placeholder" : ""}`}
+                      >
+                        <button
+                          className="palette-tag"
+                          aria-label={tf("标签：{0}", tag.name)}
+                          aria-pressed={selected === tag.id}
+                          data-tooltip={tf("拖动「{0}」到文件", tag.name)}
+                          disabled={busy}
+                          onClick={() => setSelected(tag.id)}
+                          onKeyDown={(e) => {
+                            if (
+                              e.altKey &&
+                              ["ArrowUp", "ArrowDown"].includes(e.key)
+                            ) {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              moveTag(tag.id, e.key === "ArrowUp" ? -1 : 1);
+                            }
+                          }}
+                          onPointerDown={(e) => {
+                            if (e.button !== 0) return;
+                            e.currentTarget.setPointerCapture(e.pointerId);
+                            gesture.current = {
+                              id: tag.id,
+                              x: e.clientX,
+                              y: e.clientY,
+                              started: false,
+                            };
+                          }}
+                          onPointerMove={(e) => {
+                            const g = gesture.current;
+                            if (
+                              !g ||
+                              g.started ||
+                              Math.hypot(e.clientX - g.x, e.clientY - g.y) < 5
+                            )
+                              return;
+                            g.started = true;
+                            setDragTag(tag.id);
+                            setSelected(tag.id);
+                            void api("floating.drag", { tagId: tag.id }).catch(
+                              (error) => {
+                                setDragTag("");
+                                notify(message(error), true);
+                              },
+                            );
+                          }}
+                          onPointerUp={() => {
+                            if (!gesture.current?.started)
+                              gesture.current = undefined;
+                          }}
+                          onLostPointerCapture={() => {
+                            if (!gesture.current?.started)
+                              gesture.current = undefined;
+                          }}
+                        >
+                          <TagIcon size={14} />
+                          <span>{tag.name}</span>
+                        </button>
+                        <button
+                          className="tag-more"
+                          aria-label={tf("管理标签{0}", tag.name)}
+                          data-tooltip={
+                            tagQuery
+                              ? ui("点击管理标签；清空搜索后可拖动排序")
+                              : ui("点击管理 · 拖动排序或移到分类")
+                          }
+                          aria-haspopup="menu"
+                          aria-expanded={menu?.tag.id === tag.id}
+                          disabled={busy}
+                          onPointerDown={(e) => sorting.down(e, tag.id)}
+                          onClick={(e) => {
+                            if (sorting.consumeClick() && e.detail > 0) {
+                              e.preventDefault();
+                              return;
+                            }
+                            e.stopPropagation();
+                            clearTimeout(menuTimer.current);
+                            menuTimer.current = undefined;
+                            setMenuClosing(false);
+                            menuTrigger.current = e.currentTarget;
+                            const r = e.currentTarget.getBoundingClientRect();
+                            setMenu({
+                              tag,
+                              x: Math.min(r.right - 184, innerWidth - 196),
+                              y: Math.min(r.bottom + 5, innerHeight - 350),
+                            });
+                          }}
+                        >
+                          <svg
+                            width="15"
+                            height="15"
+                            viewBox="0 0 15 15"
+                            aria-hidden="true"
+                          >
+                            {Array.from({ length: 9 }, (_, i) => (
+                              <circle
+                                key={i}
+                                cx={3 + (i % 3) * 4.5}
+                                cy={3 + Math.floor(i / 3) * 4.5}
+                                r="1"
+                                fill="currentColor"
+                              />
+                            ))}
+                          </svg>
+                        </button>
+                      </div>
+                    ))}
+                  </TagBranch>
+                ))}
               {!pinned.length && (
-                <p className="floating-empty">添加常用标签，开始标注</p>
+                <p className="floating-empty">{ui("添加常用标签，开始标注")}</p>
               )}
             </div>
             <button
               className="glass-add"
-              aria-label="添加标签"
+              aria-label={ui("添加标签")}
               disabled={busy}
               onWheel={(e) => {
                 const list = paletteScroll.current;
@@ -495,21 +728,21 @@ export default function Floating() {
               onClick={() => {
                 setName("");
                 setAdding(true);
-                notify("就绪");
+                notify(msg("就绪"));
               }}
             >
               <Plus size={15} />
-              添加标签
+              {ui("添加标签")}
             </button>
           </div>
           <div className="floating-assist">
             <button
               disabled={!selected || busy}
               onClick={choose}
-              title={presets.tags.find((t) => t.id === selected)?.name}
+              data-tooltip={presets.tags.find((t) => t.id === selected)?.name}
             >
               <ImagePlus size={15} />
-              选择文件标注
+              {ui("选择文件标注")}
             </button>
           </div>
           {(busy || dragTag || incoming || status.error) && (
@@ -526,23 +759,36 @@ export default function Floating() {
               )}
               <span>
                 {busy && !dragTag
-                  ? "正在处理…"
+                  ? ui("正在处理…")
                   : dragTag
-                    ? "移到文件上松手 · Esc 取消"
+                    ? ui("移到文件上松手 · Esc 取消")
                     : incoming
-                      ? "放到标签上完成标注"
-                      : status.text}
+                      ? ui("放到标签上完成标注")
+                      : ui(status.text)}
               </span>
             </div>
           )}
-          <FloatingHistory operations={operations} ready={historyReady} />
+          <FloatingHistory
+            operations={operations}
+            ready={historyReady}
+            undoId={boot?.undoId}
+            busy={busy}
+            onUndo={(operation) =>
+              void run(async () => {
+                await api("undo", { expectedId: operation.undoId });
+                markUndone(operation.id);
+                await refresh();
+                notify(msg("已撤销此操作"));
+              })
+            }
+          />
         </>
       )}
       {menu && (
         <>
           <button
             className="float-menu-dismiss"
-            aria-label="关闭标签菜单"
+            aria-label={ui("关闭标签菜单")}
             onClick={dismissMenu}
           />
           <div
@@ -551,7 +797,7 @@ export default function Floating() {
             inert={menuClosing}
             aria-hidden={menuClosing || undefined}
             role="menu"
-            aria-label={`标签${menu.tag.name}的操作`}
+            aria-label={tf("标签{0}的操作", menu.tag.name)}
             style={{ left: Math.max(12, menu.x), top: Math.max(66, menu.y) }}
             onPointerOver={highlightMenu}
             onFocusCapture={highlightMenu}
@@ -587,17 +833,66 @@ export default function Floating() {
             <strong>{menu.tag.name}</strong>
             <button
               role="menuitem"
+              disabled={
+                busy || groupIds(menu.tag.id).indexOf(menu.tag.id) === 0
+              }
+              onClick={() => {
+                moveTag(menu.tag.id, -1);
+                dismissMenu();
+              }}
+            >
+              <ChevronUp size={14} />
+              {ui("前移")}
+            </button>
+            <button
+              role="menuitem"
+              disabled={
+                busy ||
+                groupIds(menu.tag.id).indexOf(menu.tag.id) ===
+                  groupIds(menu.tag.id).length - 1
+              }
+              onClick={() => {
+                moveTag(menu.tag.id, 1);
+                dismissMenu();
+              }}
+            >
+              <ChevronDown size={14} />
+              {ui("后移")}
+            </button>
+            <button
+              role="menuitem"
               autoFocus
               onClick={() => {
                 menuTrigger.current?.focus();
                 setEditing({ tag: menu.tag, mode: "rename" });
                 setName(menu.tag.name);
                 setMenu(undefined);
-                notify("就绪");
+                notify(msg("就绪"));
               }}
             >
               <Edit3 size={14} />
-              修改名称
+              {ui("修改名称")}
+            </button>
+            <button
+              role="menuitem"
+              onClick={() => {
+                setColorTag(menu.tag);
+                setColor(tagCustomColor(menu.tag.id) || "#71a58b");
+                setMenu(undefined);
+              }}
+            >
+              <Palette size={14} />
+              {ui("设置颜色")}
+            </button>
+            <button
+              role="menuitem"
+              onClick={() => {
+                setGroupTag(menu.tag);
+                setMenu(undefined);
+              }}
+            >
+              <FolderOpen size={14} />
+              {ui("移动到分类")}
             </button>
             <button
               role="menuitem"
@@ -609,21 +904,7 @@ export default function Floating() {
               }}
             >
               <Download size={14} />
-              导出标签文件
-            </button>
-            <button
-              role="menuitem"
-              onClick={() => {
-                const tag = menu.tag;
-                setMenu(undefined);
-                void run(async () => {
-                  await save(ref.current.ids.filter((id) => id !== tag.id));
-                  notify(`已从浮窗移除「${tag.name}」`, false, true);
-                });
-              }}
-            >
-              <Minus size={14} />
-              从浮窗移除
+              {ui("导出标签文件")}
             </button>
             <button
               role="menuitem"
@@ -632,18 +913,18 @@ export default function Floating() {
                 menuTrigger.current?.focus();
                 setEditing({ tag: menu.tag, mode: "delete" });
                 setMenu(undefined);
-                notify("就绪");
+                notify(msg("就绪"));
               }}
             >
               <Trash2 size={14} />
-              删除标签
+              {ui("删除标签")}
             </button>
           </div>
         </>
       )}
       {adding && (
         <Modal
-          title="添加标签"
+          title={ui("添加标签")}
           dismissDisabled={busy}
           onClose={() => {
             if (!busy) setAdding(false);
@@ -658,8 +939,8 @@ export default function Floating() {
             >
               <input
                 autoFocus
-                aria-label="标签名称"
-                placeholder="搜索或新建标签"
+                aria-label={ui("标签名称")}
+                placeholder={ui("搜索或新建标签")}
                 value={name}
                 disabled={busy}
                 onChange={(e) => setName(e.target.value)}
@@ -673,20 +954,17 @@ export default function Floating() {
                 disabled={busy || !name.trim()}
               >
                 <Plus size={15} />
-                添加
+                {ui("添加")}
               </button>
             </form>
             <div className="float-existing-tags">
               {presets.tags
                 .filter(
-                  (t) =>
-                    !presets.ids.includes(t.id) &&
-                    t.name
-                      .toLocaleLowerCase()
-                      .includes(name.trim().toLocaleLowerCase()),
+                  (t) => !presets.ids.includes(t.id) && tagSearch(t, name),
                 )
                 .map((t) => (
                   <button
+                    style={tagStyle(t.id)}
                     className={`tag-color tone-${tagTone(t.id)}`}
                     key={t.id}
                     disabled={busy}
@@ -700,65 +978,269 @@ export default function Floating() {
             </div>
             {status.error && (
               <p role="alert" className="tag-form-error">
-                {status.text}
+                {ui(status.text)}
               </p>
             )}
           </div>
         </Modal>
       )}
-      {editing && (
+      {groupMenu && (
+        <>
+          <button
+            className="float-menu-dismiss"
+            aria-label={ui("关闭分类菜单")}
+            onClick={() => {
+              setGroupMenu(undefined);
+              groupTrigger.current?.focus();
+            }}
+          />
+          <div
+            className="float-tag-menu"
+            role="menu"
+            aria-label={ui("分类操作")}
+            style={{ left: groupMenu.x, top: groupMenu.y }}
+          >
+            <button
+              ref={groupMenuAction}
+              role="menuitem"
+              disabled={busy}
+              onClick={() => {
+                setGroupRename(groupMenu);
+                setGroupName(groupMenu.name);
+                setGroupError("");
+                setGroupMenu(undefined);
+              }}
+            >
+              <Edit3 size={14} />
+              {ui("重命名分类")}
+            </button>
+          </div>
+        </>
+      )}
+      {groupRename && (
         <Modal
-          title={editing.mode === "rename" ? "修改标签" : "删除标签"}
+          title={ui("重命名分类")}
+          onClose={() => {
+            if (!busy) setGroupRename(undefined);
+          }}
+        >
+          <form
+            className="modal-content floating-group-rename"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void run(async () => {
+                setGroupError("");
+                try {
+                  await api("tag-groups.update", {
+                    op: "rename",
+                    id: groupRename.id,
+                    version: groupRename.version,
+                    name: groupName.trim(),
+                  });
+                  setGroupRename(undefined);
+                  await refresh();
+                  notify(msg("分类名称已更新"), false, true);
+                  groupTrigger.current?.focus();
+                } catch (error) {
+                  setGroupError(message(error));
+                }
+              });
+            }}
+          >
+            <label>
+              {ui("分类名称")}
+              <input
+                autoFocus
+                aria-label={ui("分类名称")}
+                value={groupName}
+                maxLength={40}
+                disabled={busy}
+                onChange={(event) => setGroupName(event.target.value)}
+              />
+            </label>
+            {groupError && (
+              <p role="alert" className="tag-form-error">
+                {groupError}
+              </p>
+            )}
+            <div className="dialog-actions">
+              <button
+                type="button"
+                className="button quiet"
+                disabled={busy}
+                onClick={() => setGroupRename(undefined)}
+              >
+                {ui("取消")}
+              </button>
+              <button
+                className="button primary"
+                disabled={busy || !groupName.trim()}
+              >
+                {ui("保存")}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+      {editing?.mode === "rename" && (
+        <TagAliases
+          tag={editing.tag}
+          onClose={() => setEditing(undefined)}
+          onSaved={async (undoId, name) => {
+            await refresh();
+            notify(
+              msg("已将「{0}」更新为「{1}」，别名同步", editing.tag.name, name),
+              false,
+              true,
+              undoId,
+            );
+          }}
+        />
+      )}
+      {editing?.mode === "delete" && (
+        <Modal
+          title={ui("删除标签")}
           dismissDisabled={busy}
           onClose={() => {
             if (!busy) setEditing(undefined);
           }}
         >
-          <div className="modal-content float-editor">
-            {editing.mode === "rename" ? (
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  changeTag();
-                }}
-              >
-                <input
-                  autoFocus
-                  aria-label="标签新名称"
-                  value={name}
-                  disabled={busy}
-                  onChange={(e) => setName(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && e.nativeEvent.isComposing)
-                      e.preventDefault();
-                  }}
-                />
-                <button
-                  className="button primary"
-                  disabled={busy || !name.trim()}
-                >
-                  <Check size={15} />
-                  保存
-                </button>
-              </form>
-            ) : (
-              <>
-                <p>
-                  删除「{editing.tag.name}」及其 {editing.tag.count}{" "}
-                  个文件关联？原文件保留。
-                </p>
-                <button
-                  className="button primary"
-                  disabled={busy}
-                  onClick={changeTag}
-                >
-                  删除标签
-                </button>
-              </>
-            )}
+          <div className="modal-content">
+            <p>
+              {ui("删除「")}
+              {editing.tag.name}
+              {ui("」及其")}
+              {editing.tag.count} {ui("个文件关联、")}
+              {editing.tag.aliases?.length ?? 0} {ui("个别名？原文件保留。")}
+            </p>
+            <button
+              className="button primary"
+              disabled={busy}
+              onClick={changeTag}
+            >
+              {ui("删除标签")}
+            </button>
             {status.error && (
               <p role="alert" className="tag-form-error">
-                {status.text}
+                {ui(status.text)}
+              </p>
+            )}
+          </div>
+        </Modal>
+      )}
+      {sorting.ghost && (
+        <div
+          className={`float-sort-ghost tag-color tone-${tagTone(sorting.ghost.id)}`}
+          aria-hidden="true"
+          style={{
+            ...tagStyle(sorting.ghost.id),
+            left: sorting.ghost.x,
+            top: sorting.ghost.y,
+            width: sorting.ghost.width,
+            height: sorting.ghost.height,
+          }}
+        >
+          <TagIcon size={14} />
+          <span>
+            {presets.tags.find((t) => t.id === sorting.ghost?.id)?.name}
+          </span>
+        </div>
+      )}
+      <span className="sr-only" role="status">
+        {sorting.ghost ? ui("正在调整标签顺序，松开保存，按 Esc 取消") : ""}
+      </span>
+      {groupTag && (
+        <GroupAssignDialog
+          tag={groupTag}
+          onClose={() => setGroupTag(undefined)}
+          onUpdated={refresh}
+        />
+      )}
+      {managingGroups && (
+        <Modal title={ui("管理分类")} onClose={() => setManagingGroups(false)}>
+          <div className="modal-content">
+            <GroupManager tags={boot?.tags ?? []} onUpdated={refresh} />
+          </div>
+        </Modal>
+      )}
+      {colorTag && (
+        <Modal
+          title={ui("设置标签颜色")}
+          onClose={() => setColorTag(undefined)}
+          dismissDisabled={busy}
+        >
+          <div className="modal-content float-color-editor">
+            <span
+              className={`tag-color tone-${tagTone(colorTag.id)} color-preview`}
+              style={{ "--custom-tag-color": color } as React.CSSProperties}
+            >
+              <TagIcon size={15} />
+              {colorTag.name}
+            </span>
+            <div
+              className="color-swatches"
+              role="group"
+              aria-label={ui("常用标签颜色")}
+            >
+              {[
+                { name: ui("绿色"), color: "#71a58b" },
+                { name: ui("蓝色"), color: "#638cc1" },
+                { name: ui("粉色"), color: "#c57494" },
+                { name: ui("琥珀色"), color: "#bb943b" },
+                { name: ui("紫色"), color: "#9572b8" },
+                { name: ui("青色"), color: "#4a9c91" },
+              ].map((x) => (
+                <button
+                  key={x.color}
+                  aria-label={x.name}
+                  aria-pressed={color === x.color}
+                  style={{ background: x.color }}
+                  onClick={() => setColor(x.color)}
+                />
+              ))}
+            </div>
+            <label className="custom-color-label">
+              {ui("自定义颜色")}
+              <input
+                type="color"
+                aria-label={ui("自定义标签颜色")}
+                value={color}
+                onChange={(e) => setColor(e.target.value)}
+              />
+            </label>
+            <div className="semantic-actions">
+              <button
+                className="button primary"
+                disabled={busy}
+                onClick={() =>
+                  void run(async () => {
+                    await api("tag.color", { id: colorTag.id, color });
+                    await refresh();
+                    setColorTag(undefined);
+                    notify(msg("已更新「{0}」颜色", colorTag.name));
+                  })
+                }
+              >
+                {ui("保存颜色")}
+              </button>
+              <button
+                className="button"
+                disabled={busy}
+                onClick={() =>
+                  void run(async () => {
+                    await api("tag.color", { id: colorTag.id, color: "" });
+                    await refresh();
+                    setColorTag(undefined);
+                    notify(msg("已恢复默认颜色"));
+                  })
+                }
+              >
+                {ui("恢复默认")}
+              </button>
+            </div>
+            {status.error && (
+              <p role="alert" className="tag-form-error">
+                {ui(status.text)}
               </p>
             )}
           </div>
@@ -770,7 +1252,7 @@ export default function Floating() {
           onClose={() => setExportTag(undefined)}
           onComplete={(result) =>
             notify(
-              `已导出「${exportTag.name}」的 ${result.copied} 个文件`,
+              msg("已导出「{0}」的 {1} 个文件", exportTag.name, result.copied),
               false,
               true,
             )

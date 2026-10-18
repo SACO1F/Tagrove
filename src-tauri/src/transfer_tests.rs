@@ -49,6 +49,61 @@ impl Fixture {
     }
 }
 #[test]
+fn full_folder_names_survive_package_handoff_and_legacy_names_recover_identity() {
+    use sha2::{Digest, Sha256};
+    let name = "这是需要完整保留的文件夹名称".repeat(4);
+    let mut a = Fixture::new();
+    a.files = a.files.join(&name);
+    fs::create_dir_all(&a.files).unwrap();
+    let f = a.add("长目录.txt");
+    let tag = f.tags.iter().find(|t| t.source == "folder").unwrap();
+    assert_eq!(tag.name, name);
+    let tid = tag.id.clone();
+    let pack = a.pack(&[f.id.clone()]);
+    let mut b = Fixture::new();
+    let control = Control::default();
+    let preview = transfer::preview(&pack, &control).unwrap();
+    let imported = b
+        .store
+        .import_package(
+            &pack,
+            &b.files.clone(),
+            preview["fingerprint"].as_str().unwrap(),
+            &control,
+        )
+        .unwrap();
+    let copy = b.store.file(imported["ids"][0].as_str().unwrap()).unwrap();
+    assert!(copy
+        .tags
+        .iter()
+        .any(|t| t.source == "folder" && t.name == name));
+    let legacy = format!(
+        "{}…{}",
+        name.chars().take(31).collect::<String>(),
+        &format!("{:x}", Sha256::digest(name.as_bytes()))[..8]
+    );
+    a.store
+        .conn
+        .execute(
+            "UPDATE tags SET name=?,name_key=? WHERE id=?",
+            rusqlite::params![legacy, key(&legacy), tid],
+        )
+        .unwrap();
+    a.store.restore_full_folder_names().unwrap();
+    let restored = a.store.file(&f.id).unwrap();
+    assert!(restored.tags.iter().any(|t| t.id == tid && t.name == name));
+    a.store.restore_full_folder_names().unwrap();
+    let root = a.store.root.clone();
+    drop(a.store);
+    let store = Store::open(&root).unwrap();
+    assert!(store
+        .file(&f.id)
+        .unwrap()
+        .tags
+        .iter()
+        .any(|t| t.id == tid && t.name == name));
+}
+#[test]
 fn transfer_round_trip_additive_tags_notes_favorites_and_ai_provenance() {
     let mut a = Fixture::new();
     let f = a.add("中文 原图.txt");

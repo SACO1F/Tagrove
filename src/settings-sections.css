@@ -1,0 +1,76 @@
+.settings-content > .settings-section + .settings-section {
+  margin-top: 8px;
+  padding-top: 0;
+  border-top: 0;
+}
+.settings-content > .settings-section {
+  min-width: 0;
+  display: block;
+  padding-block: 0;
+  border-top: 0;
+}
+.settings-content .settings-section-heading {
+  margin: 0;
+}
+.settings-section-heading > button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  padding: 15px 8px;
+  border-radius: 10px;
+  color: var(--ink);
+  text-align: left;
+  font: inherit;
+  transition: background 160ms ease;
+}
+.settings-section-heading > button:hover {
+  background: var(--hover);
+}
+.settings-section-heading > button > span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.settings-section-heading > button > svg {
+  flex-shrink: 0;
+  color: var(--muted);
+  transition: transform 220ms ease-in-out;
+}
+.settings-section[data-open="true"] .settings-section-heading > button > svg {
+  transform: rotate(90deg);
+}
+.settings-section-reveal {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows 240ms ease-in-out,
+    opacity 180ms ease-in-out;
+}
+.settings-section[data-open="true"] > .settings-section-reveal {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+.settings-section-clip {
+  min-height: 0;
+  overflow: hidden;
+}
+.settings-section-body {
+  padding: 2px 8px 18px;
+  min-width: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .settings-section-reveal,
+  .settings-section-heading > button,
+  .settings-section-heading > button > svg {
+    transition: none;
+  }
+}
+
+.settings-content .semantic-settings .settings-section-body {
+  display: grid;
+  gap: 14px;
+}

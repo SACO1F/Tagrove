@@ -1,3 +1,32 @@
+import { flushReadingStates } from "./ReadingState";
+import { WebSourceFilters } from "./WebCapture";
+import { dateBoundary, localDateValue } from "./calendar";
+import { DateFilter } from "./DateFilter";
+import { applyAppearance } from "./appearance";
+import { useLanguage } from "./i18n";
+import { t as ui, tf, msg, type UiCopy } from "./i18n";
+import {
+  TagBranch,
+  GroupManager,
+  GroupDisclosure,
+  groupedTags,
+  emptyGroups,
+} from "./TagGroups";
+import { configureTagColors } from "./tagColors";
+import { SemanticSearch, ImportSemanticPrompt } from "./Semantic";
+import { WorkspaceFileColumn } from "./WorkspaceFileColumn";
+import { InspectorPane, inspectorWidth } from "./InspectorPane";
+import { useGalleryWheel } from "./useGalleryWheel";
+import {
+  ContentReader,
+  documentsSaving,
+  unsavedDocumentNames,
+} from "./ContentReader";
+import { WorkspaceToasts, type WorkspaceToast } from "./WorkspaceToasts";
+import { WatchFolders } from "./WatchFolders";
+import { PathRepair } from "./PathRepair";
+import { TagAliases } from "./TagAliases";
+import { MergeTagDialog, CollectionsBar } from "./TagOrganize";
 import { WarmTooltip } from "./WarmTooltip";
 import { FirstRunGuide } from "./FirstRunGuide";
 import { StartupWindow, WindowControls } from "./WindowControls";
@@ -5,9 +34,11 @@ import { GlideSelect } from "./GlideSelect";
 import { TransferDialog } from "./TransferDialog";
 import { TaskPanel, useTasks } from "./TaskPanel";
 import { DiagnosticPanel } from "./SupportPanel";
+import { AiReview } from "./AiReview";
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type CSSProperties,
@@ -17,6 +48,7 @@ import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import {
   Search,
+  Sparkles,
   Plus,
   ChevronDown,
   FolderOpen,
@@ -29,7 +61,6 @@ import {
   Tags,
   LayoutGrid,
   List,
-  PanelRight,
   PanelLeftClose,
   PanelLeftOpen,
   SlidersHorizontal,
@@ -47,9 +78,12 @@ import {
   ArrowUpRight,
   PanelsTopLeft,
   Edit3,
+  ClipboardCheck,
 } from "lucide-react";
 import {
   api,
+  tagMatches,
+  tagSearch as searchTagNames,
   message,
   defaultQuery,
   versions,
@@ -71,6 +105,8 @@ import {
   QuickTagPanel,
 } from "./components";
 import { Preview, clearPreviews } from "./preview";
+import { isHtml } from "./HtmlReader";
+import { isOfficePreview } from "./OfficeReader";
 import { ExportTagDialog } from "./ExportTagDialog";
 import { TagDropFeedback } from "./TagDropFeedback";
 import { SidebarResizeHandle, sidebarWidth } from "./SidebarResizeHandle";
@@ -81,7 +117,7 @@ import { NoteDrafts } from "./notes";
 const scopes = [
   {
     id: "all",
-    name: "全部文件",
+    name: "全部资料",
     icon: Files,
   },
   {
@@ -106,15 +142,25 @@ const scopes = [
   },
 ];
 type Confirmation = {
-  title: string;
-  text: string;
-  label: string;
+  title: UiCopy;
+  text: UiCopy;
+  label: UiCopy;
   resolve: (ok: boolean) => void;
 };
 export default function App() {
+  useLanguage();
   const [boot, setBoot] = useState<Bootstrap>();
+  useEffect(() => {
+    if (boot) applyAppearance(boot.settings);
+  }, [
+    boot?.settings.language,
+    boot?.settings.accentColor,
+    boot?.settings.uiFontSize,
+  ]);
   const sidebarTagsMotion = useRef<HTMLDivElement>(null);
   useTagArrival(sidebarTagsMotion, boot?.dataPath, boot?.tags ?? []);
+  const [mergeSource, setMergeSource] = useState<Tag>();
+  const [aliasSource, setAliasSource] = useState<Tag>();
   const [fatal, setFatal] = useState("");
   const [query, setQuery] = useState<Query>(defaultQuery);
   const queryRef = useRef(query);
@@ -150,12 +196,16 @@ export default function App() {
   const loadLock = useRef(false);
   const request = useRef(0);
   const [busy, setBusy] = useState(false);
-  const [toast, setToast] = useState<{ text: string; error: boolean }>();
+  const [toasts, setToasts] = useState<WorkspaceToast[]>([]);
+  const [importSemanticIds, setImportSemanticIds] = useState<string[]>([]);
+  const promptedImports = useRef(new Set<string>());
   const [theme, setTheme] = useState("system");
   const [density, setDensity] = useState("comfortable");
   const [views, setViews] = useState<Record<string, string>>({});
-  const [details, setDetails] = useState(true);
+  const [detailWidth, setDetailWidth] = useState(420);
+  const contentBody = useRef<HTMLDivElement>(null);
   const [galleryColumns, setGalleryColumns] = useState(3);
+  const [floatingVisible, setFloatingVisible] = useState(false);
   const [columnCapacity, setColumnCapacity] = useState(8);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [sidebarSize, setSidebarSize] = useState(216);
@@ -198,14 +248,27 @@ export default function App() {
       : visibleSelected;
   const single = selectedFiles.length === 1 ? selectedFiles[0] : undefined;
   const view = views[query.scope] || "grid";
-  const inspectorVisible =
-    details && (view === "list" || selectedFiles.length > 0);
+  const inspectorVisible = selectedFiles.length > 0;
+  const lastInspected = useRef<LocalFile[]>([]);
+  if (selectedFiles.length) lastInspected.current = selectedFiles;
+  const inspectorFiles = selectedFiles.length
+    ? selectedFiles
+    : lastInspected.current;
+  useLayoutEffect(() => {
+    window.dispatchEvent(new Event("shiqian-continuous-layout"));
+  }, [inspectorVisible]);
   const tell = useCallback(
-    (text: string, error = false) => setToast({ text, error }),
+    (text: UiCopy, error = false, undoId?: string) =>
+      setToasts((old) =>
+        [
+          ...old,
+          { id: crypto.randomUUID(), text, error, undoId, time: Date.now() },
+        ].slice(-3),
+      ),
     [],
   );
   const ask = useCallback(
-    (title: string, text: string, label = "确认") =>
+    (title: UiCopy, text: UiCopy, label: UiCopy = msg("确认")) =>
       new Promise<boolean>((resolve) =>
         setConfirm({ title, text, label, resolve }),
       ),
@@ -217,6 +280,7 @@ export default function App() {
   };
   const reload = useCallback(async () => {
     const b = await api<Bootstrap>("bootstrap");
+    configureTagColors(b.settings.tagColors);
     setBoot(b);
     return b;
   }, []);
@@ -232,6 +296,23 @@ export default function App() {
           offset: append ? resultsRef.current.files.length : 0,
         });
         if (token !== request.current) return;
+        if (r.searchWarning) {
+          const warning = r.searchWarning;
+          r = await api<Results>("query", {
+            ...q,
+            semanticSession: "",
+            offset: 0,
+          });
+          if (token !== request.current) return;
+          append = false;
+          preserveLoaded = false;
+          tell(warning);
+          setQuery((current) =>
+            current.semanticSession === q.semanticSession
+              ? { ...current, semanticSession: "" }
+              : current,
+          );
+        }
         // Background tagging must keep the pages the user has already opened.
         const loaded = preserveLoaded ? resultsRef.current.files.length : 0;
         while (!append && r.hasMore && r.files.length < loaded) {
@@ -276,7 +357,15 @@ export default function App() {
             ),
           );
       } catch (e) {
-        if (token === request.current) tell(message(e), true);
+        if (token === request.current) {
+          if (
+            q.searchMode === "content" ||
+            q.searchMode === "semantic" ||
+            q.searchMode === "unified"
+          )
+            setResults({ files: [], total: 0, offset: 0, hasMore: false });
+          tell(message(e), true);
+        }
       } finally {
         if (token === request.current) {
           loadLock.current = false;
@@ -300,7 +389,7 @@ export default function App() {
     } else await fetchFiles(q, false, true);
   }, [reload, fetchFiles]);
   const run = useCallback(
-    async (task: () => Promise<unknown>, success?: string) => {
+    async (task: () => Promise<unknown>, success?: UiCopy) => {
       setBusy(true);
       try {
         await task();
@@ -327,6 +416,29 @@ export default function App() {
 
   useEffect(() => {
     let alive = true;
+    const sync = () =>
+      void api<{ visible: boolean }>("floating.visibility")
+        .then((s) => {
+          if (alive) setFloatingVisible(s.visible);
+        })
+        .catch(() => {});
+    const unlisten = listen<{ visible: boolean }>(
+      "floating-visibility",
+      (e) => {
+        if (alive) setFloatingVisible(e.payload.visible);
+      },
+    );
+    sync();
+    window.addEventListener("focus", sync);
+    return () => {
+      alive = false;
+      window.removeEventListener("focus", sync);
+      void unlisten.then((off) => off());
+    };
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
     reload()
       .then((b) => {
         if (!alive) return;
@@ -335,7 +447,7 @@ export default function App() {
           setTheme(b.settings.theme || "system");
           setDensity(b.settings.density || "comfortable");
           setViews(b.settings.views || {});
-          setDetails(b.settings.details !== false);
+          setDetailWidth(inspectorWidth(b.settings.inspectorWidth));
           setGalleryColumns(
             Number.isInteger(b.settings.galleryColumns)
               ? Math.max(2, Math.min(8, b.settings.galleryColumns!))
@@ -357,7 +469,17 @@ export default function App() {
   useEffect(() => {
     const timer = setTimeout(() => {
       if (!composing.current)
-        setQuery((q) => (q.text === search ? q : { ...q, text: search }));
+        setQuery((q) =>
+          q.text === search
+            ? q
+            : {
+                ...q,
+                text: search,
+                ...(q.semanticSession
+                  ? { searchMode: "unified" as const, semanticSession: "" }
+                  : {}),
+              },
+        );
     }, 250);
     return () => clearTimeout(timer);
   }, [search]);
@@ -385,14 +507,6 @@ export default function App() {
     return () => media.removeEventListener("change", apply);
   }, [theme]);
   useEffect(() => {
-    if (!toast) return;
-    const timer = setTimeout(
-      () => setToast(undefined),
-      toast.error ? 9000 : 4500,
-    );
-    return () => clearTimeout(timer);
-  }, [toast]);
-  useEffect(() => {
     const unlisteners: Promise<() => void>[] = [];
     let timer: ReturnType<typeof setTimeout>;
     let disposed = false;
@@ -401,18 +515,82 @@ export default function App() {
         setJob(e.payload);
         if (e.payload.done) {
           void refresh();
-          tell(
-            e.payload.cancelled
-              ? "加入已取消，已完成的内容已保留"
-              : `已加入 ${e.payload.added} 个文件${e.payload.failed ? `，${e.payload.failed} 个失败` : ""}`,
-          );
+          if (
+            e.payload.added > 0 &&
+            e.payload.addedIds?.length &&
+            !promptedImports.current.has(e.payload.id)
+          ) {
+            promptedImports.current.add(e.payload.id);
+            const ids = e.payload.addedIds;
+            setToasts((old) =>
+              [
+                ...old,
+                {
+                  id: crypto.randomUUID(),
+                  time: Date.now(),
+                  error: false,
+                  text: msg(
+                    "已加入 {0} 个文件，生成语义索引？",
+                    e.payload.added,
+                  ),
+                  actionLabel: msg("生成语义"),
+                  onAction: () => {
+                    setImportSemanticIds(ids);
+                    setModal("import-semantic");
+                  },
+                },
+              ].slice(-3),
+            );
+          } else if (!promptedImports.current.has(e.payload.id)) {
+            tell(
+              e.payload.cancelled
+                ? msg("加入已取消，已完成的内容已保留")
+                : msg(
+                    "已加入 {0} 个文件{1}",
+                    e.payload.added,
+                    e.payload.failed
+                      ? msg("，{0} 个失败", e.payload.failed)
+                      : "",
+                  ),
+            );
+          }
         }
+      }),
+    );
+    unlisteners.push(
+      listen<{
+        ok: boolean;
+        result?: {
+          applied: number;
+          imported: number;
+          names: string[];
+          tagName: string;
+          undoId?: string;
+        };
+      }>("annotation-result", ({ payload }) => {
+        const r = payload.result;
+        if (!payload.ok || !r || !r.applied) return;
+        const names = r.names
+          .slice(0, 2)
+          .map((name) => `「${name}」`)
+          .join("、");
+        tell(
+          msg(
+            "已添加「{0}」 · {1}{2}{3}",
+            r.tagName,
+            names,
+            r.names.length > 2 ? msg("等 {0} 个文件", r.names.length) : "",
+            r.imported ? msg("，加入 {0} 个文件", r.imported) : "",
+          ),
+          false,
+          r.undoId,
+        );
       }),
     );
     unlisteners.push(
       listen("exit-blocked", () => {
         setModal("tasks");
-        tell("后台任务尚未结束，请等待完成，或取消后退出");
+        tell(msg("后台任务尚未结束，请等待完成，或取消后退出"));
       }),
     );
     unlisteners.push(
@@ -443,21 +621,39 @@ export default function App() {
         if (closeInProgress.current) return;
         closeInProgress.current = true;
         try {
+          if (documentsSaving()) {
+            tell(msg("正在保存正文，请稍后关闭"));
+            return;
+          }
+          if (unsavedDocumentNames().length) {
+            if (
+              !(await ask(
+                msg("正文尚未保存"),
+                msg(
+                  "以下文件有未保存内容：{0}。关闭将放弃这些草稿。",
+                  unsavedDocumentNames().join("、"),
+                ),
+                msg("放弃并关闭"),
+              ))
+            )
+              return;
+          }
           await flush();
           await settingsWrites.current;
+          await flushReadingStates();
           const packageTask = await api<{ busy: boolean }>("package.status");
           if (packageTask.busy) {
             setModal("tasks");
-            tell("后台任务尚未结束，请等待完成，或在任务面板取消后退出");
+            tell(msg("后台任务尚未结束，请等待完成，或在任务面板取消后退出"));
             return;
           }
           const active = await api<ImportJob | null>("import.status");
           if (active && !active.done) {
             if (
               !(await ask(
-                "加入任务尚未完成",
-                "关闭后会停止继续加入，已经加入的文件会保留。",
-                "停止并退出",
+                msg("加入任务尚未完成"),
+                msg("关闭后会停止继续加入，已经加入的文件会保留。"),
+                msg("停止并退出"),
               ))
             )
               return;
@@ -478,12 +674,14 @@ export default function App() {
             tell(message(error), true);
             return;
           }
-          tell(`备注尚未保存：${message(error)}`, true);
+          tell(msg("备注尚未保存：{0}", message(error)), true);
           if (
             await ask(
-              "保留草稿并退出？",
-              "数据库中的旧备注会保留，新内容已保存在本机草稿中，下次启动时可以继续保存。",
-              "保留草稿并退出",
+              msg("保留草稿并退出？"),
+              msg(
+                "数据库中的旧备注会保留，新内容已保存在本机草稿中，下次启动时可以继续保存。",
+              ),
+              msg("保留草稿并退出"),
             )
           ) {
             closeAllowed.current = true;
@@ -518,10 +716,71 @@ export default function App() {
     return () => clearInterval(timer);
   }, [job?.id, job?.done, refresh]);
 
-  const mutate = async (action: string, payload: unknown) => {
+  function operationText(
+    action: string,
+    value: Record<string, unknown>,
+  ): UiCopy {
+    const ids = Array.isArray(value.ids) ? (value.ids as string[]) : [];
+    const files = results.files.filter((f) => ids.includes(f.id));
+    const names = files
+      .slice(0, 2)
+      .map((f) => `「${f.name}」`)
+      .join("、");
+    const target = !names
+      ? msg("{0} 个文件", ids.length)
+      : ids.length > 2
+        ? msg("{0}等 {1} 个文件", names, ids.length)
+        : names;
+    const tagNames = (key: string) =>
+      (Array.isArray(value[key]) ? (value[key] as string[]) : [])
+        .map((id) => `「${boot?.tags.find((t) => t.id === id)?.name || id}」`)
+        .join("、");
+    if (action === "files.tags") {
+      const add = tagNames("add"),
+        remove = tagNames("remove");
+      const added = msg("为 {0} 添加标签 {1}", target, add);
+      const removed = msg("从 {0} 移除标签 {1}", target, remove);
+      return add && remove
+        ? msg("{0}；{1}", added, removed)
+        : add
+          ? added
+          : remove
+            ? removed
+            : "";
+    }
+    if (action === "files.favorite")
+      return msg("{0} {1}", msg(value.value ? "收藏" : "取消收藏"), target);
+    if (action === "files.remove")
+      return msg("从资料库移除 {0}（原文件保留）", target);
+    const tag = boot?.tags.find((t) => t.id === value.id);
+    if (action === "tags.delete")
+      return msg(
+        "删除标签「{0}」，移除 {1} 个文件的对应标签",
+        tag?.name || value.id,
+        tag?.count || 0,
+      );
+    if (action === "tags.rename")
+      return msg(
+        "将标签「{0}」改为「{1}」，同步 {2} 个文件",
+        tag?.name || value.id,
+        value.name,
+        tag?.count || 0,
+      );
+    if (action === "files.relink")
+      return msg("修复文件「{0}」的路径", single?.name || value.id);
+    return "";
+  }
+  const mutate = async (
+    action: string,
+    payload: unknown,
+    description?: UiCopy,
+  ) => {
+    const text =
+      description || operationText(action, payload as Record<string, unknown>);
     await flush();
-    await api(action, payload);
+    const result = await api<{ undoId?: string }>(action, payload);
     await refresh();
+    if (text) tell(text, false, result.undoId);
   };
   const updateFiles = async (
     action: string,
@@ -538,8 +797,30 @@ export default function App() {
       remove: add ? [] : [tag.id],
     });
   const createAndTag = async (name: string) => {
+    const existing = boot?.tags.some((t) => tagMatches(t, name));
     const tag = await api<Tag>("tag.create", { name });
-    await addTag(tag);
+    if (!existing) tell(msg("创建标签「{0}」", tag.name));
+    const target = selectedFiles
+      .slice(0, 2)
+      .map((f) => `「${f.name}」`)
+      .join("、");
+    await mutate(
+      "files.tags",
+      {
+        ids: selectedFiles.map((f) => f.id),
+        versions: versions(selectedFiles),
+        add: [tag.id],
+        remove: [],
+      },
+      tf(
+        "为 {0}{1} 添加标签「{2}」",
+        target,
+        selectedFiles.length > 2
+          ? tf("等 {0} 个文件", selectedFiles.length)
+          : "",
+        tag.name,
+      ),
+    );
   };
   const openFile = (f: LocalFile) => run(() => api("files.open", { id: f.id }));
   const undo = () =>
@@ -547,14 +828,14 @@ export default function App() {
       await flush();
       await api("undo");
       await refresh();
-    }, "已撤销上一步操作");
+    }, msg("已撤销上一步操作"));
   const chooseImport = (directory = false) =>
     run(async () => {
       setAddMenu(false);
       const paths = await open({
         directory,
         multiple: true,
-        title: directory ? "选择要加入的文件夹" : "选择要加入的文件",
+        title: directory ? ui("选择要加入的文件夹") : ui("选择要加入的文件"),
       });
       if (paths) await startImport(Array.isArray(paths) ? paths : [paths]);
     });
@@ -563,7 +844,7 @@ export default function App() {
       const path = await open({
         directory: true,
         multiple: false,
-        title: "选择筛选目录",
+        title: ui("选择筛选目录"),
       });
       if (typeof path === "string")
         setQuery((q) => ({ ...q, directory: path }));
@@ -574,14 +855,18 @@ export default function App() {
     void run(async () => {
       const path = await open({
         multiple: false,
-        title: `重新关联 ${file.name}`,
+        title: tf("重新关联 {0}", file.name),
       });
       if (typeof path !== "string") return;
       if (
         !(await ask(
-          "重新关联文件",
-          `当前：${file.path}\n\n关联到：${path}\n\n此文件的标签、备注和收藏会保留。请确认这是同一份资料。`,
-          "确认关联",
+          msg("重新关联文件"),
+          msg(
+            "当前：{0}\n\n关联到：{1}\n\n此文件的标签、备注和收藏会保留。请确认这是同一份资料。",
+            file.path,
+            path,
+          ),
+          msg("确认关联"),
         ))
       )
         return;
@@ -590,22 +875,25 @@ export default function App() {
         path,
         version: file.version,
       });
-      tell("已重新关联文件");
+      tell(msg("已重新关联文件"));
     });
   };
   const remove = () =>
     run(async () => {
       if (
         !(await ask(
-          "从文件库移除",
-          `移除所选的 ${selectedFiles.length} 个文件记录。原文件保留在原来的位置，可用“撤销”恢复记录。`,
-          "移除记录",
+          msg("从文件库移除"),
+          msg(
+            "移除所选的 {0} 个文件记录。原文件保留在原来的位置，可用“撤销”恢复记录。",
+            selectedFiles.length,
+          ),
+          msg("移除记录"),
         ))
       )
         return;
       await updateFiles("files.remove", {});
       setSelected([]);
-    }, "已从文件库移除，可撤销");
+    });
   const setSetting = (key: string, value: unknown) => {
     settingsWrites.current = settingsWrites.current
       .then(async () => {
@@ -614,7 +902,7 @@ export default function App() {
           b ? { ...b, settings: { ...b.settings, [key]: value } } : b,
         );
       })
-      .catch((error) => tell(`偏好保存失败：${message(error)}`, true));
+      .catch((error) => tell(msg("偏好保存失败：{0}", message(error)), true));
   };
   const changeColumns = (columns: number) => {
     galleryLayoutCapture.current?.();
@@ -622,32 +910,41 @@ export default function App() {
     setSetting("galleryColumns", columns);
   };
   const toggleSidebar = () => {
+    window.dispatchEvent(new Event("shiqian-continuous-layout"));
     setSidebarCollapsed(!sidebarCollapsed);
     setSetting("sidebarCollapsed", !sidebarCollapsed);
   };
   const visibleColumns = Math.min(galleryColumns, columnCapacity);
+  useGalleryWheel(
+    contentBody,
+    view === "grid",
+    visibleColumns,
+    columnCapacity,
+    changeColumns,
+    !!boot,
+  );
   const backup = () =>
     run(async () => {
       await flush();
       const path = await save({
-        title: "导出标注备份",
+        title: ui("导出标注备份"),
         defaultPath: `拾签标注-${new Date().toLocaleDateString("sv-SE")}.sqtagbackup`,
-        filters: [{ name: "拾签标注备份", extensions: ["sqtagbackup"] }],
+        filters: [{ name: ui("拾签标注备份"), extensions: ["sqtagbackup"] }],
       });
       if (path) {
         const result = await api<{ notice?: string }>("backup.export", {
           path,
         });
         await reload();
-        tell(result.notice || "标注备份已导出");
+        tell(result.notice || msg("标注备份已导出"));
       }
     });
   const restore = () =>
     run(async () => {
       const path = await open({
-        title: "选择标注备份",
+        title: ui("选择标注备份"),
         multiple: false,
-        filters: [{ name: "拾签标注备份", extensions: ["sqtagbackup"] }],
+        filters: [{ name: ui("拾签标注备份"), extensions: ["sqtagbackup"] }],
       });
       if (typeof path !== "string") return;
       const info = await api<{
@@ -657,9 +954,13 @@ export default function App() {
       }>("backup.inspect", { path });
       if (
         !(await ask(
-          "用备份恢复文件库",
-          `已验证备份完整性：${info.fileCount} 个文件记录，${info.tagCount} 个标签。\n\n恢复将替换当前标注库，并自动备份当前内容。原文件需仍在记录的位置。`,
-          "备份当前库并恢复",
+          msg("用备份恢复文件库"),
+          msg(
+            "已验证备份完整性：{0} 个文件记录，{1} 个标签。\n\n恢复将替换当前标注库，并自动备份当前内容。原文件需仍在记录的位置。",
+            info.fileCount,
+            info.tagCount,
+          ),
+          msg("备份当前库并恢复"),
         ))
       )
         return;
@@ -676,7 +977,7 @@ export default function App() {
       setViews(b.settings.views || {});
       setTheme(b.settings.theme || "system");
       setDensity(b.settings.density || "comfortable");
-      setDetails(b.settings.details !== false);
+      setDetailWidth(inspectorWidth(b.settings.inspectorWidth));
       setGalleryColumns(
         Number.isInteger(b.settings.galleryColumns)
           ? Math.max(2, Math.min(8, b.settings.galleryColumns!))
@@ -685,7 +986,7 @@ export default function App() {
       setSidebarCollapsed(b.settings.sidebarCollapsed === true);
       setSidebarSize(sidebarWidth(b.settings.sidebarWidth));
       await fetchFiles(defaultQuery());
-      tell(`恢复完成。恢复前的标注已保存在 ${restored.recoveryBackup}`);
+      tell(msg("恢复完成。恢复前的标注已保存在 {0}", restored.recoveryBackup));
       await api("refresh");
     });
   const select = (f: LocalFile, e: React.MouseEvent) => {
@@ -717,7 +1018,10 @@ export default function App() {
   const selectAllResults = () =>
     run(async () => {
       if (results.total > 1000) {
-        tell("批量标注每次最多支持 1,000 个文件，请缩小筛选范围后全选", true);
+        tell(
+          msg("批量标注每次最多支持 1,000 个文件，请缩小筛选范围后全选"),
+          true,
+        );
         return;
       }
       await flush();
@@ -739,11 +1043,11 @@ export default function App() {
           )
             return;
           if (!page.files.length && page.hasMore)
-            throw new Error("文件列表已变化，请重新全选");
+            throw new Error(ui("文件列表已变化，请重新全选"));
           files.push(...page.files);
           if (files.length > 1000)
             throw new Error(
-              "文件列表已变化，结果超过 1,000 项，请缩小筛选范围",
+              ui("文件列表已变化，结果超过 1,000 项，请缩小筛选范围"),
             );
         } while (page.hasMore);
         const unique = [
@@ -780,6 +1084,9 @@ export default function App() {
       exclude: [],
     }));
   const filterCount =
+    Number(!!query.sourceHost) +
+    Number(!!query.captureKind) +
+    (query.searchScope && query.searchScope !== "all" ? 1 : 0) +
     query.include.length +
     query.exclude.length +
     query.kinds.length +
@@ -791,9 +1098,9 @@ export default function App() {
       if (!single) return;
       if (
         !(await ask(
-          "重新读取备注",
-          "这会用数据库中的已保存内容替换当前草稿。",
-          "重新读取",
+          msg("重新读取备注"),
+          msg("这会用数据库中的已保存内容替换当前草稿。"),
+          msg("重新读取"),
         ))
       )
         return;
@@ -833,11 +1140,17 @@ export default function App() {
       if (typing) return;
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
         e.preventDefault();
-        if (boot?.undoLabel && !busy) undo();
+        if (!busy && !e.repeat) undo();
+        return;
       }
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "a" && inFiles) {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "a") {
         e.preventDefault();
-        if (!busy) selectAllResults();
+        if (!busy && !e.repeat) {
+          if (results.total > 0 && selected.length === results.total)
+            setSelected([]);
+          else selectAllResults();
+        }
+        return;
       }
       if (e.key === "Escape") {
         setSelected([]);
@@ -859,6 +1172,7 @@ export default function App() {
     boot,
     busy,
     results,
+    selected,
     single,
     confirm,
     modal,
@@ -873,11 +1187,11 @@ export default function App() {
     return (
       <StartupWindow>
         <div className="startup">
-          <img src="/icon.svg" alt="拾签" />
-          <h1>资料库暂时无法打开</h1>
+          <img src="/icon.png" alt={ui("拾签")} />
+          <h1>{ui("资料库暂时无法打开")}</h1>
           <p>{fatal}</p>
           <button className="button primary" onClick={() => location.reload()}>
-            重新尝试
+            {ui("重新尝试")}
           </button>
         </div>
       </StartupWindow>
@@ -886,9 +1200,9 @@ export default function App() {
     return (
       <StartupWindow>
         <div className="startup">
-          <img src="/icon.svg" alt="拾签" />
+          <img src="/icon.png" alt={ui("拾签")} />
           <LoaderCircle className="spin" />
-          <p>正在打开你的文件工作台…</p>
+          <p>{ui("正在打开你的文件工作台…")}</p>
         </div>
       </StartupWindow>
     );
@@ -898,7 +1212,12 @@ export default function App() {
       style={{ "--sidebar-width": `${sidebarSize}px` } as CSSProperties}
       data-busy={busy}
     >
-      <TagDropFeedback tags={boot.tags} run={run} onNotify={tell} />
+      <TagDropFeedback
+        tags={boot.tags}
+        tiltEnabled={boot.settings.tagDropTilt !== false}
+        run={run}
+        onNotify={tell}
+      />
       <FirstRunGuide
         library={boot.dataPath}
         folderEnabled={boot.settings.folderAutoTagging !== false}
@@ -910,12 +1229,12 @@ export default function App() {
         <div className="top-leading-actions">
           <button
             className="icon-button"
-            title={
+            data-tooltip={
               boot.undoLabel
-                ? `撤销：${boot.undoLabel} (Ctrl+Z)`
-                : "没有可撤销的操作"
+                ? tf("撤销：{0}", boot.undoLabel)
+                : ui("没有可撤销的操作")
             }
-            aria-label="撤销上一步"
+            aria-label={ui("撤销上一步")}
             disabled={!boot.undoLabel || busy}
             onClick={undo}
           >
@@ -923,22 +1242,26 @@ export default function App() {
           </button>
           <button
             className="icon-button"
-            aria-label="刷新文件状态"
-            title="重新检查原文件状态"
+            aria-label={ui("刷新文件状态")}
+            data-tooltip={ui("重新检查原文件状态")}
             disabled={busy}
             onClick={() =>
               run(async () => {
                 clearPreviews();
                 await api("refresh");
-              }, "正在检查文件位置与状态")
+              }, ui("正在检查文件位置与状态"))
             }
           >
             <RefreshCw size={16} />
           </button>
           <button
             className="icon-button sidebar-toggle"
-            aria-label={sidebarCollapsed ? "展开左侧菜单" : "收拢左侧菜单"}
-            title={sidebarCollapsed ? "展开左侧菜单" : "收拢左侧菜单"}
+            aria-label={
+              sidebarCollapsed ? ui("展开左侧菜单") : ui("收拢左侧菜单")
+            }
+            data-tooltip={
+              sidebarCollapsed ? ui("展开左侧菜单") : ui("收拢左侧菜单")
+            }
             aria-expanded={!sidebarCollapsed}
             aria-controls="workspace-sidebar"
             onClick={toggleSidebar}
@@ -952,7 +1275,7 @@ export default function App() {
         </div>
         <div
           className="window-drag-region"
-          aria-label="拖动窗口"
+          aria-label={ui("拖动窗口")}
           onMouseDown={(event) => {
             if (event.button === 0 && event.detail === 1)
               void getCurrentWebviewWindow()
@@ -966,17 +1289,25 @@ export default function App() {
           }
         >
           <span className="local-badge">
-            <span /> 本地资料库
+            <span /> {ui("本地资料库")}
           </span>
         </div>
         <WindowControls onError={(text) => tell(text, true)} />
       </header>
-      <aside className="sidebar" id="workspace-sidebar" aria-label="工作台导航">
+      <aside
+        className="sidebar"
+        id="workspace-sidebar"
+        aria-label={ui("工作台导航")}
+      >
         <SidebarResizeHandle
           width={sidebarSize}
           collapsed={sidebarCollapsed}
-          onResizing={setSidebarResizing}
+          onResizing={(active) => {
+            window.dispatchEvent(new Event("shiqian-continuous-layout"));
+            setSidebarResizing(active);
+          }}
           onChange={({ width, collapsed }) => {
+            window.dispatchEvent(new Event("shiqian-continuous-layout"));
             setSidebarSize(width);
             setSidebarCollapsed(collapsed);
           }}
@@ -986,9 +1317,9 @@ export default function App() {
           }}
         />
         <div className="brand">
-          <img src="/icon.svg" alt="" />
+          <img src="/icon.png" alt="" />
           <div>
-            <strong>拾签</strong>
+            <strong>{ui("拾签")}</strong>
           </div>
         </div>
         <nav className="main-nav">
@@ -997,8 +1328,8 @@ export default function App() {
             return (
               <button
                 key={s.id}
-                aria-label={s.name}
-                title={sidebarCollapsed ? s.name : undefined}
+                aria-label={ui(s.name)}
+                data-tooltip={sidebarCollapsed ? ui(s.name) : undefined}
                 className={query.scope === s.id ? "active" : ""}
                 onClick={() => {
                   void flush().catch((e) => tell(message(e), true));
@@ -1007,47 +1338,60 @@ export default function App() {
                 }}
               >
                 <Icon size={18} />
-                <span>{s.name}</span>
+                <span>{ui(s.name)}</span>
                 <small>{boot.counts[s.id] || 0}</small>
               </button>
             );
           })}
         </nav>
         <div className="sidebar-index">
-          <button
-            className="sidebar-tags-expand icon-button"
-            inert={!sidebarCollapsed}
-            aria-hidden={!sidebarCollapsed}
-            aria-label="展开标签索引"
-            title="展开标签索引"
-            onClick={toggleSidebar}
-          >
-            <Tags size={18} />
-          </button>
+          <div className="sidebar-index-nav main-nav">
+            <button
+              className={
+                modal === "tags" || query.include.length > 0 ? "active" : ""
+              }
+              aria-label={
+                sidebarCollapsed ? ui("展开标签索引") : ui("标签索引")
+              }
+              data-tooltip={
+                sidebarCollapsed ? ui("展开标签索引") : ui("管理标签")
+              }
+              onClick={() => {
+                if (sidebarCollapsed) toggleSidebar();
+                else {
+                  setEditingTag(undefined);
+                  setModal("tags");
+                }
+              }}
+            >
+              <Tags size={18} />
+              <span>{ui("标签索引")}</span>
+            </button>
+            <button
+              className="sidebar-index-gear icon-button"
+              inert={sidebarCollapsed}
+              aria-hidden={sidebarCollapsed}
+              aria-label={ui("管理标签")}
+              data-tooltip={ui("管理标签")}
+              aria-haspopup="dialog"
+              onClick={() => {
+                setEditingTag(undefined);
+                setModal("tags");
+              }}
+            >
+              <Settings size={15} />
+            </button>
+          </div>
           <div
             className="sidebar-index-content"
             inert={sidebarCollapsed}
             aria-hidden={sidebarCollapsed}
           >
-            <div className="sidebar-section">
-              <span>标签索引</span>
-              <button
-                className="icon-button"
-                aria-label="管理标签"
-                title="管理标签"
-                onClick={() => {
-                  setEditingTag(undefined);
-                  setModal("tags");
-                }}
-              >
-                <Settings size={15} />
-              </button>
-            </div>
             <div className="sidebar-tags" ref={sidebarTagsMotion}>
               {boot.tags.length ? (
                 [
-                  { name: "文件夹", label: "文件夹标签", folder: true },
-                  { name: "标签", label: "普通标签", folder: false },
+                  { name: ui("文件夹"), label: ui("文件夹标签"), folder: true },
+                  { name: ui("标签"), label: ui("普通标签"), folder: false },
                 ].map((group) => {
                   const tags = boot.tags.filter(
                     (t) => (t.createdBy === "folder") === group.folder,
@@ -1056,619 +1400,842 @@ export default function App() {
                     tags.length > 0 && (
                       <section
                         className="sidebar-tag-group"
+                        data-tag-kind={group.folder ? "folder" : "regular"}
                         key={group.label}
-                        aria-label={group.label}
+                        aria-label={ui(group.label)}
                       >
                         <div className="sidebar-tag-group-title">
-                          <span>{group.name}</span>
+                          <span>{ui(group.name)}</span>
                           <small>{tags.length}</small>
                         </div>
-                        {tags.map((t) => (
-                          <div
-                            className="sidebar-tag-row"
-                            key={t.id}
-                            data-motion-tag={t.id}
-                          >
-                            <button
-                              className={`sidebar-tag-filter ${query.include.includes(t.id) ? "active" : ""}`}
-                              onClick={() => selectSidebarTag(t.id)}
-                              aria-pressed={query.include.includes(t.id)}
-                              title={t.name}
-                            >
-                              {group.folder ? (
-                                <FolderOpen size={13} />
-                              ) : (
-                                <span className="tag-dot" />
-                              )}
-                              <span>{t.name}</span>
-                              <small>{t.count}</small>
-                            </button>
-                            <button
-                              className="icon-button sidebar-tag-edit"
-                              aria-label={`编辑标签${t.name}`}
-                              title="重命名标签"
-                              onClick={() => {
-                                setEditingTag(t);
-                                setModal("tags");
-                              }}
-                            >
-                              <Edit3 size={13} />
-                            </button>
-                          </div>
-                        ))}
+                        {group.folder
+                          ? tags.map((t) => (
+                              <div
+                                className="sidebar-tag-row"
+                                key={t.id}
+                                data-motion-tag={t.id}
+                              >
+                                <button
+                                  className={`sidebar-tag-filter ${query.include.includes(t.id) ? "active" : ""}`}
+                                  onClick={() => selectSidebarTag(t.id)}
+                                  aria-pressed={query.include.includes(t.id)}
+                                  data-tooltip={t.name}
+                                >
+                                  {group.folder ? (
+                                    <FolderOpen size={13} />
+                                  ) : (
+                                    <span className="tag-dot" />
+                                  )}
+                                  <span>{t.name}</span>
+                                  <small>{t.count}</small>
+                                </button>
+                                <button
+                                  className="icon-button sidebar-tag-edit"
+                                  aria-label={tf("编辑标签{0}", t.name)}
+                                  data-tooltip={ui("重命名标签")}
+                                  onClick={() => {
+                                    setEditingTag(t);
+                                    setModal("tags");
+                                  }}
+                                >
+                                  <Edit3 size={13} />
+                                </button>
+                              </div>
+                            ))
+                          : groupedTags(
+                              tags,
+                              boot.settings.tagGroups ?? emptyGroups,
+                            ).map((category) => (
+                              <TagBranch
+                                key={category.id}
+                                id={category.id}
+                                name={
+                                  category.id
+                                    ? category.name
+                                    : ui(category.name)
+                                }
+                                count={category.tags.length}
+                                closed={(
+                                  boot.settings.tagGroupsCollapsedMain ?? []
+                                ).includes(category.id)}
+                                onToggle={() => {
+                                  const old =
+                                    boot.settings.tagGroupsCollapsedMain ?? [];
+                                  setSetting(
+                                    "tagGroupsCollapsedMain",
+                                    old.includes(category.id)
+                                      ? old.filter((id) => id !== category.id)
+                                      : [...old, category.id],
+                                  );
+                                }}
+                              >
+                                {category.tags.map((t) => (
+                                  <div
+                                    className="sidebar-tag-row"
+                                    key={t.id}
+                                    data-motion-tag={t.id}
+                                  >
+                                    <button
+                                      className={`sidebar-tag-filter ${query.include.includes(t.id) ? "active" : ""}`}
+                                      onClick={() => selectSidebarTag(t.id)}
+                                      aria-pressed={query.include.includes(
+                                        t.id,
+                                      )}
+                                      data-tooltip={t.name}
+                                    >
+                                      {group.folder ? (
+                                        <FolderOpen size={13} />
+                                      ) : (
+                                        <span className="tag-dot" />
+                                      )}
+                                      <span>{t.name}</span>
+                                      <small>{t.count}</small>
+                                    </button>
+                                    <button
+                                      className="icon-button sidebar-tag-edit"
+                                      aria-label={tf("编辑标签{0}", t.name)}
+                                      data-tooltip={ui("重命名标签")}
+                                      onClick={() => {
+                                        setEditingTag(t);
+                                        setModal("tags");
+                                      }}
+                                    >
+                                      <Edit3 size={13} />
+                                    </button>
+                                  </div>
+                                ))}
+                              </TagBranch>
+                            ))}
                       </section>
                     )
                   );
                 })
               ) : (
-                <p>暂无标签</p>
+                <p>{ui("暂无标签")}</p>
               )}
             </div>
           </div>
         </div>
         <div className="sidebar-bottom">
           <button
+            aria-label={ui("AI 建议审核")}
+            data-tooltip={sidebarCollapsed ? ui("AI 建议审核") : undefined}
+            onClick={() => setModal("ai-review")}
+          >
+            <ClipboardCheck size={17} />
+            <span>{ui("AI 建议审核")}</span>
+          </button>
+          <button
             className="floating-launch"
-            aria-label="标签浮窗"
-            title={sidebarCollapsed ? "标签浮窗" : undefined}
+            aria-pressed={floatingVisible}
+            aria-label={ui("标签浮窗")}
+            data-tooltip={sidebarCollapsed ? ui("标签浮窗") : undefined}
             onClick={() => void run(() => api("floating.open"))}
           >
             <PanelsTopLeft size={17} />
-            <span>标签浮窗</span>
+            <span>{ui("标签浮窗")}</span>
           </button>
           <button
             onClick={() => setModal("settings")}
-            aria-label="偏好设置"
-            title={sidebarCollapsed ? "偏好设置" : undefined}
+            aria-label={ui("偏好设置")}
+            data-tooltip={sidebarCollapsed ? ui("偏好设置") : undefined}
           >
             <Settings size={17} />
-            <span>偏好设置</span>
+            <span>{ui("偏好设置")}</span>
             <small>v{boot.version}</small>
           </button>
         </div>
       </aside>
       <main className="workspace">
-        <section className="page-heading">
-          <div className="page-title-group">
-            <h1>
-              {currentScope.name}
-              <span>{results.total}</span>
-            </h1>
-            <div
-              className={`heading-search ${searchExpanded ? "is-open" : ""}`}
-            >
-              <button
-                ref={searchButton}
-                className={`icon-button search-toggle ${search ? "has-query" : ""}`}
-                aria-label={searchExpanded ? "收起搜索栏" : "展开搜索栏"}
-                title={searchExpanded ? "收起搜索栏" : "搜索文件 · Ctrl F"}
-                aria-expanded={searchExpanded}
-                aria-controls="workspace-search"
-                onClick={() =>
-                  searchExpanded ? setSearchExpanded(false) : openSearch()
-                }
-              >
-                <Search size={19} />
-              </button>
-              <div
-                id="workspace-search"
-                className="search-reveal"
-                inert={!searchExpanded}
-                aria-hidden={!searchExpanded}
-              >
-                <div className="search-box">
-                  <input
-                    ref={searchRef}
-                    aria-label="搜索文件"
-                    value={search}
-                    onCompositionStart={() => {
-                      composing.current = true;
-                    }}
-                    onCompositionEnd={(e) => {
-                      composing.current = false;
-                      const text = e.currentTarget.value;
-                      setSearch(text);
-                      setQuery((q) => ({ ...q, text }));
-                    }}
-                    onChange={(e) => setSearch(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Escape" && !e.nativeEvent.isComposing) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setSearchExpanded(false);
-                        searchButton.current?.focus();
-                      }
-                    }}
-                    placeholder="搜索名称、标签或备注…"
-                  />
-                  {search && (
-                    <button
-                      className="icon-button"
-                      aria-label="清空搜索"
-                      onClick={() => {
-                        setSearch("");
-                        searchRef.current?.focus();
-                      }}
-                    >
-                      <X size={14} />
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className="add-wrapper">
-            <button
-              className="button primary add-button"
-              onClick={() => setAddMenu((x) => !x)}
-              disabled={busy || (!!job && !job.done)}
-            >
-              <Plus size={17} />
-              加入文件
-              <ChevronDown size={14} />
-            </button>
-            {addMenu && (
-              <>
+        <div className="workspace-split">
+          <WorkspaceFileColumn>
+            <section className="page-heading">
+              <div className="page-title-group">
+                <h1>
+                  {ui(currentScope.name)}
+                  <span>{results.total}</span>
+                </h1>
                 <div
-                  className="menu-dismiss"
-                  onClick={() => setAddMenu(false)}
-                />
-                <div className="add-menu">
-                  <button onClick={() => chooseImport()}>
-                    <FilePlus2 size={16} />
-                    选择文件
-                  </button>
-                  <button onClick={() => chooseImport(true)}>
-                    <FolderInput size={16} />
-                    选择文件夹
-                  </button>
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={recursive}
-                      onChange={(e) => setRecursive(e.target.checked)}
-                    />
-                    包含子文件夹
-                  </label>
-                </div>
-              </>
-            )}
-          </div>
-        </section>
-        <section className="toolbar">
-          <button
-            className={`button filter-button ${filters || filterCount ? "engaged" : ""}`}
-            aria-expanded={filters}
-            aria-controls="workspace-filters"
-            onClick={() => setFilters((v) => !v)}
-          >
-            <SlidersHorizontal size={15} />
-            筛选{filterCount > 0 && <span>{filterCount}</span>}
-          </button>
-          <div
-            className="view-controls"
-            data-view={view}
-            role="group"
-            aria-label="文件布局"
-          >
-            <WarmTooltip text="瀑布流视图">
-              <button
-                className="icon-button"
-                aria-label="瀑布流视图"
-                aria-pressed={view === "grid"}
-                onClick={() => {
-                  const v = { ...views, [query.scope]: "grid" };
-                  setViews(v);
-                  setSetting("views", v);
-                }}
-              >
-                <LayoutGrid size={17} />
-              </button>
-            </WarmTooltip>
-            <WarmTooltip text="列表视图">
-              <button
-                className="icon-button"
-                aria-label="列表视图"
-                aria-pressed={view === "list"}
-                onClick={() => {
-                  const v = { ...views, [query.scope]: "list" };
-                  setViews(v);
-                  setSetting("views", v);
-                }}
-              >
-                <List size={18} />
-              </button>
-            </WarmTooltip>
-          </div>
-          <button
-            className="icon-button detail-toggle"
-            aria-label="切换详情面板"
-            aria-pressed={details}
-            aria-expanded={inspectorVisible}
-            aria-controls="workspace-inspector"
-            onClick={() => {
-              setDetails(!details);
-              setSetting("details", !details);
-            }}
-          >
-            <PanelRight size={17} />
-          </button>
-        </section>
-        <div
-          className={`filter-reveal ${filters ? "is-open" : ""}`}
-          id="workspace-filters"
-          inert={!filters}
-          aria-hidden={!filters}
-        >
-          <div className="filter-clip">
-            <section className="filter-panel" aria-label="文件筛选">
-              <div className="filter-line">
-                <strong>文件类型</strong>
-                <div className="filter-choices">
-                  {Object.entries(kindNames).map(([id, name]) => (
-                    <button
-                      key={id}
-                      aria-pressed={query.kinds.includes(id)}
-                      onClick={() =>
-                        setQuery((q) => ({
-                          ...q,
-                          kinds: q.kinds.includes(id)
-                            ? q.kinds.filter((x) => x !== id)
-                            : [...q.kinds, id],
-                        }))
-                      }
-                    >
-                      {name}
-                    </button>
-                  ))}
-                </div>
-                <GlideSelect
-                  ariaLabel="文件状态筛选"
-                  value={query.status}
-                  onChange={(value) =>
-                    setQuery((q) => ({ ...q, status: value }))
-                  }
-                  options={[
-                    { value: "", label: "全部状态" },
-                    { value: "available", label: "可用" },
-                    { value: "missing", label: "文件缺失" },
-                    { value: "offline", label: "存储离线" },
-                    { value: "inaccessible", label: "访问异常" },
-                  ]}
-                />
-              </div>
-              <div className="filter-line">
-                <strong>标签条件</strong>
-                <GlideSelect
-                  ariaLabel="标签匹配方式"
-                  value={query.mode}
-                  onChange={(value) => setQuery((q) => ({ ...q, mode: value }))}
-                  options={[
-                    { value: "all", label: "满足全部标签" },
-                    { value: "any", label: "满足任一标签" },
-                  ]}
-                />
-                <input
-                  className="filter-tag-search"
-                  aria-label="查找筛选标签"
-                  placeholder="查找标签"
-                  value={tagSearch}
-                  onChange={(e) => setTagSearch(e.target.value)}
-                />
-                <small>点击名称包含，点击 − 排除</small>
-              </div>
-              <div className="filter-tag-list">
-                {boot.tags
-                  .filter((t) => t.name.includes(tagSearch))
-                  .map((t) => (
-                    <span
-                      key={t.id}
-                      className={`filter-tag ${query.include.includes(t.id) ? "included" : ""} ${query.exclude.includes(t.id) ? "excluded" : ""}`}
-                    >
-                      <button onClick={() => tagFilter(t.id)}>
-                        {query.include.includes(t.id) && <Check size={12} />}{" "}
-                        {t.name}
-                      </button>
-                      <button
-                        aria-label={`排除${t.name}`}
-                        onClick={() => tagFilter(t.id, true)}
-                      >
-                        <Minus size={12} />
-                      </button>
-                    </span>
-                  ))}
-              </div>
-              <div className="filter-line">
-                <strong>修改时间</strong>
-                <input
-                  type="date"
-                  aria-label="修改起始日期"
-                  value={
-                    query.from
-                      ? new Date(query.from).toLocaleDateString("sv-SE")
-                      : ""
-                  }
-                  onChange={(e) =>
-                    setQuery((q) => ({
-                      ...q,
-                      from: e.target.value
-                        ? new Date(`${e.target.value}T00:00:00`).getTime()
-                        : undefined,
-                    }))
-                  }
-                />
-                <span>至</span>
-                <input
-                  type="date"
-                  aria-label="修改结束日期"
-                  value={
-                    query.to
-                      ? new Date(query.to - 1).toLocaleDateString("sv-SE")
-                      : ""
-                  }
-                  onChange={(e) =>
-                    setQuery((q) => ({
-                      ...q,
-                      to: e.target.value
-                        ? new Date(`${e.target.value}T00:00:00`).getTime() +
-                          86400000
-                        : undefined,
-                    }))
-                  }
-                />
-                <button
-                  className="button quiet directory-filter"
-                  onClick={chooseDirectory}
-                  title={query.directory}
+                  className={`heading-search ${searchExpanded ? "is-open" : ""}`}
                 >
-                  <FolderOpen size={14} />
-                  {query.directory
-                    ? query.directory.split(/[\\/]/).at(-1)
-                    : "限定文件夹"}
-                </button>
-                {query.directory && (
-                  <>
-                    <button
-                      className="icon-button"
-                      aria-label="清除目录筛选"
-                      onClick={() => setQuery((q) => ({ ...q, directory: "" }))}
-                    >
-                      <X size={13} />
-                    </button>
-                    <label>
+                  <button
+                    ref={searchButton}
+                    className={`icon-button search-toggle ${search ? "has-query" : ""}`}
+                    aria-label={
+                      searchExpanded ? ui("收起搜索栏") : ui("展开搜索栏")
+                    }
+                    data-tooltip={
+                      searchExpanded
+                        ? ui("收起搜索栏")
+                        : ui("搜索文件 · Ctrl F")
+                    }
+                    aria-expanded={searchExpanded}
+                    aria-controls="workspace-search"
+                    onClick={() =>
+                      searchExpanded ? setSearchExpanded(false) : openSearch()
+                    }
+                  >
+                    <Search size={19} />
+                  </button>
+                  <div
+                    id="workspace-search"
+                    className="search-reveal"
+                    inert={!searchExpanded}
+                    aria-hidden={!searchExpanded}
+                  >
+                    <div className="search-box unified-search-box">
                       <input
-                        type="checkbox"
-                        checked={query.recursive}
-                        onChange={(e) =>
+                        ref={searchRef}
+                        aria-label={ui("搜索文件")}
+                        value={search}
+                        onCompositionStart={() => {
+                          composing.current = true;
+                        }}
+                        onCompositionEnd={(e) => {
+                          composing.current = false;
+                          const text = e.currentTarget.value;
+                          setSearch(text);
                           setQuery((q) => ({
                             ...q,
-                            recursive: e.target.checked,
-                          }))
-                        }
+                            text,
+                            ...(q.semanticSession
+                              ? {
+                                  searchMode: "unified" as const,
+                                  semanticSession: "",
+                                }
+                              : {}),
+                          }));
+                        }}
+                        onChange={(e) => {
+                          const text = e.target.value;
+                          setSearch(text);
+                          if (queryRef.current.semanticSession)
+                            setQuery((q) => ({
+                              ...q,
+                              text,
+                              searchMode: "unified",
+                              semanticSession: "",
+                              offset: 0,
+                            }));
+                          // Empty input must clear the query immediately, before the typing debounce.
+                          if (!text.trim() && !composing.current)
+                            setQuery((q) => ({
+                              ...q,
+                              text,
+                              ...(q.semanticSession
+                                ? {
+                                    searchMode: "unified" as const,
+                                    semanticSession: "",
+                                  }
+                                : {}),
+                            }));
+                        }}
+                        onKeyDown={(e) => {
+                          if (
+                            e.key === "Escape" &&
+                            !e.nativeEvent.isComposing
+                          ) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setSearchExpanded(false);
+                            searchButton.current?.focus();
+                          }
+                        }}
+                        maxLength={256}
+                        placeholder={ui("搜索名称、标签、备注或文件正文…")}
                       />
-                      包含子目录
-                    </label>
+                      {search && (
+                        <button
+                          className="icon-button"
+                          aria-label={ui("清空搜索")}
+                          onClick={() => {
+                            setSearch("");
+                            setQuery((q) => ({
+                              ...q,
+                              text: "",
+                              ...(q.semanticSession
+                                ? {
+                                    searchMode: "unified" as const,
+                                    semanticSession: "",
+                                  }
+                                : {}),
+                            }));
+                            setResults((r) => ({
+                              ...r,
+                              files: r.files.map((f) =>
+                                f.contentMatch
+                                  ? { ...f, contentMatch: undefined }
+                                  : f,
+                              ),
+                            }));
+                            searchRef.current?.focus();
+                          }}
+                        >
+                          <X size={14} />
+                        </button>
+                      )}
+                      {boot.semanticEnabled && (
+                        <button
+                          className="search-supplement"
+                          aria-label={ui("智能补充")}
+                          disabled={query.searchScope === "name"}
+                          data-tooltip={ui(
+                            "智能补充 · 明确发送查询，或预览自然语言筛选",
+                          )}
+                          onClick={() => setModal("semantic")}
+                        >
+                          <Sparkles size={14} />
+                          <span>{ui("智能补充")}</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="add-wrapper">
+                <button
+                  className="button primary add-button"
+                  aria-label={ui("加入文件")}
+                  data-tooltip={ui("加入文件")}
+                  onClick={() => setAddMenu((x) => !x)}
+                  disabled={busy || (!!job && !job.done)}
+                >
+                  <Plus size={17} />
+                  {ui("加入文件")}
+                  <ChevronDown size={14} />
+                </button>
+                {addMenu && (
+                  <>
+                    <div
+                      className="menu-dismiss"
+                      onClick={() => setAddMenu(false)}
+                    />
+                    <div className="add-menu">
+                      <button onClick={() => chooseImport()}>
+                        <FilePlus2 size={16} />
+                        {ui("选择文件")}
+                      </button>
+                      <button onClick={() => chooseImport(true)}>
+                        <FolderInput size={16} />
+                        {ui("选择文件夹")}
+                      </button>
+                      <label>
+                        <input
+                          type="checkbox"
+                          checked={recursive}
+                          onChange={(e) => setRecursive(e.target.checked)}
+                        />
+                        {ui("包含子文件夹")}
+                      </label>
+                    </div>
                   </>
                 )}
               </div>
             </section>
-          </div>
-        </div>
-        {(filterCount > 0 || query.text) && (
-          <div className="active-filters">
-            <span>正在筛选</span>
-            {query.include.map((id) => (
-              <button key={id} onClick={() => tagFilter(id)}>
-                # {boot.tags.find((t) => t.id === id)?.name || "已删除标签"}
-                <X size={11} />
-              </button>
-            ))}
-            {query.exclude.map((id) => (
+            <section className="toolbar">
               <button
-                key={id}
-                className="negative"
-                onClick={() => tagFilter(id, true)}
+                className={`button filter-button ${filters || filterCount ? "engaged" : ""}`}
+                aria-expanded={filters}
+                aria-controls="workspace-filters"
+                onClick={() => setFilters((v) => !v)}
               >
-                排除 {boot.tags.find((t) => t.id === id)?.name}
-                <X size={11} />
+                <SlidersHorizontal size={15} />
+                {ui("筛选")}
+                {filterCount > 0 && <span>{filterCount}</span>}
               </button>
-            ))}
-            <button className="reset-filters" onClick={resetFilters}>
-              清除条件
-            </button>
-          </div>
-        )}
-        <div className="content-meta">
-          <div>
-            <span className="result-count" role="status" aria-live="polite">
-              <span className="result-count-indicator" aria-hidden="true">
-                <span className="tiny-dot" />
-                <LoaderCircle
-                  size={13}
-                  className={`spin ${loading ? "is-loading" : ""}`}
-                />
-              </span>
-              <span>
-                {selected.length
-                  ? `已选 ${selected.length} 项`
-                  : `${results.total} 份文件`}
-              </span>
-            </span>
-            <div className="jelly-selection" role="group" aria-label="结果选择">
-              <button
-                aria-label="全选当前结果"
-                aria-pressed={
-                  results.total > 0 && selected.length === results.total
-                }
-                disabled={busy || loading || results.total === 0}
-                onClick={selectAllResults}
-              >
-                全选结果
-              </button>
-              <button
-                aria-pressed={selected.length === 0}
-                disabled={busy || selected.length === 0}
-                onClick={() => setSelected([])}
-              >
-                取消选择
-              </button>
-            </div>
-          </div>
-          {view === "grid" && (
-            <div
-              className="gallery-controls"
-              role="group"
-              aria-label="图片列数"
-            >
-              <button
-                className="icon-button"
-                aria-label="减少列数"
-                title="减少一列"
-                disabled={visibleColumns <= 2}
-                onClick={() => changeColumns(visibleColumns - 1)}
-              >
-                <Minus size={14} />
-              </button>
-              <input
-                type="range"
-                aria-label="瀑布流列数"
-                aria-valuetext={`${visibleColumns} 列`}
-                min={2}
-                max={columnCapacity}
-                step={1}
-                value={visibleColumns}
-                onChange={(event) => changeColumns(Number(event.target.value))}
-              />
-              <button
-                className="icon-button"
-                aria-label="增加列数"
-                title="增加一列"
-                disabled={visibleColumns >= columnCapacity}
-                onClick={() => changeColumns(visibleColumns + 1)}
-              >
-                <Plus size={14} />
-              </button>
-              <output aria-live="polite">{visibleColumns} 列</output>
-            </div>
-          )}
-          <div className="file-tools">
-            <div className="sort-control">
-              <ArrowDownUp size={13} />
-              <GlideSelect
-                ariaLabel="文件排序"
-                value={query.sort}
-                onChange={(value) => setQuery((q) => ({ ...q, sort: value }))}
-                options={[
-                  { value: "added", label: "加入时间" },
-                  { value: "modified", label: "修改时间" },
-                  { value: "name", label: "名称" },
-                  { value: "size", label: "文件大小" },
-                ]}
-              />
-              <button
-                aria-label="切换排序方向"
-                onClick={() =>
-                  setQuery((q) => ({
-                    ...q,
-                    direction: q.direction === "asc" ? "desc" : "asc",
-                  }))
-                }
-              >
-                {query.direction === "asc" ? "升序" : "降序"}
-              </button>
-            </div>
-            <div className="selection-actions">
-              <WarmTooltip
-                text={
-                  selectedFiles.length > 0 &&
-                  selectedFiles.every((f) => f.favorite)
-                    ? "取消收藏"
-                    : "收藏"
-                }
-              >
-                <button
-                  aria-label={
-                    selectedFiles.length > 0 &&
-                    selectedFiles.every((f) => f.favorite)
-                      ? "取消收藏"
-                      : "收藏"
+              <div className="toolbar-collections">
+                <CollectionsBar
+                  collections={boot.settings.savedCollections ?? []}
+                  query={{ ...query, text: search }}
+                  tags={boot.tags}
+                  showSave={
+                    filters &&
+                    query.searchMode !== "semantic" &&
+                    !query.semanticSession
                   }
-                  disabled={busy || selected.length === 0}
-                  onClick={() =>
-                    run(() =>
-                      updateFiles("files.favorite", {
-                        value: !selectedFiles.every((f) => f.favorite),
-                      }),
-                    )
-                  }
-                >
-                  <Star
-                    size={16}
-                    fill={
-                      selectedFiles.length > 0 &&
-                      selectedFiles.every((f) => f.favorite)
-                        ? "currentColor"
-                        : "none"
-                    }
-                  />
-                </button>
-              </WarmTooltip>
-              <WarmTooltip text="导出资料包">
-                <button
-                  aria-label="导出资料包"
-                  disabled={busy || selected.length === 0}
-                  onClick={() => {
-                    void run(async () => {
-                      await flush();
-                      setTransferIds(selectedFiles.map((f) => f.id));
-                      setTransferMode("export");
+                  onApply={(q, editConditions) => {
+                    if (editConditions) setFilters(true);
+                    setSearch(q.text);
+                    setSearchExpanded(!!q.text);
+                    setQuery({
+                      ...q,
+                      searchMode: "unified",
+                      semanticSession: "",
                     });
                   }}
-                >
-                  <PackageOpen size={16} />
-                </button>
-              </WarmTooltip>
-              <WarmTooltip text="移除">
-                <button
-                  aria-label="移除"
-                  disabled={busy || selected.length === 0}
-                  onClick={remove}
-                >
-                  <Trash2 size={16} />
-                </button>
-              </WarmTooltip>
+                  onChanged={reload}
+                />
+              </div>
+              <div
+                className="view-controls"
+                data-view={view}
+                role="group"
+                aria-label={ui("文件布局")}
+              >
+                <WarmTooltip text={ui("瀑布流视图")}>
+                  <button
+                    className="icon-button"
+                    aria-label={ui("瀑布流视图")}
+                    aria-pressed={view === "grid"}
+                    onClick={() => {
+                      const v = { ...views, [query.scope]: "grid" };
+                      setViews(v);
+                      setSetting("views", v);
+                    }}
+                  >
+                    <LayoutGrid size={17} />
+                  </button>
+                </WarmTooltip>
+                <WarmTooltip text={ui("列表视图")}>
+                  <button
+                    className="icon-button"
+                    aria-label={ui("列表视图")}
+                    aria-pressed={view === "list"}
+                    onClick={() => {
+                      const v = { ...views, [query.scope]: "list" };
+                      setViews(v);
+                      setSetting("views", v);
+                    }}
+                  >
+                    <List size={18} />
+                  </button>
+                </WarmTooltip>
+              </div>
+            </section>
+            <div
+              className={`filter-reveal ${filters ? "is-open" : ""}`}
+              id="workspace-filters"
+              inert={!filters}
+              aria-hidden={!filters}
+            >
+              <div className="filter-clip">
+                <section className="filter-panel" aria-label={ui("文件筛选")}>
+                  <WebSourceFilters
+                    query={query}
+                    onChange={(value) =>
+                      setQuery((q) => ({
+                        ...q,
+                        ...value,
+                        offset: 0,
+                        semanticSession: "",
+                      }))
+                    }
+                  />
+                  <div className="filter-line">
+                    <strong>{ui("搜索范围")}</strong>
+                    <GlideSelect
+                      ariaLabel={ui("搜索范围")}
+                      value={query.searchScope || "all"}
+                      onChange={(value) =>
+                        setQuery((q) => ({
+                          ...q,
+                          searchScope: value as "all" | "name" | "body",
+                          semanticSession: "",
+                          offset: 0,
+                        }))
+                      }
+                      options={[
+                        { value: "all", label: ui("名称、标签、备注与正文") },
+                        { value: "name", label: ui("仅文件名") },
+                        { value: "body", label: ui("仅正文") },
+                      ]}
+                    />
+                  </div>
+                  <div className="filter-line">
+                    <strong>{ui("文件类型")}</strong>
+                    <div className="filter-choices">
+                      {Object.entries(kindNames).map(([id, name]) => (
+                        <button
+                          key={id}
+                          aria-pressed={query.kinds.includes(id)}
+                          onClick={() =>
+                            setQuery((q) => ({
+                              ...q,
+                              kinds: q.kinds.includes(id)
+                                ? q.kinds.filter((x) => x !== id)
+                                : [...q.kinds, id],
+                            }))
+                          }
+                        >
+                          {name}
+                        </button>
+                      ))}
+                    </div>
+                    <GlideSelect
+                      ariaLabel={ui("文件状态筛选")}
+                      value={query.status}
+                      onChange={(value) =>
+                        setQuery((q) => ({ ...q, status: value }))
+                      }
+                      options={[
+                        { value: "", label: ui("全部状态") },
+                        { value: "available", label: ui("可用") },
+                        { value: "missing", label: ui("文件缺失") },
+                        { value: "offline", label: ui("存储离线") },
+                        { value: "inaccessible", label: ui("访问异常") },
+                      ]}
+                    />
+                  </div>
+                  <div className="filter-line">
+                    <strong>{ui("标签条件")}</strong>
+                    <GlideSelect
+                      ariaLabel={ui("标签匹配方式")}
+                      value={query.mode}
+                      onChange={(value) =>
+                        setQuery((q) => ({ ...q, mode: value }))
+                      }
+                      options={[
+                        { value: "all", label: ui("满足全部标签") },
+                        { value: "any", label: ui("满足任一标签") },
+                      ]}
+                    />
+                    <input
+                      className="filter-tag-search"
+                      aria-label={ui("查找筛选标签")}
+                      placeholder={ui("查找标签")}
+                      value={tagSearch}
+                      onChange={(e) => setTagSearch(e.target.value)}
+                    />
+                    <small>{ui("点击名称包含，点击 − 排除")}</small>
+                  </div>
+                  <div className="filter-tag-list">
+                    {boot.tags
+                      .filter((t) => searchTagNames(t, tagSearch))
+                      .map((t) => (
+                        <span
+                          key={t.id}
+                          className={`filter-tag ${query.include.includes(t.id) ? "included" : ""} ${query.exclude.includes(t.id) ? "excluded" : ""}`}
+                        >
+                          <button onClick={() => tagFilter(t.id)}>
+                            {query.include.includes(t.id) && (
+                              <Check size={12} />
+                            )}{" "}
+                            {t.name}
+                          </button>
+                          <button
+                            aria-label={tf("排除{0}", t.name)}
+                            onClick={() => tagFilter(t.id, true)}
+                          >
+                            <Minus size={12} />
+                          </button>
+                        </span>
+                      ))}
+                  </div>
+                  <div className="filter-line">
+                    <strong>{ui("修改时间")}</strong>
+                    <DateFilter
+                      aria-label={ui("修改起始日期")}
+                      value={
+                        query.from !== undefined
+                          ? localDateValue(new Date(query.from))
+                          : ""
+                      }
+                      onChange={(value) =>
+                        setQuery((q) => ({
+                          ...q,
+                          from: value ? dateBoundary(value) : undefined,
+                        }))
+                      }
+                    />
+                    <span>{ui("至")}</span>
+                    <DateFilter
+                      aria-label={ui("修改结束日期")}
+                      value={
+                        query.to !== undefined
+                          ? localDateValue(new Date(query.to - 1))
+                          : ""
+                      }
+                      onChange={(value) =>
+                        setQuery((q) => ({
+                          ...q,
+                          to: value ? dateBoundary(value, true) : undefined,
+                        }))
+                      }
+                    />
+                    <button
+                      className="button quiet directory-filter"
+                      onClick={chooseDirectory}
+                      data-tooltip={query.directory}
+                    >
+                      <FolderOpen size={14} />
+                      {query.directory
+                        ? query.directory.split(/[\\/]/).at(-1)
+                        : ui("限定文件夹")}
+                    </button>
+                    {query.directory && (
+                      <>
+                        <button
+                          className="icon-button"
+                          aria-label={ui("清除目录筛选")}
+                          onClick={() =>
+                            setQuery((q) => ({ ...q, directory: "" }))
+                          }
+                        >
+                          <X size={13} />
+                        </button>
+                        <label>
+                          <input
+                            type="checkbox"
+                            checked={query.recursive}
+                            onChange={(e) =>
+                              setQuery((q) => ({
+                                ...q,
+                                recursive: e.target.checked,
+                              }))
+                            }
+                          />
+                          {ui("包含子目录")}
+                        </label>
+                      </>
+                    )}
+                  </div>
+                </section>
+              </div>
             </div>
-          </div>
-        </div>
-        <div className="content-body">
-          <FilesView
-            key={JSON.stringify(query)}
-            files={results.files}
-            total={results.total}
-            view={view}
-            density={density}
-            galleryColumns={galleryColumns}
-            layoutCapture={galleryLayoutCapture}
-            onColumnCapacity={setColumnCapacity}
-            selected={selected}
-            focusOnResize={details && !inspectorVisible}
-            onSelect={select}
-            onOpen={openFile}
-            onMore={() => fetchFiles(query, true)}
-            hasMore={results.hasMore}
-            loading={loading}
-            onAdd={() => chooseImport()}
-            filtered={!!filterCount || !!query.text || query.scope !== "all"}
-            onReset={resetFilters}
-          />
-          <div
-            id="workspace-inspector"
-            className={`inspector-reveal ${inspectorVisible ? "is-open" : ""}`}
-            inert={!inspectorVisible}
-            aria-hidden={!inspectorVisible}
+            {(filterCount > 0 || query.text) && (
+              <div className="active-filters">
+                <span>{ui("正在筛选")}</span>
+                {query.include.map((id) => (
+                  <button key={id} onClick={() => tagFilter(id)}>
+                    #{" "}
+                    {boot.tags.find((t) => t.id === id)?.name ||
+                      ui("已删除标签")}
+                    <X size={11} />
+                  </button>
+                ))}
+                {query.exclude.map((id) => (
+                  <button
+                    key={id}
+                    className="negative"
+                    onClick={() => tagFilter(id, true)}
+                  >
+                    {ui("排除")}
+                    {boot.tags.find((t) => t.id === id)?.name}
+                    <X size={11} />
+                  </button>
+                ))}
+                <button className="reset-filters" onClick={resetFilters}>
+                  {ui("清除条件")}
+                </button>
+              </div>
+            )}
+            <div className="content-meta">
+              <div>
+                <span className="result-count" role="status" aria-live="polite">
+                  <span className="result-count-indicator" aria-hidden="true">
+                    <span className="tiny-dot" />
+                    <LoaderCircle
+                      size={13}
+                      className={`spin ${loading ? "is-loading" : ""}`}
+                    />
+                  </span>
+                  {query.text &&
+                    results.localSearch?.contentEnabled === false && (
+                      <span className="local-search-status">
+                        {ui("正文索引未开启，仅搜索文件信息")}
+                      </span>
+                    )}
+                  {query.searchScope && query.searchScope !== "all" && (
+                    <span className="local-search-status">
+                      {query.searchScope === "name"
+                        ? ui("仅文件名")
+                        : ui("仅正文")}
+                    </span>
+                  )}
+                  {query.semanticSession && (
+                    <span className="local-search-status">
+                      {ui("已含智能补充")}
+                    </span>
+                  )}
+                  <span>
+                    {selected.length
+                      ? tf("已选 {0} 项", selected.length)
+                      : tf("{0} 份资料", results.total)}
+                  </span>
+                </span>
+              </div>
+              {view === "grid" && boot.settings.showColumnControls === true && (
+                <div
+                  className="gallery-controls"
+                  role="group"
+                  aria-label={ui("图片列数")}
+                >
+                  <input
+                    type="range"
+                    aria-label={ui("瀑布流列数")}
+                    aria-valuetext={tf("{0} 列", visibleColumns)}
+                    min={2}
+                    max={columnCapacity}
+                    step={1}
+                    value={visibleColumns}
+                    onChange={(event) =>
+                      changeColumns(Number(event.target.value))
+                    }
+                  />
+                  <output aria-live="polite">
+                    {visibleColumns} {ui("列")}
+                  </output>
+                </div>
+              )}
+              <div className="file-tools">
+                <div className="sort-control">
+                  <ArrowDownUp size={13} />
+                  <GlideSelect
+                    ariaLabel={ui("文件排序")}
+                    value={query.sort}
+                    disabled={query.searchMode === "semantic"}
+                    onChange={(value) =>
+                      setQuery((q) => ({ ...q, sort: value }))
+                    }
+                    options={
+                      query.searchMode === "semantic"
+                        ? [{ value: "relevance", label: ui("语义相关度") }]
+                        : [
+                            { value: "relevance", label: ui("相关度") },
+                            { value: "added", label: ui("加入时间") },
+                            { value: "modified", label: ui("修改时间") },
+                            { value: "name", label: ui("名称") },
+                            { value: "size", label: ui("文件大小") },
+                          ]
+                    }
+                  />
+                  <button
+                    aria-label={ui("切换排序方向")}
+                    disabled={
+                      query.searchMode === "semantic" ||
+                      query.sort === "relevance"
+                    }
+                    onClick={() =>
+                      setQuery((q) => ({
+                        ...q,
+                        direction: q.direction === "asc" ? "desc" : "asc",
+                      }))
+                    }
+                  >
+                    {query.searchMode === "semantic" ||
+                    query.sort === "relevance"
+                      ? ui("相关度")
+                      : query.direction === "asc"
+                        ? ui("升序")
+                        : ui("降序")}
+                  </button>
+                </div>
+                <div className="selection-actions">
+                  <WarmTooltip
+                    text={
+                      selectedFiles.length > 0 &&
+                      selectedFiles.every((f) => f.favorite)
+                        ? ui("取消收藏")
+                        : ui("收藏")
+                    }
+                  >
+                    <button
+                      aria-label={
+                        selectedFiles.length > 0 &&
+                        selectedFiles.every((f) => f.favorite)
+                          ? ui("取消收藏")
+                          : ui("收藏")
+                      }
+                      disabled={busy || selected.length === 0}
+                      onClick={() =>
+                        run(() =>
+                          updateFiles("files.favorite", {
+                            value: !selectedFiles.every((f) => f.favorite),
+                          }),
+                        )
+                      }
+                    >
+                      <Star
+                        size={16}
+                        fill={
+                          selectedFiles.length > 0 &&
+                          selectedFiles.every((f) => f.favorite)
+                            ? "currentColor"
+                            : "none"
+                        }
+                      />
+                    </button>
+                  </WarmTooltip>
+                  <WarmTooltip text={ui("导出资料包")}>
+                    <button
+                      aria-label={ui("导出资料包")}
+                      disabled={busy || selected.length === 0}
+                      onClick={() => {
+                        void run(async () => {
+                          await flush();
+                          setTransferIds(selectedFiles.map((f) => f.id));
+                          setTransferMode("export");
+                        });
+                      }}
+                    >
+                      <PackageOpen size={16} />
+                    </button>
+                  </WarmTooltip>
+                  <WarmTooltip text={ui("移除")}>
+                    <button
+                      aria-label={ui("移除")}
+                      disabled={busy || selected.length === 0}
+                      onClick={remove}
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </WarmTooltip>
+                </div>
+              </div>
+            </div>
+            <div className="content-body" ref={contentBody}>
+              <FilesView
+                key={JSON.stringify(query)}
+                files={results.files}
+                searchHint={
+                  query.text
+                    ? query.searchScope === "name"
+                      ? ui("当前仅搜索文件名，可在筛选中扩大范围。")
+                      : query.searchScope === "body"
+                        ? ui(
+                            "仅搜索已完成索引的正文；扫描图片或超出索引范围的内容不参与。",
+                          )
+                        : ui(
+                            "试试更短的关键词或标签；图片按名称、标签和备注查找，文档正文需要开启索引。",
+                          )
+                    : undefined
+                }
+                contentQuery={
+                  query.searchMode === "content" ||
+                  query.searchMode === "unified" ||
+                  query.searchMode === "semantic"
+                    ? search
+                    : ""
+                }
+                total={results.total}
+                view={view}
+                density={density}
+                galleryColumns={galleryColumns}
+                layoutCapture={galleryLayoutCapture}
+                onColumnCapacity={setColumnCapacity}
+                selected={selected}
+                focusOnResize={!inspectorVisible}
+                onSelect={select}
+                onOpen={openFile}
+                onMore={() => fetchFiles(query, true)}
+                hasMore={results.hasMore}
+                loading={loading}
+                onAdd={() => chooseImport()}
+                filtered={
+                  !!filterCount || !!query.text || query.scope !== "all"
+                }
+                onReset={resetFilters}
+              />
+            </div>
+          </WorkspaceFileColumn>
+          <InspectorPane
+            open={inspectorVisible}
+            width={detailWidth}
+            onChange={setDetailWidth}
+            onCommit={(width) => setSetting("inspectorWidth", width)}
           >
             <Inspector
-              files={selectedFiles}
+              files={inspectorFiles}
               tags={boot.tags}
               draft={single ? drafts.current?.get(single) : undefined}
               onNote={(text) => {
@@ -1688,25 +2255,51 @@ export default function App() {
               onTag={(t, add) => run(() => addTag(t, add))}
               onCreateTag={(name) => run(() => createAndTag(name))}
               onOpen={() => single && openFile(single)}
+              onOpenSource={() =>
+                single &&
+                run(() => api("capture.source.open", { id: single.id }))
+              }
               onReveal={() =>
                 single && run(() => api("files.reveal", { id: single.id }))
               }
               onCopy={() =>
                 single &&
                 run(
-                  () => navigator.clipboard.writeText(single.path),
-                  "路径已复制",
+                  () =>
+                    navigator.clipboard.writeText(
+                      single.kind === "web"
+                        ? single.webSource?.url || single.path
+                        : single.path,
+                    ),
+                  single.kind === "web" ? msg("链接已复制") : msg("路径已复制"),
                 )
               }
               onRelink={relink}
+              onContentSaved={(undoId) =>
+                void refresh()
+                  .then(() =>
+                    tell(
+                      single?.kind === "web"
+                        ? msg("已保存网页阅读副本「{0}」", single?.name)
+                        : msg("已保存 Markdown 文件「{0}」", single?.name),
+                      false,
+                      undoId,
+                    ),
+                  )
+                  .catch((e) => tell(message(e), true))
+              }
               onPreview={() => single && setQuick(single)}
+              onClose={() => {
+                void flush().catch((error) => tell(message(error), true));
+                setSelected([]);
+              }}
               onAnalyze={() =>
                 run(async () => {
                   await api("ai.enqueue", {
                     ids: selectedFiles.map((f) => f.id),
                   });
                   await refresh();
-                }, "已加入 AI 识别队列")
+                }, ui("已加入 AI 识别队列"))
               }
               onCancelAI={() =>
                 run(async () => {
@@ -1714,7 +2307,7 @@ export default function App() {
                     ids: selectedFiles.map((f) => f.id),
                   });
                   await refresh();
-                }, "已取消所选文件的 AI 任务")
+                }, ui("已取消所选文件的 AI 任务"))
               }
               onConfirmAI={(tag) =>
                 single &&
@@ -1725,77 +2318,89 @@ export default function App() {
                     version: single.version,
                   });
                   await refresh();
-                }, "标签已接受并加入浮窗")
+                }, ui("标签已接受并加入浮窗"))
               }
               onConfigureAI={() => setModal("settings")}
               busy={busy}
             />
-          </div>
+          </InspectorPane>
         </div>
         <footer className="statusbar">
           <button
             className="task-entry"
             onClick={() => setModal("tasks")}
-            aria-label="查看后台任务"
+            aria-label={ui("查看后台任务")}
           >
             {tasks?.transfer.busy ? (
               <LoaderCircle size={13} className="spin" />
             ) : (
               <Clock3 size={13} />
             )}
-            {tasks?.transfer.busy ? tasks.transfer.phase : "任务"}
-            {!!tasks?.ai.failed && <small>{tasks.ai.failed} 失败</small>}
+            {tasks?.transfer.busy ? tasks.transfer.phase : ui("任务")}
+            {!!tasks?.ai.failed && (
+              <small>
+                {tasks.ai.failed} {ui("失败")}
+              </small>
+            )}
           </button>
           {boot.notice && (
             <button
               className="recovery-entry"
               onClick={() => setModal("recovery")}
             >
-              恢复提示
+              {ui("恢复提示")}
             </button>
           )}
           <span>
             {job && !job.done ? (
               <>
                 <LoaderCircle size={13} className="spin" />
-                正在加入 · 已处理 {job.processed} 个
+                {ui("正在加入 · 已处理")}
+                {job.processed} {ui("个")}
                 <button onClick={() => run(() => api("import.cancel"))}>
-                  取消
+                  {ui("取消")}
                 </button>
               </>
             ) : job ? (
               <>
                 <Check size={13} />
-                {job.cancelled ? "已停止加入" : "加入完成"} · 新增 {job.added}{" "}
-                个<button onClick={() => setModal("import")}>查看详情</button>
+                {job.cancelled ? ui("已停止加入") : ui("加入完成")}{" "}
+                {ui("· 新增")}
+                {job.added} {ui("个")}
+                <button onClick={() => setModal("import")}>
+                  {ui("查看详情")}
+                </button>
               </>
             ) : (
-              <>{boot.settings.ai?.enabled ? "AI 自动标注已开启" : ""}</>
+              <>{boot.settings.ai?.enabled ? ui("AI 自动标注已开启") : ""}</>
             )}
           </span>
           <span>
-            Ctrl 多选<span className="separator">·</span>Space 预览
-            <span className="separator">·</span>Ctrl Z 撤销
+            {ui("Ctrl 多选")}
+            <span className="separator">·</span>
+            {ui("Space 预览")}
+            <span className="separator">·</span>
+            {ui("Ctrl A 全选 / 取消全选 · Ctrl Z 撤销")}
           </span>
         </footer>
       </main>
       <button
         className="tag-fab"
-        aria-label="添加标签悬浮按钮"
-        title={
+        aria-label={ui("添加标签悬浮按钮")}
+        data-tooltip={
           selectedFiles.length
-            ? `为 ${selectedFiles.length} 个文件添加标签`
-            : "新建标签"
+            ? tf("为 {0} 个文件添加标签", selectedFiles.length)
+            : ui("新建标签")
         }
         onClick={() => setModal("quick-tag")}
         disabled={busy}
       >
         <Plus size={21} />
-        <span>添加标签</span>
+        <span>{ui("添加标签")}</span>
         {selectedFiles.length > 0 && <small>{selectedFiles.length}</small>}
       </button>
       {modal === "quick-tag" && (
-        <Modal title="添加标签" onClose={() => setModal("")}>
+        <Modal title={ui("添加标签")} onClose={() => setModal("")}>
           <QuickTagPanel
             tags={boot.tags}
             count={selectedFiles.length}
@@ -1805,7 +2410,7 @@ export default function App() {
                 await api("tag.create", { name });
                 await refresh();
               }
-              tell(selectedFiles.length ? "标签已添加" : "标签已创建");
+              if (!selectedFiles.length) tell(msg("已创建标签「{0}」", name));
               setModal("");
             }}
             onManage={() => {
@@ -1819,48 +2424,148 @@ export default function App() {
         <div className="drop-overlay">
           <div>
             <FolderInput size={48} />
-            <h2>松手，加入文件库</h2>
-            <p>原文件不移动，标注留在拾签</p>
+            <h2>{ui("松手，加入文件库")}</h2>
+            <p>{ui("原文件不移动，标注留在拾签")}</p>
           </div>
         </div>
       )}
       {modal === "tags" && (
-        <Modal title="管理标签" onClose={() => setModal("")}>
-          <TagManager
-            tags={boot.tags}
-            initialTag={editingTag}
-            onExport={(tag) => {
-              setModal("");
-              setExportTag(tag);
-            }}
-            busy={busy}
-            onCreate={async (name) => {
-              await api("tag.create", { name });
-              await reload();
-            }}
-            onRename={async (t, name) => {
-              await mutate("tags.rename", {
-                id: t.id,
-                name,
-                version: t.version,
-              });
-              tell("标签已重命名，关联文件已同步");
-            }}
-            onDelete={(t) =>
-              run(async () => {
-                if (
-                  await ask(
-                    "删除标签",
-                    `“${t.name}”关联了 ${t.count} 个文件。删除会移除这些关联，文件记录和备注会保留。`,
-                    "删除标签",
+        <Modal title={ui("管理标签")} onClose={() => setModal("")}>
+          <div className="tag-management-body">
+            <GroupDisclosure>
+              <GroupManager tags={boot.tags} onUpdated={reload} />
+            </GroupDisclosure>
+            <TagManager
+              tags={boot.tags}
+              initialTag={editingTag}
+              onAliases={(t) => {
+                setModal("");
+                setAliasSource(t);
+              }}
+              onMerge={(t) => {
+                setModal("");
+                setMergeSource(t);
+              }}
+              onExport={(tag) => {
+                setModal("");
+                setExportTag(tag);
+              }}
+              busy={busy}
+              onCreate={async (name) => {
+                const tag = await api<Tag>("tag.create", { name });
+                await reload();
+                tell(msg("已创建「{0}」", tag.name));
+              }}
+              onRename={async (t, name) => {
+                if (t.createdBy !== "folder") {
+                  const p = await api<{
+                    conflicts: string[];
+                    affected: number;
+                    collections: { name: string }[];
+                  }>("tags.aliases.preview", {
+                    id: t.id,
+                    version: t.version,
+                    name,
+                    aliases: (t.aliases ?? []).filter(
+                      (a) =>
+                        a.normalize("NFC").toLocaleLowerCase() !==
+                        name.normalize("NFC").toLocaleLowerCase(),
+                    ),
+                  });
+                  if (p.conflicts.length)
+                    throw new Error(p.conflicts.join("；"));
+                  if (
+                    !(await ask(
+                      msg("重命名标签"),
+                      msg(
+                        "「{0}」将改为「{1}」，同步 {2} 个文件、{3} 个集合及标签浮窗；其余别名保留。",
+                        t.name,
+                        name,
+                        p.affected,
+                        p.collections.length,
+                      ),
+                      msg("确认修改"),
+                    ))
                   )
-                ) {
-                  await mutate("tags.delete", { id: t.id, version: t.version });
+                    return;
                 }
-              })
-            }
-          />
+                await mutate("tags.rename", {
+                  id: t.id,
+                  name,
+                  version: t.version,
+                });
+              }}
+              onDelete={(t) =>
+                run(async () => {
+                  if (
+                    await ask(
+                      msg("删除标签"),
+                      msg(
+                        "“{0}”关联了 {1} 个文件。删除会移除这些关联及 {2} 个别名，文件记录和备注会保留。",
+                        t.name,
+                        t.count,
+                        t.aliases?.length ?? 0,
+                      ),
+                      msg("删除标签"),
+                    )
+                  ) {
+                    await mutate("tags.delete", {
+                      id: t.id,
+                      version: t.version,
+                    });
+                  }
+                })
+              }
+            />
+          </div>
         </Modal>
+      )}
+      {aliasSource && (
+        <TagAliases
+          tag={aliasSource}
+          onClose={() => {
+            setAliasSource(undefined);
+            setModal("tags");
+          }}
+          onSaved={async (undoId) => {
+            await refresh();
+            tell(
+              msg("已更新「{0}」的规范名称与别名", aliasSource.name),
+              false,
+              undoId,
+            );
+          }}
+        />
+      )}
+      {mergeSource && (
+        <MergeTagDialog
+          source={mergeSource}
+          tags={boot.tags}
+          onClose={() => {
+            setMergeSource(undefined);
+            setModal("tags");
+          }}
+          onMerged={async (source, target) => {
+            const q = queryRef.current;
+            const next = {
+              ...q,
+              include: [
+                ...new Set(
+                  q.include.map((id) => (id === source ? target : id)),
+                ),
+              ],
+              exclude: [
+                ...new Set(
+                  q.exclude.map((id) => (id === source ? target : id)),
+                ),
+              ],
+            };
+            queryRef.current = next;
+            setQuery(next);
+            await refresh();
+            tell(msg("标签已合并，关联文件已同步"));
+          }}
+        />
       )}
       {exportTag && (
         <ExportTagDialog
@@ -1879,8 +2584,73 @@ export default function App() {
           }}
         />
       )}
+      {modal === "import-semantic" && (
+        <ImportSemanticPrompt
+          ids={importSemanticIds}
+          onClose={() => {
+            setImportSemanticIds([]);
+            setModal("");
+          }}
+          onConfigure={() => setModal("settings")}
+          onStarted={() => {
+            setImportSemanticIds([]);
+            setModal("");
+            tell(msg("已开始为本次新文件生成语义索引"));
+          }}
+        />
+      )}
+      {modal === "semantic" && (
+        <SemanticSearch
+          query={{ ...query, text: search }}
+          onClose={() => setModal("")}
+          onConfigure={() => setModal("settings")}
+          onApply={(q) => {
+            setSearch(q.text);
+            setQuery(q);
+            setSearchExpanded(true);
+          }}
+        />
+      )}
+      {modal === "watch" && <WatchFolders onClose={() => setModal("")} />}
+      {modal === "ai-review" && (
+        <AiReview
+          onClose={() => setModal("")}
+          onChanged={refresh}
+          onConfigure={() => setModal("settings")}
+        />
+      )}
+      {modal === "repair" && (
+        <PathRepair
+          onClose={() => setModal("")}
+          onRepaired={async (result) => {
+            clearPreviews();
+            if (result.mapCollections)
+              setQuery((q) => {
+                const directory = q.directory;
+                const old = result.oldRoot.replace(/[\\/]+$/, "");
+                if (
+                  directory.toLowerCase() === old.toLowerCase() ||
+                  directory.toLowerCase().startsWith(old.toLowerCase() + "\\")
+                ) {
+                  return {
+                    ...q,
+                    directory: result.newRoot + directory.slice(old.length),
+                    offset: 0,
+                  };
+                }
+                return q;
+              });
+            await refresh();
+          }}
+        />
+      )}
       {modal === "settings" && (
-        <Modal title="偏好设置" onClose={() => setModal("")}>
+        <Modal
+          title={ui("偏好设置")}
+          onClose={() =>
+            setModal(importSemanticIds.length ? "import-semantic" : "")
+          }
+        >
           <SettingsPanel
             onHelp={() => {
               setModal("");
@@ -1892,6 +2662,11 @@ export default function App() {
               setTheme(s);
               setSetting("theme", s);
             }}
+            onAppearanceChange={(key, value) => setSetting(key, value)}
+            showColumnControls={boot.settings.showColumnControls === true}
+            setShowColumnControls={(value) =>
+              setSetting("showColumnControls", value)
+            }
             density={density}
             setDensity={(s) => {
               setDensity(s);
@@ -1910,6 +2685,10 @@ export default function App() {
               setTransferIds([]);
               setTransferMode("import");
             }}
+            onWatch={() => setModal("watch")}
+            onRepair={() => {
+              setModal("repair");
+            }}
             onBackup={backup}
             onRestore={restore}
             onClear={() =>
@@ -1917,7 +2696,7 @@ export default function App() {
                 await api("cache.clear");
                 clearPreviews();
                 redraw((x) => x + 1);
-              }, "预览缓存已清理")
+              }, ui("预览缓存已清理"))
             }
             onData={() => run(() => api("data.reveal"))}
             onDiagnostics={() => setModal("diagnostics")}
@@ -1926,7 +2705,7 @@ export default function App() {
         </Modal>
       )}
       {modal === "import" && job && (
-        <Modal title="文件加入详情" onClose={() => setModal("")}>
+        <Modal title={ui("文件加入详情")} onClose={() => setModal("")}>
           <ImportDetails
             job={job}
             busy={busy}
@@ -1935,9 +2714,14 @@ export default function App() {
         </Modal>
       )}
       {modal === "tasks" && (
-        <Modal title="后台任务" onClose={() => setModal("")}>
+        <Modal title={ui("后台任务")} onClose={() => setModal("")}>
           <TaskPanel
             snapshot={tasks}
+            onSemantic={(ids) => {
+              setImportSemanticIds(ids);
+              setModal("import-semantic");
+            }}
+            onWatch={() => setModal("watch")}
             onRetryImport={async (paths) => {
               await startImport(paths);
             }}
@@ -1945,12 +2729,12 @@ export default function App() {
         </Modal>
       )}
       {modal === "diagnostics" && (
-        <Modal title="诊断报告" onClose={() => setModal("")}>
+        <Modal title={ui("诊断报告")} onClose={() => setModal("")}>
           <DiagnosticPanel />
         </Modal>
       )}
       {modal === "recovery" && (
-        <Modal title="恢复提示" onClose={() => setModal("")}>
+        <Modal title={ui("恢复提示")} onClose={() => setModal("")}>
           <div className="modal-content">
             <p className="confirm-text">{boot.notice}</p>
             <div className="settings-buttons">
@@ -1959,7 +2743,7 @@ export default function App() {
                 onClick={() => void run(() => api("data.reveal"))}
               >
                 <FolderOpen size={15} />
-                打开数据目录
+                {ui("打开数据目录")}
               </button>
               <button
                 className="button primary"
@@ -1972,7 +2756,7 @@ export default function App() {
                   })
                 }
               >
-                已了解
+                {ui("已了解")}
               </button>
             </div>
           </div>
@@ -1980,48 +2764,68 @@ export default function App() {
       )}
       {quick && (
         <Modal title={quick.name} onClose={() => setQuick(undefined)} wide>
-          <div className="quick-preview">
-            <Preview file={quick} large />
-          </div>
+          {quick.kind === "web" ||
+          quick.kind === "image" ||
+          quick.kind === "pdf" ||
+          isOfficePreview(quick) ||
+          isHtml(quick) ||
+          /^(pptx|md|markdown|txt|log)$/i.test(quick.extension) ? (
+            <div className="quick-content-reader">
+              <ContentReader
+                key={quick.id}
+                file={quick}
+                editable={false}
+                onSaved={() => {}}
+              />
+            </div>
+          ) : (
+            <div className="quick-preview">
+              <Preview file={quick} large />
+            </div>
+          )}
           <div className="quick-footer">
-            <span>{quick.kind === "pdf" ? "PDF 首页预览" : quick.path}</span>
+            <span>
+              {quick.kind === "pdf" ? ui("PDF · 本地只读预览") : quick.path}
+            </span>
             <button className="button primary" onClick={() => openFile(quick)}>
               <ArrowUpRight size={15} />
-              打开原文件
+              {ui("打开原文件")}
             </button>
           </div>
         </Modal>
       )}
       {confirm && (
-        <Modal title={confirm.title} onClose={() => answer(false)}>
+        <Modal title={ui(confirm.title)} onClose={() => answer(false)}>
           <div className="modal-content">
-            <p className="confirm-text">{confirm.text}</p>
+            <p className="confirm-text">{ui(confirm.text)}</p>
             <div className="confirm-actions">
               <button className="button" onClick={() => answer(false)}>
-                取消
+                {ui("取消")}
               </button>
               <button className="button primary" onClick={() => answer(true)}>
-                {confirm.label}
+                {ui(confirm.label)}
               </button>
             </div>
           </div>
         </Modal>
       )}
-      {toast && (
-        <div
-          className={`toast ${toast.error ? "error" : ""}`}
-          role={toast.error ? "alert" : "status"}
-        >
-          <span>{toast.text}</span>
-          <button
-            className="icon-button"
-            aria-label="关闭通知"
-            onClick={() => setToast(undefined)}
-          >
-            <X size={14} />
-          </button>
-        </div>
-      )}
+      <WorkspaceToasts
+        items={toasts}
+        undoId={boot.undoId}
+        busy={busy}
+        onUndo={(item) =>
+          void run(async () => {
+            await flush();
+            await api("undo", { expectedId: item.undoId });
+            await refresh();
+            setToasts((old) => old.filter((t) => t.id !== item.id));
+            tell(msg("已撤销：{0}", item.text));
+          })
+        }
+        onDismiss={(id) =>
+          setToasts((old) => old.filter((item) => item.id !== id))
+        }
+      />
     </div>
   );
 }

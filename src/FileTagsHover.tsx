@@ -1,3 +1,4 @@
+import { tf } from "./i18n";
 import {
   useEffect,
   useId,
@@ -11,9 +12,21 @@ import {
 import { createPortal } from "react-dom";
 import { type LocalFile } from "./api";
 import { TagSource } from "./TagSource";
-import { tagTone } from "./tagColors";
+import { tagTone, tagStyle } from "./tagColors";
 
-export function useFileTagsHover(file: LocalFile) {
+function tagsTruncated(anchor: HTMLButtonElement) {
+  const tags = anchor.querySelector<HTMLElement>(".list-tags");
+  if (!tags || !tags.clientWidth) return false;
+  const bounds = tags.getBoundingClientRect();
+  return Array.from(tags.querySelectorAll<HTMLElement>(".tag-pill")).some(
+    (pill) => {
+      const rect = pill.getBoundingClientRect();
+      return rect.right > bounds.right + 1 || rect.left < bounds.left - 1;
+    },
+  );
+}
+
+export function useFileTagsHover(file: LocalFile, onlyWhenTruncated = false) {
   const [anchor, setAnchor] = useState<HTMLButtonElement>();
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const id = useId();
@@ -26,8 +39,25 @@ export function useFileTagsHover(file: LocalFile) {
     event: MouseEvent<HTMLButtonElement> | FocusEvent<HTMLButtonElement>,
   ) => {
     keep();
-    if (file.tags.length) setAnchor(event.currentTarget);
+    if (
+      file.tags.length &&
+      (!onlyWhenTruncated || tagsTruncated(event.currentTarget))
+    )
+      setAnchor(event.currentTarget);
+    else setAnchor(undefined);
   };
+  useLayoutEffect(() => {
+    if (!anchor || !onlyWhenTruncated) return;
+    const check = () => {
+      if (!tagsTruncated(anchor)) setAnchor(undefined);
+    };
+    check();
+    const tags = anchor.querySelector(".list-tags");
+    if (!tags) return;
+    const observer = new ResizeObserver(check);
+    observer.observe(tags);
+    return () => observer.disconnect();
+  }, [anchor, file.tags, onlyWhenTruncated]);
   useEffect(() => () => clearTimeout(timer.current), []);
   return {
     handlers: {
@@ -52,14 +82,16 @@ export function useFileTagsHover(file: LocalFile) {
 
 export function FileTagsHover({
   file,
+  onlyWhenTruncated = false,
   children,
 }: {
   file: LocalFile;
+  onlyWhenTruncated?: boolean;
   children: (
     handlers: ReturnType<typeof useFileTagsHover>["handlers"],
   ) => ReactNode;
 }) {
-  const { handlers, popover } = useFileTagsHover(file);
+  const { handlers, popover } = useFileTagsHover(file, onlyWhenTruncated);
   return (
     <>
       {children(handlers)}
@@ -130,7 +162,7 @@ function FileTagsPopover({
       ref={ref}
       style={position}
       role="region"
-      aria-label={`${file.name}的全部标签`}
+      aria-label={tf("{0}的全部标签", file.name)}
       tabIndex={0}
       onMouseEnter={onKeep}
       onMouseLeave={onClose}
@@ -146,6 +178,7 @@ function FileTagsPopover({
       <div className="file-tag-hover-tags">
         {file.tags.map((tag) => (
           <span
+            style={tagStyle(tag.id)}
             className={`file-tag-hover-tag tag-color tone-${tagTone(tag.id)}`}
             key={tag.id}
           >

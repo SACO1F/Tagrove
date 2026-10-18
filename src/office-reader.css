@@ -1,0 +1,168 @@
+.office-reader {
+  display: flex;
+  flex-direction: column;
+  height: 60vh;
+  min-height: 300px;
+}
+.office-word-scroll,
+.office-sheet-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  scrollbar-gutter: stable;
+  background: var(--panel);
+}
+.office-word-scroll {
+  padding: 24px;
+  background: var(--bg);
+}
+.office-paper {
+  position: relative;
+  max-width: 700px;
+  margin: auto;
+  background: var(--panel);
+  min-height: 100%;
+}
+.office-block {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  padding: 0 32px;
+  box-sizing: border-box;
+}
+.office-block p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin: 0;
+  padding: 8px 0;
+  line-height: 1.75;
+  font-size: 15px;
+}
+.office-block .office-heading {
+  font-weight: 650;
+  font-size: 19px;
+  padding-top: 18px;
+}
+.office-block .office-heading-1 {
+  font-size: 25px;
+}
+.office-word-table {
+  border-collapse: collapse;
+  width: 100%;
+  table-layout: fixed;
+  margin: 12px 0;
+}
+.office-word-table td {
+  border: 1px solid var(--line);
+  padding: 6px 10px;
+  vertical-align: top;
+}
+.office-sheet-header,
+.office-sheet-row {
+  display: grid;
+  height: 36px;
+}
+.office-sheet-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--panel);
+  font-weight: 600;
+}
+.office-sheet-row {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+}
+.office-sheet-header span,
+.office-sheet-row span {
+  padding: 8px 10px;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 13px;
+  box-sizing: border-box;
+}
+.office-sheet-row [role="rowheader"] {
+  position: sticky;
+  left: 0;
+  background: var(--panel);
+  color: var(--muted);
+  z-index: 1;
+  text-align: right;
+}
+.office-sheet-row:nth-child(even) {
+  background: color-mix(in srgb, var(--accent) 4%, transparent);
+}
+.office-sheet-row .has-formula {
+  color: var(--accent);
+}
+.office-reader-note {
+  padding: 10px 16px;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--muted);
+  border-top: 1px solid var(--line);
+}
+.office-empty {
+  padding: 24px;
+  color: var(--muted);
+}
+
+.office-embedded-image {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 12px 0;
+  border-radius: 8px;
+  object-fit: contain;
+}
+.office-list-marker {
+  display: inline-block;
+  min-width: 1.8em;
+  margin-right: 0.4em;
+  color: var(--muted);
+}
+.office-image-error {
+  display: block;
+  padding: 12px;
+  border: 1px dashed var(--line);
+  color: var(--muted);
+  border-radius: 8px;
+}
+.office-sheet-row [data-format-fallback] {
+  text-decoration: underline dotted var(--muted);
+  text-underline-offset: 4px;
+}
+
+.office-card-summary {
+  height: 100%;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 24px;
+  color: var(--muted);
+  background: var(--panel);
+  overflow: hidden;
+}
+.office-card-summary .extension-stamp {
+  margin-left: 8px;
+  font-size: 11px;
+}
+.office-card-summary pre {
+  font-size: 13px;
+  line-height: 1.8;
+  font-family: inherit;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--ink);
+  margin-top: 16px;
+}
+
+.office-search-source {display:flex;align-items:center;justify-content:space-between;gap:12px;padding:6px 12px;border-bottom:1px solid var(--line);font-size:12px;color:var(--ink);}
+.office-search-source span {min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.office-block.is-search-hit {background:color-mix(in srgb,var(--accent) 9%,transparent);border-radius:10px;}
+.office-sheet-row .is-search-hit-cell, .office-word-table .is-search-hit-cell {background:color-mix(in srgb,var(--accent) 18%,var(--panel));box-shadow:inset 0 -2px var(--accent);}

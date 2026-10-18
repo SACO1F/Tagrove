@@ -1,0 +1,70 @@
+.preview-loading {
+  flex: 1;
+  min-height: 160px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 24px;
+  color: var(--muted);
+  font-size: calc(12px * var(--ui-font-scale, 1));
+}
+.pdf-viewport > .preview-loading {
+  position: absolute;
+  inset: 0;
+  min-height: 0;
+  overflow: auto;
+}
+.preview-loading-frame {
+  position: relative;
+  width: min(220px, 70%);
+  aspect-ratio: 3 / 4;
+  max-height: 320px;
+  padding: 26px 22px;
+  overflow: hidden;
+  border-radius: 20px;
+  background: var(--panel);
+  box-shadow: 0 8px 28px color-mix(in srgb, var(--text) 7%, transparent);
+  color: color-mix(in srgb, var(--accent) 48%, var(--panel));
+}
+.preview-loading-frame::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    110deg,
+    transparent 25%,
+    color-mix(in srgb, var(--accent) 9%, transparent) 48%,
+    transparent 72%
+  );
+  transform: translateX(-100%);
+  animation: preview-refine 2.2s ease-in-out infinite;
+}
+.preview-loading-lines {
+  display: grid;
+  gap: 12px;
+  margin-top: 28px;
+}
+.preview-loading-lines i {
+  height: 5px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--accent) 9%, var(--panel));
+}
+.preview-loading-lines i:nth-child(2) {
+  width: 84%;
+}
+.preview-loading-lines i:last-child {
+  width: 58%;
+}
+@keyframes preview-refine {
+  to {
+    transform: translateX(100%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .preview-loading-frame::after {
+    animation: none;
+    transform: none;
+  }
+}

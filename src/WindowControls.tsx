@@ -1,3 +1,4 @@
+import { t as ui } from "./i18n";
 import { useEffect, useState, type ReactNode } from "react";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { Minus, Square, Copy, X } from "lucide-react";
@@ -10,7 +11,7 @@ export function StartupWindow({ children }: { children: ReactNode }) {
       <header className="topbar startup-topbar">
         <div
           className="window-drag-region"
-          aria-label="拖动窗口"
+          aria-label={ui("拖动窗口")}
           onMouseDown={(event) => {
             if (event.button === 0 && event.detail === 1)
               void getCurrentWebviewWindow()
@@ -68,25 +69,25 @@ export function WindowControls({
   const action = (task: () => Promise<void>) =>
     void task().catch((error) => onError(message(error)));
   return (
-    <div className="window-controls" role="group" aria-label="窗口控制">
+    <div className="window-controls" role="group" aria-label={ui("窗口控制")}>
       <button
-        aria-label="最小化窗口"
-        title="最小化"
+        aria-label={ui("最小化窗口")}
+        data-tooltip={ui("最小化")}
         onClick={() => action(() => getCurrentWebviewWindow().minimize())}
       >
         <Minus size={14} />
       </button>
       <button
-        aria-label={maximized ? "还原窗口" : "最大化窗口"}
-        title={maximized ? "还原" : "最大化"}
+        aria-label={maximized ? ui("还原窗口") : ui("最大化窗口")}
+        data-tooltip={maximized ? ui("还原") : ui("最大化")}
         onClick={() => action(() => getCurrentWebviewWindow().toggleMaximize())}
       >
         {maximized ? <Copy size={12} /> : <Square size={12} />}
       </button>
       <button
         className="window-close"
-        aria-label="关闭窗口"
-        title="关闭"
+        aria-label={ui("关闭窗口")}
+        data-tooltip={ui("关闭")}
         onClick={() => action(() => getCurrentWebviewWindow().close())}
       >
         <X size={16} />

@@ -1,0 +1,34 @@
+.web-browser-reader {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.web-browser-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px;
+  flex-shrink: 0;
+}
+.web-browser-host {
+  flex: 1;
+  min-height: 60px;
+  background: var(--panel, #fff);
+}
+.web-browser-reader > .flow-zoom-reader {
+  flex: 1;
+  min-height: 0;
+}
+
+.web-browser-address {
+  font-size: calc(11px * var(--ui-font-scale, 1));
+  opacity: 0.7;
+  padding: 0 12px 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 0;
+}

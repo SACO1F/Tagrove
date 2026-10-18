@@ -1,0 +1,216 @@
+.tag-branch-heading {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 7px;
+  border-radius: 9px;
+  padding: 9px 7px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
+  text-align: left;
+  color: var(--ink);
+}
+.tag-branch-heading:hover {
+  background: var(--hover);
+}
+.tag-branch-heading > span {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.tag-branch-heading small {
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+.tag-branch-heading > svg:first-child {
+  transition: transform 220ms ease-in-out;
+  flex-shrink: 0;
+}
+.tag-branch[data-closed="false"] .tag-branch-heading > svg:first-child {
+  transform: rotate(90deg);
+}
+.tag-branch-reveal {
+  display: grid;
+  grid-template-rows: 1fr;
+  opacity: 1;
+  transition:
+    grid-template-rows 240ms ease-in-out,
+    opacity 200ms ease-in-out;
+}
+.tag-branch[data-closed="true"] .tag-branch-reveal {
+  grid-template-rows: 0fr;
+  opacity: 0;
+}
+.tag-branch-clip {
+  min-height: 0;
+  overflow: hidden;
+}
+.tag-branch-items {
+  margin: 2px 0 8px 13px;
+  padding-left: 9px;
+  border-left: 1px solid color-mix(in srgb, var(--ink) 18%, transparent);
+}
+.tag-branch-items > .sidebar-tag-row {
+  position: relative;
+}
+.tag-branch-items > .sidebar-tag-row::before {
+  content: "";
+  position: absolute;
+  left: -9px;
+  top: 50%;
+  width: 7px;
+  height: 1px;
+  background: color-mix(in srgb, var(--ink) 18%, transparent);
+}
+.palette-chips.has-groups {
+  display: block;
+}
+.floating-tag-branch .tag-branch-heading {
+  padding: 8px 0;
+}
+.floating-tag-branch .tag-branch-items {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+  gap: 9px;
+  padding-left: 0;
+  margin-left: 0;
+  border-left: 0;
+}
+.group-manager {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+.group-manager h3,
+.group-manager h4 {
+  margin: 0;
+}
+.group-manager h4 {
+  margin-top: 8px;
+}
+.group-manager input {
+  min-width: 0;
+  width: 100%;
+}
+.group-create {
+  display: flex;
+  gap: 8px;
+}
+.group-create input {
+  flex: 1;
+}
+.group-create button {
+  flex-shrink: 0;
+}
+.group-manager-list {
+  max-height: 220px;
+  overflow: auto;
+}
+.group-manager-row {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  padding: 5px 0;
+}
+.group-manager-row input {
+  flex: 1;
+}
+.group-manager-row button {
+  flex-shrink: 0;
+  width: 28px;
+  height: 30px;
+}
+.group-assign-list {
+  max-height: 260px;
+  overflow: auto;
+}
+.group-assign-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(120px, 170px);
+  gap: 12px;
+  align-items: center;
+  padding: 6px 0;
+  font-size: calc(13px * var(--ui-font-scale, 1));
+}
+.group-assign-row > span {
+  overflow-wrap: anywhere;
+}
+.group-delete-confirm {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  padding: 10px 0;
+  font-size: calc(12px * var(--ui-font-scale, 1));
+}
+.group-assign-dialog {
+  display: grid;
+  gap: 18px;
+}
+.group-manager-disclosure {
+  margin: 20px 24px 0;
+}
+.group-disclosure-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 0;
+  text-align: left;
+  font-weight: 600;
+}
+.group-disclosure-toggle svg {
+  flex-shrink: 0;
+  transition: transform 240ms ease-in-out;
+}
+.group-manager-disclosure[data-open="true"] .group-disclosure-toggle svg {
+  transform: rotate(90deg);
+}
+.group-disclosure-reveal {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows 260ms ease-in-out,
+    opacity 200ms ease-in-out;
+}
+.group-manager-disclosure[data-open="true"] .group-disclosure-reveal {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+.group-disclosure-clip {
+  min-height: 0;
+  overflow: hidden;
+}
+.group-disclosure-clip > .group-manager {
+  padding-block: 12px;
+}
+.tag-management-body {
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+}
+.tag-management-body > .modal-content {
+  overflow: visible;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tag-branch-reveal,
+  .tag-branch-heading > svg:first-child {
+    transition: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .group-disclosure-reveal,
+  .group-disclosure-toggle svg {
+    transition: none;
+  }
+}
+
+/* Match the count center to the rightmost chip's 28px edit handle. */
+.floating-tag-branch .tag-branch-heading small {
+  flex: 0 0 28px;
+  margin-right: 6px;
+  text-align: center;
+}

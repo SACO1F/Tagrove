@@ -6,6 +6,22 @@ use crate::{
     transfer::{self, Control},
 };
 use serde_json::json;
+#[test]
+fn native_fractional_palette_geometry_normalizes_without_weakening_settings_validation() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut s = Store::open(&dir.path().join("library")).unwrap();
+    // 349 physical pixels / 125% DPI is 279.2 logical pixels. Previously
+    // floating::resize rounded this to 279 and failed before collapsing.
+    assert!(s.save_settings(&json!({"key":"floatingSize","value":{"width":279,"height":460}})).is_err());
+    for (w,h) in [(279.2,460.),(279.33,319.33),(900.4,1000.4)] {
+        let (width,height)=crate::window_geometry::expanded_size(w,h);
+        s.save_settings(&json!({"key":"floatingSize","value":{"width":width,"height":height}})).unwrap();
+        let saved=s.bootstrap().unwrap()["settings"]["floatingSize"].clone();
+        assert_eq!(saved,json!({"width":width,"height":height}));
+    }
+}
+#[path = "o4_recovery_tests.rs"]
+mod o4_recovery_tests;
 use std::{
     fs,
     sync::{
@@ -242,4 +258,269 @@ fn floating_position_is_local_validated_and_removed_from_transport_backup() {
         )
         .unwrap();
     assert_eq!(count, 0);
+}
+
+#[test]
+fn column_controls_preference_is_boolean_and_persists() {
+    let root = tempfile::tempdir().unwrap();
+    let path = root.path().join("library");
+    let mut store = Store::open(&path).unwrap();
+    assert!(store.bootstrap().unwrap()["settings"]["showColumnControls"].is_null());
+    for value in [true, false] {
+        store
+            .save_settings(&json!({"key":"showColumnControls","value":value}))
+            .unwrap();
+        assert_eq!(
+            store.bootstrap().unwrap()["settings"]["showColumnControls"],
+            value
+        );
+    }
+    for value in [json!("true"), json!(1), json!(null), json!([])] {
+        assert!(store
+            .save_settings(&json!({"key":"showColumnControls","value":value}))
+            .is_err());
+        assert_eq!(
+            store.bootstrap().unwrap()["settings"]["showColumnControls"],
+            false
+        );
+    }
+    store
+        .save_settings(&json!({"key":"showColumnControls","value":true}))
+        .unwrap();
+    drop(store);
+    let store = Store::open(&path).unwrap();
+    assert_eq!(
+        store.bootstrap().unwrap()["settings"]["showColumnControls"],
+        true
+    );
+}
+
+#[test]
+fn appearance_preferences_validate_and_survive_reopen() {
+    let root = tempfile::tempdir().unwrap();
+    let path = root.path().join("library");
+    let mut store = Store::open(&path).unwrap();
+    for color in [
+        "green",
+        "blue",
+        "purple",
+        "rose",
+        "amber",
+        "teal",
+        "terracotta",
+        "indigo",
+        "vermilion",
+        "moss",
+        "cocoa",
+        "graphite",
+    ] {
+        store
+            .save_settings(&json!({"key":"accentColor","value":color}))
+            .unwrap();
+        assert_eq!(store.bootstrap().unwrap()["settings"]["accentColor"], color);
+    }
+    for language in ["zh-CN", "en"] {
+        store
+            .save_settings(&json!({"key":"language","value":language}))
+            .unwrap();
+    }
+    for size in 12..=16 {
+        store
+            .save_settings(&json!({"key":"uiFontSize","value":size}))
+            .unwrap();
+    }
+    for (key, value) in [
+        ("uiFontSize", json!(11)),
+        ("uiFontSize", json!(17)),
+        ("uiFontSize", json!(13.5)),
+        ("uiFontSize", json!("14")),
+        ("uiFontSize", json!(null)),
+        ("accentColor", json!("#ff0000")),
+        ("language", json!("fr")),
+        ("language", json!(true)),
+        ("accentColor", json!(null)),
+    ] {
+        assert!(store
+            .save_settings(&json!({"key":key,"value":value}))
+            .is_err());
+    }
+    drop(store);
+    let store = Store::open(&path).unwrap();
+    let settings = store.bootstrap().unwrap()["settings"].clone();
+    assert_eq!(settings["language"], "en");
+    assert_eq!(settings["accentColor"], "graphite");
+    assert_eq!(settings["uiFontSize"], 16);
+}
+
+#[test]
+fn legacy_backup_restores_reading_without_restart_and_never_overwrites_backup() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut s = Store::open(&dir.path().join("library")).unwrap();
+    let original = dir.path().join("sample.md");
+    fs::write(&original, "# original").unwrap();
+    s.add_file_with_ai(&fsops::inspect(&original).unwrap(), false)
+        .unwrap();
+    let f = s
+        .query(&Query {
+            limit: 1,
+            ..Default::default()
+        })
+        .unwrap()["files"][0]
+        .clone();
+    s.conn.execute_batch("DROP TABLE reader_states").unwrap();
+    let archive = dir.path().join("legacy.sqtagbackup");
+    s.export_backup(&archive).unwrap();
+    let bytes = fs::read(&archive).unwrap();
+    assert!(s.export_backup(&archive).is_err());
+    assert_eq!(fs::read(&archive).unwrap(), bytes);
+    let result = s.restore_backup(&archive).unwrap();
+    assert_eq!(result["ok"], true);
+    assert_eq!(
+        s.reader_state(&json!({"id":f["id"]})).unwrap()["value"],
+        json!({})
+    );
+    s.save_reader_state(&json!({"id":f["id"],"revision":f["revision"],"identity":f["identity"],"value":{"flowZoom":125}})).unwrap();
+    assert_eq!(
+        s.reader_state(&json!({"id":f["id"]})).unwrap()["value"]["flowZoom"],
+        125
+    );
+    assert_eq!(fs::read_to_string(original).unwrap(), "# original");
+    assert!(std::path::Path::new(result["recoveryBackup"].as_str().unwrap()).is_file());
+}
+
+#[test]
+fn interrupted_restore_revokes_uploads_and_finishes_before_marker_removal() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path().join("library");
+    let mut s = Store::open(&root).unwrap();
+    let p = dir.path().join("private.md");
+    fs::write(&p, "private body").unwrap();
+    s.add_file_with_ai(&fsops::inspect(&p).unwrap(), false)
+        .unwrap();
+    s.conn.execute("INSERT INTO settings(key,value) VALUES('ai',?)",[json!({"enabled":true,"endpoint":"https://example.test/v1","model":"fixture","allowNewTags":true}).to_string()]).unwrap();
+    let id: String = s
+        .conn
+        .query_row("SELECT id FROM files", [], |r| r.get(0))
+        .unwrap();
+    s.conn.execute("INSERT OR REPLACE INTO ai_jobs(file_id,status,error,updated_at) VALUES(?,'running','',1)",[id]).unwrap();
+    s.search_control("enable").unwrap();
+    fs::write(
+        root.join("restore-state.toml"),
+        "recovery_backup='retained'",
+    )
+    .unwrap();
+    drop(s);
+    let s = Store::open(&root).unwrap();
+    assert!(!s.ai_config().unwrap().enabled);
+    assert!(!s.semantic_config().unwrap().enabled);
+    assert!(!s.search_enabled().unwrap());
+    let status: String = s
+        .conn
+        .query_row("SELECT status FROM ai_jobs", [], |r| r.get(0))
+        .unwrap();
+    assert_eq!(status, "cancelled");
+    assert!(!root.join("restore-state.toml").exists());
+    assert!(!s.recovery_notice.is_empty());
+    assert_eq!(fs::read_to_string(p).unwrap(), "private body");
+    s.validate().unwrap();
+}
+
+#[test]
+fn extended_diagnostics_are_numeric_allowlisted_and_read_only() {
+    let dir = tempfile::tempdir().unwrap();
+    let s = Store::open(&dir.path().join("library")).unwrap();
+    let before: i64 = s
+        .conn
+        .query_row("SELECT total_changes()", [], |r| r.get(0))
+        .unwrap();
+    let snapshot = s.diagnostic_snapshot().unwrap();
+    assert!(snapshot["storage"]["databaseBytes"].as_u64().unwrap() > 0);
+    assert_eq!(snapshot["derived"]["readingStates"], 0);
+    let mut injected = snapshot.clone();
+    injected["derived"]["textState"] = json!("PRIVATE_ERROR");
+    injected["storage"]["databaseBytes"] = json!("PRIVATE_PATH");
+    injected["sqlite"]["version"] = json!("PRIVATE_ENDPOINT");
+    injected["sqlite"]["sourceId"] = json!("PRIVATE_PATH");
+    let report = support::diagnostic_report(&injected, &json!({}));
+    assert!(!report.contains("PRIVATE_"));
+    assert!(report.contains("存储占用"));
+    let after: i64 = s
+        .conn
+        .query_row("SELECT total_changes()", [], |r| r.get(0))
+        .unwrap();
+    assert_eq!(before, after);
+}
+
+#[test]
+fn sqlite_runtime_probe_is_read_only_and_capabilities_really_work() {
+    let dir = tempfile::tempdir().unwrap();
+    let s = Store::open(&dir.path().join("library")).unwrap();
+    let before: i64 = s
+        .conn
+        .query_row("SELECT total_changes()", [], |r| r.get(0))
+        .unwrap();
+    let runtime = s.sqlite_diagnostics().unwrap();
+    let expected: String = s
+        .conn
+        .query_row("SELECT sqlite_version()", [], |r| r.get(0))
+        .unwrap();
+    assert_eq!(runtime["version"], expected);
+    assert_eq!(runtime["capabilities"]["fts5"], true);
+    assert_eq!(runtime["capabilities"]["json"], true);
+    assert_eq!(runtime["capabilities"]["omitBackup"], false);
+    assert_eq!(runtime["capabilities"]["omitWal"], false);
+    assert_eq!(runtime["journalModes"]["main"], "wal");
+    assert_eq!(runtime["journalModes"]["textIndex"], "wal");
+    assert_eq!(runtime["journalModes"]["semanticIndex"], "wal");
+    let report = support::diagnostic_report(&json!({"sqlite":runtime.clone()}), &json!({}));
+    assert!(report.contains(runtime["version"].as_str().unwrap()));
+    assert!(report.contains(runtime["sourceId"].as_str().unwrap()));
+    let after: i64 = s
+        .conn
+        .query_row("SELECT total_changes()", [], |r| r.get(0))
+        .unwrap();
+    assert_eq!(before, after);
+    // Exercise trigram FTS5, JSON and the enabled Rust backup API in separate memory DBs.
+    let source = rusqlite::Connection::open_in_memory().unwrap();
+    source.execute_batch("CREATE VIRTUAL TABLE probe USING fts5(body,tokenize='trigram'); INSERT INTO probe VALUES('courtyard facade');").unwrap();
+    let hits: i64 = source
+        .query_row(
+            "SELECT count(*) FROM probe WHERE probe MATCH 'courtyard'",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(hits, 1);
+    let mut target = rusqlite::Connection::open_in_memory().unwrap();
+    {
+        let backup = rusqlite::backup::Backup::new(&source, &mut target).unwrap();
+        backup
+            .run_to_completion(16, std::time::Duration::from_millis(1), None)
+            .unwrap();
+    }
+    let copied: i64 = target
+        .query_row(
+            "SELECT count(*) FROM probe WHERE probe MATCH 'courtyard'",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(copied, 1);
+    println!("O4_SQLITE_RUNTIME {}", runtime);
+}
+
+#[test]
+fn tag_drop_tilt_preference_is_boolean_and_survives_restart() {
+    let root = tempfile::tempdir().unwrap();
+    let mut store = Store::open(root.path()).unwrap();
+    for value in [true, false] {
+        store.save_settings(&json!({"key":"tagDropTilt","value":value})).unwrap();
+        assert_eq!(store.bootstrap().unwrap()["settings"]["tagDropTilt"], value);
+    }
+    for value in [json!("false"), json!(1), json!(null)] {
+        assert!(store.save_settings(&json!({"key":"tagDropTilt","value":value})).is_err());
+    }
+    drop(store);
+    let store = Store::open(root.path()).unwrap();
+    assert_eq!(store.bootstrap().unwrap()["settings"]["tagDropTilt"], false);
 }

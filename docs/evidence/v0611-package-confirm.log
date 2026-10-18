@@ -1,0 +1,46 @@
+
+> shiqian-desktop@0.6.11 package
+> tauri build
+
+        Info Looking up installed tauri packages to check mismatched versions...
+     Running beforeBuildCommand `npm run build`
+
+> shiqian-desktop@0.6.11 prebuild
+> node scripts/prepare-pdf.mjs && node scripts/verify-reader-zoom.mjs && node scripts/check-localization.cjs
+
+Reader zoom bridge CSP hash verified.
+PASS 1397 UI calls (92 structured messages), 1127 distinct keys; all 1291 catalog entries and placeholders checked; dynamic message sinks checked. User data and raw diagnostics are excluded.
+
+> shiqian-desktop@0.6.11 build
+> tsc -b && vite build
+
+vite v8.3.1 building client environment for production...
+transforming...
+✓ 2258 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                              0.40 kB │ gzip:   0.28 kB
+dist/assets/pdf.worker.min-Dswkl-cV.mjs  1,265.41 kB
+dist/assets/index-CvlDeRzu.css             152.92 kB │ gzip:  28.32 kB
+dist/assets/pdf-DB1Xgljx.js                430.93 kB │ gzip: 129.03 kB
+dist/assets/index-uVVl8L3R.js              890.24 kB │ gzip: 285.69 kB
+
+✓ built in 624ms
+   Compiling shiqian v0.6.11 (D:\AI\Shiqian\src-tauri)
+warning: function `preview` is never used
+   --> src\transfer.rs:649:8
+    |
+649 | pub fn preview(path: &Path, control: &Control) -> Result<Value> {
+    |        ^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `shiqian` (lib) generated 1 warning
+    Finished `release` profile [optimized] target(s) in 3m 05s
+       Built application at: D:\AI\Shiqian\src-tauri\target\release\shiqian.exe
+        Info Patching D:\AI\Shiqian\src-tauri\target\release\shiqian.exe with bundle type information: nsis
+        Info Target: x64
+     Running makensis to produce D:\AI\Shiqian\src-tauri\target\release\bundle\nsis\拾签_0.6.11_x64-setup.exe
+    Finished 1 bundle at:
+        D:\AI\Shiqian\src-tauri\target\release\bundle\nsis\拾签_0.6.11_x64-setup.exe (6.28 MiB)
+

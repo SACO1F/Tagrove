@@ -9,7 +9,7 @@
 .app-shell .filter-line select,
 .modal .setting-row select {
   appearance: none;
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale, 1));
   line-height: 1.4;
   min-height: 32px;
   max-width: none;

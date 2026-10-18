@@ -1,4 +1,4 @@
-import { api, LocalFile } from "./api";
+import { api, LocalFile, message } from "./api";
 export interface Draft {
   text: string;
   saved: string;
@@ -97,7 +97,7 @@ export class NoteDrafts {
             this.persist();
             continue;
           }
-          d.error = String(e).replace(/^[A-Z_]+:\s*/, "");
+          d.error = String(e);
           this.persist();
           throw e;
         }

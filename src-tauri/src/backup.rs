@@ -70,7 +70,7 @@ pub fn inspect_backup(path: &Path, root: &Path) -> Result<Inspected> {
         .map_err(|e| err("BACKUP_INVALID", e))?;
     let manifest: Manifest =
         toml::from_str(&manifest_text).map_err(|e| err("BACKUP_INVALID", e))?;
-    if manifest.backup_format != 1 || !(1..=2).contains(&manifest.schema_version) {
+    if manifest.backup_format != 1 || !(1..=7).contains(&manifest.schema_version) {
         return Err(err(
             "BACKUP_VERSION_UNSUPPORTED",
             "此备份需要其他版本的拾签",
@@ -151,7 +151,10 @@ impl Store {
         }
         // Credentials and service consent remain local; a restored backup never enables uploads.
         target
-            .execute("DELETE FROM settings WHERE key='ai'", [])
+            .execute(
+                "DELETE FROM settings WHERE key IN ('ai','semanticConfig','browserCaptureEnabled')",
+                [],
+            )
             .map_err(sql_err)?;
         target
             .execute(
@@ -163,7 +166,9 @@ impl Store {
         validate_database(&target)?;
         let manifest = Manifest {
             backup_format: 1,
-            schema_version: 2,
+            schema_version: target
+                .pragma_query_value(None, "user_version", |r| r.get::<_, u32>(0))
+                .map_err(sql_err)?,
             app_version: env!("CARGO_PKG_VERSION").into(),
             created_at: now(),
             library_id: target
@@ -217,7 +222,9 @@ impl Store {
             .as_file()
             .sync_all()
             .map_err(|e| err("BACKUP_FAILED", e))?;
-        output.persist(path).map_err(|e| err("BACKUP_FAILED", e))?;
+        output
+            .persist_noclobber(path)
+            .map_err(|e| err("BACKUP_FAILED", format!("{e}；请选择未使用的备份文件名")))?;
         let notice = self
             .remember_backup(path, "manual")
             .err()
@@ -258,16 +265,29 @@ impl Store {
             ));
         }
         crate::auto_tags::migrate(&self.conn)?;
+        crate::tag_aliases::migrate(&self.conn)?;
+        crate::capture::migrate(&self.conn)?;
+        crate::reader_state::migrate(&self.conn)?;
+        self.rebuild_web_descriptors()?;
+        crate::db::ensure_performance_indexes(&self.conn)?;
         // Enforce local consent even when the backup came from another writer.
         self.conn
-            .execute("DELETE FROM settings WHERE key='ai'", [])
+            .execute(
+                "DELETE FROM settings WHERE key IN ('ai','semanticConfig','browserCaptureEnabled')",
+                [],
+            )
             .map_err(sql_err)?;
         self.conn.execute("UPDATE ai_jobs SET status='cancelled',error='从备份恢复后请重新识别' WHERE status IN ('queued','running')", []).map_err(sql_err)?;
         self.validate()?;
+        crate::watch::pause_all(self)?;
         self.conn
             .execute_batch("PRAGMA foreign_keys=ON; PRAGMA wal_checkpoint(FULL);")
             .map_err(sql_err)?;
         self.undo.clear();
+        // Derived text belongs to the pre-restore library. Require explicit opt-in again.
+        self.search_control("clear")?;
+        self.semantic_clear()?;
+        crate::ai::write_secret(&self.root, "semantic-key.dpapi", "")?;
         self.recovery_notice.clear();
         self.clear_cache()?;
         fs::remove_file(marker).map_err(|e| err("RESTORE_FAILED", e))?;
@@ -280,18 +300,6 @@ impl Store {
         )
     }
     pub fn clear_cache(&self) -> Result<Value> {
-        let mut count = 0;
-        for entry in fs::read_dir(self.root.join("cache")).map_err(|e| err("CACHE_ERROR", e))? {
-            let entry = entry.map_err(|e| err("CACHE_ERROR", e))?;
-            if entry
-                .file_type()
-                .map_err(|e| err("CACHE_ERROR", e))?
-                .is_file()
-            {
-                fs::remove_file(entry.path()).map_err(|e| err("CACHE_ERROR", e))?;
-                count += 1;
-            }
-        }
-        Ok(json!({"removed":count}))
+        crate::cache::clear(&self.root)
     }
 }

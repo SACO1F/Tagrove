@@ -1,0 +1,198 @@
+.pdf-reader {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 60vh;
+  flex-shrink: 1;
+}
+.pdf-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 18px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+  flex-shrink: 0;
+}
+.pdf-control-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.pdf-control-group form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.pdf-toolbar .pdf-control-group input {
+  width: 52px;
+  height: 30px;
+  padding: 3px 6px;
+  text-align: center;
+  border-radius: 8px;
+}
+.pdf-zoom {
+  min-width: 70px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--ink);
+}
+.pdf-toolbar .icon-button[aria-pressed="true"] {
+  background: var(--thumb);
+  color: var(--accent);
+}
+.pdf-viewport {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 20px;
+  background: var(--thumb);
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+.pdf-surface {
+  width: max-content;
+  min-width: 100%;
+  display: flex;
+  justify-content: center;
+}
+.pdf-surface[hidden] {
+  display: none;
+}
+.pdf-viewport.is-continuous {
+  padding: 0;
+  overflow-anchor: none;
+}
+.pdf-continuous-surface {
+  position: relative;
+  display: block;
+  min-width: 100%;
+}
+.pdf-page-slot {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+.pdf-page {
+  position: relative;
+  flex-shrink: 0;
+  background: white;
+  box-shadow: 0 4px 20px #00000016;
+}
+.pdf-page-raster {
+  position: absolute;
+  inset: 0;
+}
+.pdf-page-raster canvas {
+  box-shadow: none;
+}
+.pdf-page-message {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  text-align: center;
+  overflow-wrap: anywhere;
+  color: #4e5965;
+  background: rgb(255 255 255 / 85%);
+}
+.pdf-surface canvas {
+  flex-shrink: 0;
+  display: block;
+  background: white;
+  box-shadow: 0 4px 20px #00000016;
+}
+.pdf-message {
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  color: var(--muted);
+  text-align: center;
+  padding: 24px;
+  overflow-wrap: anywhere;
+}
+.pdf-message small {
+  font-size: 11px;
+}
+.pdf-message input {
+  max-width: 240px;
+}
+.pdf-reader-status {
+  flex-shrink: 0;
+  padding: 7px 20px;
+  font-size: 11px;
+  color: var(--muted);
+  border-top: 1px solid var(--line);
+}
+.pdf-cancel {
+  font-size: 11px;
+  padding: 5px 9px;
+}
+@media (max-width: 700px) {
+  .pdf-toolbar {
+    padding: 8px;
+    gap: 4px;
+  }
+  .pdf-control-group {
+    gap: 3px;
+  }
+}
+
+.html-reader {
+  height: 60vh;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.html-reader iframe {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  border: 0;
+  background: white;
+}
+.html-source {
+  flex: 1;
+  margin: 0;
+  overflow: auto;
+  padding: 20px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: var(--thumb);
+  color: var(--ink);
+  font:
+    12px/1.7 Consolas,
+    monospace;
+}
+.html-reader .button[aria-pressed="true"] {
+  background: var(--thumb);
+  color: var(--accent);
+}
+
+/* TextLayer geometry adapted from Mozilla PDF.js (Apache-2.0). */
+.pdf-text-layer{position:absolute;inset:0;overflow:clip;line-height:1;letter-spacing:normal;word-spacing:normal;text-align:initial;text-size-adjust:none;forced-color-adjust:none;transform-origin:0 0;--min-font-size:1;--text-scale-factor:calc(var(--total-scale-factor) * var(--min-font-size));--min-font-size-inv:calc(1 / var(--min-font-size))}
+.pdf-text-layer :is(span,br){color:transparent!important;position:absolute;white-space:pre;cursor:text;transform-origin:0 0;user-select:text!important}
+.pdf-text-layer > :not(.markedContent),.pdf-text-layer .markedContent span:not(.markedContent){z-index:1;--font-height:0;font-size:calc(var(--text-scale-factor) * var(--font-height));--scale-x:1;--rotate:0deg;transform:rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv))}
+.pdf-text-layer .markedContent{display:contents}
+.pdf-text-layer ::selection{color:transparent;background:color-mix(in srgb,var(--accent,#2b6656) 30%,transparent)}
+
+.pdf-text-layer{--scale-round-x:1px;--scale-round-y:1px}
+.pdf-text-layer[data-main-rotation="90"]{transform:rotate(90deg) translateY(-100%)}
+.pdf-text-layer[data-main-rotation="180"]{transform:rotate(180deg) translate(-100%,-100%)}
+.pdf-text-layer[data-main-rotation="270"]{transform:rotate(270deg) translateX(-100%)}

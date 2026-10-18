@@ -1,3 +1,5 @@
+import { createTagDropTilt } from "./tagDropTilt";
+import { t as ui, tf } from "./i18n";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { listen } from "@tauri-apps/api/event";
@@ -19,15 +21,32 @@ type Feedback = {
   point: { x: number; y: number };
   bounds?: Bounds;
   fileId?: string;
+  tilt?: string;
 };
 type Annotation = { tagName: string; applied: number };
+function flatBounds(card: HTMLElement | null | undefined) {
+  if (!card) return;
+  const wrapper = card.closest<HTMLElement>(".masonry-item, .virtual-row");
+  if (wrapper && card.offsetParent === wrapper) {
+    const rect = wrapper.getBoundingClientRect();
+    return {
+      left: rect.left + card.offsetLeft,
+      top: rect.top + card.offsetTop,
+      width: card.offsetWidth,
+      height: card.offsetHeight,
+    };
+  }
+  return card.getBoundingClientRect();
+}
 
 export function TagDropFeedback({
   tags,
+  tiltEnabled,
   run,
   onNotify,
 }: {
   tags: Tag[];
+  tiltEnabled: boolean;
   run: (task: () => Promise<unknown>) => Promise<void>;
   onNotify: (text: string, error?: boolean) => void;
 }) {
@@ -56,7 +75,7 @@ export function TagDropFeedback({
     const card = document.querySelector<HTMLElement>(
       `[data-file-id="${CSS.escape(feedback.fileId)}"]`,
     );
-    const r = card?.getBoundingClientRect();
+    const r = flatBounds(card);
     const next = r
       ? { left: r.left, top: r.top, width: r.width, height: r.height }
       : undefined;
@@ -70,14 +89,18 @@ export function TagDropFeedback({
       setFeedback((old) => (old ? { ...old, bounds: next } : old));
   });
   useEffect(() => {
+    const tilt = createTagDropTilt(tiltEnabled);
     let target: HTMLElement | null = null;
+    let targetBounds: Bounds | undefined;
     let pending = false;
     let dragging = false;
     let disposed = false;
     let finishTimer: ReturnType<typeof setTimeout> | undefined;
     const clearTarget = () => {
       target?.classList.remove("tag-drop-target");
+      tilt.reset();
       target = null;
+      targetBounds = undefined;
     };
     const reset = () => {
       if (!pending) {
@@ -103,35 +126,59 @@ export function TagDropFeedback({
         if (pending || disposed) return;
         clearTimeout(finishTimer);
         dragging = !p.drop && p.over;
+        const insideTarget =
+          target &&
+          targetBounds &&
+          p.x >= targetBounds.left &&
+          p.x <= targetBounds.left + targetBounds.width &&
+          p.y >= targetBounds.top &&
+          p.y <= targetBounds.top + targetBounds.height;
         const card = p.over
-          ? document
-              .elementFromPoint(p.x, p.y)
-              ?.closest<HTMLElement>("[data-file-id]") || null
+          ? insideTarget
+            ? target
+            : document
+                .elementFromPoint(p.x, p.y)
+                ?.closest<HTMLElement>("[data-file-id]") || null
           : null;
+        // Read the flat card before any transform write; never measure its tilted rectangle.
+        const measured =
+          card === target && targetBounds ? targetBounds : flatBounds(card);
+        const bounds = measured
+          ? {
+              left: measured.left,
+              top: measured.top,
+              width: measured.width,
+              height: measured.height,
+            }
+          : undefined;
         if (card !== target) {
           clearTarget();
           target = card;
+          targetBounds = bounds;
         }
         if (target && !target.classList.contains("tag-drop-target"))
           target.classList.add("tag-drop-target");
         const tag =
-          tagsRef.current.find((t) => t.id === p.tagId)?.name || "标签";
-        const r = card?.getBoundingClientRect();
+          tagsRef.current.find((t) => t.id === p.tagId)?.name || ui("标签");
+        const r = bounds;
+        const transform = tilt.update(card, p.x, p.y, r);
         const next: Feedback = {
           phase: "drag",
           tag,
-          label: card ? `松手添加「${tag}」` : "移到文件上",
+          label: card ? tf("松手添加「{0}」", tag) : ui("移到文件上"),
           point: { x: p.x, y: p.y },
           bounds: r
             ? { left: r.left, top: r.top, width: r.width, height: r.height }
             : undefined,
           fileId: card?.dataset.fileId,
+          tilt: transform,
         };
         if (p.drop && p.over) {
           clearTarget();
+          next.tilt = undefined;
           if (next.fileId) {
             pending = true;
-            setFeedback({ ...next, phase: "applying", label: "正在标注…" });
+            setFeedback({ ...next, phase: "applying", label: ui("正在标注…") });
             void run(async () => {
               try {
                 const result = await api<Annotation>("annotation.apply", {
@@ -142,16 +189,20 @@ export function TagDropFeedback({
                   ...next,
                   phase: "success",
                   label: result.applied
-                    ? `已添加「${result.tagName}」`
-                    : "已有此标签",
+                    ? tf("已添加「{0}」", result.tagName)
+                    : ui("已有此标签"),
                 });
               } catch (e) {
-                finish({ ...next, phase: "error", label: "标注失败，请重试" });
+                finish({
+                  ...next,
+                  phase: "error",
+                  label: ui("标注失败，请重试"),
+                });
                 throw e;
               }
             });
           } else {
-            finish({ ...next, phase: "error", label: "请放到具体文件上" });
+            finish({ ...next, phase: "error", label: ui("请放到具体文件上") });
             void api("annotation.reject").catch((e) =>
               onNotify(message(e), true),
             );
@@ -167,13 +218,10 @@ export function TagDropFeedback({
       listen<{ ok: boolean; result?: Annotation; error?: string }>(
         "annotation-result",
         ({ payload: p }) => {
-          if (p.ok)
-            onNotify(
-              p.result?.applied
-                ? `已添加「${p.result.tagName}」标注`
-                : "文件已有此标签",
-            );
-          else onNotify(message(p.error), true);
+          // App records successful changes with file names and an undo action.
+          // Keep only no-op and error notices here, avoiding duplicate success toasts.
+          if (!p.ok) onNotify(message(p.error), true);
+          else if (!p.result?.applied) onNotify(ui("文件已有此标签"));
         },
       ),
     ];
@@ -186,15 +234,23 @@ export function TagDropFeedback({
         void api("floating.cancel").catch(() => {});
       }
     };
+    const onGeometryChange = () => {
+      if (dragging && !pending) reset();
+    };
+    document.addEventListener("scroll", onGeometryChange, true);
+    window.addEventListener("resize", onGeometryChange);
     document.addEventListener("keydown", onEscape, true);
     return () => {
       disposed = true;
       clearTarget();
+      tilt.dispose();
       clearTimeout(finishTimer);
+      document.removeEventListener("scroll", onGeometryChange, true);
+      window.removeEventListener("resize", onGeometryChange);
       document.removeEventListener("keydown", onEscape, true);
       subscriptions.forEach((p) => p.then((fn) => fn()));
     };
-  }, [run, onNotify]);
+  }, [run, onNotify, tiltEnabled]);
   if (!feedback) return null;
   const icon =
     feedback.phase === "success" ? (
@@ -233,7 +289,7 @@ export function TagDropFeedback({
         <div
           className="tag-drop-frame"
           data-target-file={feedback.fileId}
-          style={feedback.bounds}
+          style={{ ...feedback.bounds, transform: feedback.tilt }}
         >
           <div className="tag-drop-target-label">
             {icon}

@@ -1,3 +1,5 @@
+import { message } from "./api";
+import { t as ui, tf } from "./i18n";
 import { AlertCircle, Check, Clock3, Minus, Sparkles } from "lucide-react";
 import type { LocalFile } from "./api";
 
@@ -59,26 +61,26 @@ export function AiTaskStatus({
             ? "waiting"
             : "done";
   const singleLabels = {
-    queued: "等待 AI 分析",
-    running: "AI 正在分析",
-    done: pending ? `${pending} 个 AI 标签待确认` : "AI 标注已更新",
-    failed: "AI 分析失败，可重新识别",
-    unsupported: "暂不支持此文件内容",
-    cancelled: "AI 分析已取消",
+    queued: ui("等待 AI 分析"),
+    running: ui("AI 正在分析"),
+    done: pending ? tf("{0} 个 AI 标签待确认", pending) : ui("AI 标注已更新"),
+    failed: ui("AI 分析失败，可重新识别"),
+    unsupported: ui("暂不支持此文件内容"),
+    cancelled: ui("AI 分析已取消"),
   };
   const text =
     files.length === 1
       ? task
-        ? singleLabels[task.status]
-        : `${pending} 个 AI 标签待确认`
+        ? ui(singleLabels[task.status])
+        : tf("{0} 个 AI 标签待确认", pending)
       : [
-          counts.queued && `等待 ${counts.queued}`,
-          counts.running && `处理中 ${counts.running}`,
-          counts.done && `完成 ${counts.done}`,
-          counts.failed && `失败 ${counts.failed}`,
-          counts.unsupported && `未支持 ${counts.unsupported}`,
-          counts.cancelled && `已取消 ${counts.cancelled}`,
-          pending && `待确认标签 ${pending}`,
+          counts.queued && tf("等待 {0}", counts.queued),
+          counts.running && tf("处理中 {0}", counts.running),
+          counts.done && tf("完成 {0}", counts.done),
+          counts.failed && tf("失败 {0}", counts.failed),
+          counts.unsupported && tf("未支持 {0}", counts.unsupported),
+          counts.cancelled && tf("已取消 {0}", counts.cancelled),
+          pending && tf("待确认标签 {0}", pending),
         ]
           .filter(Boolean)
           .join(" · ");
@@ -99,12 +101,12 @@ export function AiTaskStatus({
           className="quiet-link task-cancel"
           disabled={busy}
           onClick={onCancel}
-          title="仅取消所选文件的任务；已发送的请求结束后丢弃结果"
+          data-tooltip={ui("仅取消所选文件的任务；已发送的请求结束后丢弃结果")}
         >
-          取消识别
+          {ui("取消识别")}
         </button>
       )}
-      {task?.error && <small>{task.error.replace(/^[A-Z_]+:\s*/, "")}</small>}
+      {task?.error && <small>{message(task.error)}</small>}
     </div>
   );
 }

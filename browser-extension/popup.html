@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="zh-CN">
+  <meta charset="utf-8" /><meta
+    name="viewport"
+    content="width=device-width,initial-scale=1"
+  /><title>保存到拾签</title
+  ><link rel="icon" type="image/png" href="icons/32x32.png" /><link rel="stylesheet" href="extension.css" />
+  <body>
+    <main>
+      <header>
+        <h1 class="extension-brand"><img src="icons/48x48.png" alt="" width="28" height="28" />保存到拾签</h1>
+        <a href="queue.html" target="_blank">采集队列</a>
+      </header>
+      <div class="connection-row">
+        <p id="connection" role="status">正在检查本机连接…</p>
+        <button type="button" id="check-connection" class="secondary">
+          检查连接
+        </button>
+      </div>
+      <p id="capture-hint" class="hint"></p>
+      <form id="capture-form">
+        <label>标题<input id="title" required maxlength="300" /></label
+        ><label
+          >来源链接<input id="url" type="url" required maxlength="8192"
+        /></label>
+        <fieldset>
+          <legend>保存内容</legend>
+          <label class="choice"
+            ><input
+              type="radio"
+              name="kind"
+              value="web_page"
+              checked
+            />网页链接</label
+          ><label class="choice"
+            ><input
+              type="radio"
+              name="kind"
+              value="web_excerpt"
+            />文字摘录</label
+          ><label class="choice"
+            ><input type="radio" name="kind" value="web_image" />网页图片</label
+          >
+        </fieldset>
+        <label id="excerpt-field" hidden
+          >摘录<textarea id="excerpt" rows="6" maxlength="20000"></textarea>
+        </label>
+        <section id="image-field" hidden>
+          <label
+            >图片地址<input id="image-url" type="url" maxlength="8192"
+          /></label>
+          <p class="hint">
+            由桌面端下载公网 PNG／JPEG／WebP／GIF／BMP，最大 50 MiB、1
+            亿像素；不携带浏览器登录信息。
+          </p>
+          <button id="preview-image" type="button" class="secondary">
+            预览图片
+          </button>
+          <p id="image-preview-status" class="hint" role="status"></p>
+          <img
+            id="image-preview"
+            hidden
+            alt="所选网页图片预览"
+            crossorigin="anonymous"
+            referrerpolicy="no-referrer"
+          />
+        </section>
+        <section class="capture-tags" aria-label="标签选择">
+          <div class="tag-heading">
+            <span>标签 <small id="tag-count">0</small></span
+            ><button type="button" id="refresh-tags" class="secondary">
+              刷新标签
+            </button>
+          </div>
+          <div id="selected-tags" class="selected-tags"></div>
+          <label class="tag-search-label"
+            ><span class="sr-only">搜索标签</span
+            ><input
+              id="tag-search"
+              type="search"
+              placeholder="搜索已有标签"
+              maxlength="80"
+              autocomplete="off"
+          /></label>
+          <div
+            id="tag-options"
+            class="tag-options"
+            role="group"
+            aria-label="可选标签"
+          ></div>
+          <p id="tag-status" class="hint" role="status">正在加载标签…</p>
+        </section>
+        <p class="hint">
+          网页链接同时保存可读取的正文摘要。已选标签时跳过
+          AI；未选标签且启用桌面 AI
+          自动标注时，采集内容会发送到已配置服务，建议在桌面待确认。
+        </p>
+        <button id="submit" type="submit">保存到拾签</button>
+      </form>
+      <p id="result" role="status"></p>
+      <div id="failure-details"></div>
+    </main>
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

@@ -1,3 +1,5 @@
+import { t as ui, tf, currentLanguage } from "./i18n";
+import { Undo2 } from "lucide-react";
 import { useLayoutEffect, useRef } from "react";
 import type { FloatingOperation } from "./useFloatingHistory";
 import { motionEase, reducedMotion } from "./microMotion";
@@ -5,9 +7,15 @@ import { motionEase, reducedMotion } from "./microMotion";
 export function FloatingHistory({
   operations,
   ready,
+  undoId,
+  busy,
+  onUndo,
 }: {
   operations: FloatingOperation[];
   ready: boolean;
+  undoId?: string;
+  busy: boolean;
+  onUndo: (operation: FloatingOperation) => void;
 }) {
   const root = useRef<HTMLElement>(null);
   const previous = useRef(
@@ -83,19 +91,34 @@ export function FloatingHistory({
       className="floating-history"
       role="log"
       aria-live="polite"
-      aria-label="最近三步操作"
+      aria-label={ui("最近三步操作")}
     >
       <ol>
         {operations.map((operation) => (
           <li
             key={operation.id}
             data-operation-id={operation.id}
-            title={operation.text}
+            data-tooltip={operation.text}
           >
             <span className="operation-dot" />
             <span>{operation.text}</span>
+            <button
+              className="history-undo"
+              aria-label={tf("撤销：{0}", operation.text)}
+              data-tooltip={
+                operation.undoId && operation.undoId === undoId
+                  ? ui("撤销此操作")
+                  : ui("此步骤当前不可撤销")
+              }
+              disabled={
+                busy || !operation.undoId || operation.undoId !== undoId
+              }
+              onClick={() => onUndo(operation)}
+            >
+              <Undo2 size={12} />
+            </button>
             <time dateTime={new Date(operation.time).toISOString()}>
-              {new Date(operation.time).toLocaleTimeString("zh-CN", {
+              {new Date(operation.time).toLocaleTimeString(currentLanguage(), {
                 hour: "2-digit",
                 minute: "2-digit",
               })}

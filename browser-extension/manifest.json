@@ -1,0 +1,34 @@
+{
+  "manifest_version": 3,
+  "name": "拾签 · 网页采集",
+  "version": "0.6.11",
+  "description": "主动保存网页链接、选中文字与所选图片到本机拾签资料库。",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAncmhmuKguCBKCm25n4CrsMFBCD9tNzZit8UrWTtmpbffWLAd3OdCvmz+lI2r6TfKbp5jn7n71y6QLp1xIPiEX6Wj+wOf5eQVDcekRADh7fR8M/NiISh5bGRFOYVh6ppfbY7T06hSJSs/CNo8jIBw0zDrisM/BDzFbchM+8FIqqP7Zooz6AyIs8M2Nb1ZrSoUH5KOx9+sboSe257RhitipQwjXAhl+kqqxLUBmw/lNTT8Uj2CZJ+PIrveIccAjX6t0XVNddAihi5UfX0CPpSC1tYO7CCNdOYzX9ecsH6sr9NdEQBSfJoTZyNzEV+05QwDT1mSlTIGoLHZcOLMkL2GuQIDAQAB",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage",
+    "contextMenus",
+    "nativeMessaging",
+    "alarms"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "保存到拾签",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/16x16.png",
+      "32": "icons/32x32.png"
+    }
+  },
+  "options_page": "queue.html",
+  "icons": {
+    "16": "icons/16x16.png",
+    "32": "icons/32x32.png",
+    "48": "icons/48x48.png",
+    "128": "icons/128x128.png"
+  }
+}

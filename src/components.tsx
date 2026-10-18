@@ -1,9 +1,22 @@
+import { SettingsSection } from "./SettingsSection";
+import { BrowserCaptureSettings } from "./WebCapture";
+import { WarmTooltip } from "./WarmTooltip";
+import { currentLanguage } from "./i18n";
+import { tagTone, tagStyle } from "./tagColors";
+import { accentColors, DEFAULT_ACCENT_COLOR } from "./appearance";
+import { t as ui, tf } from "./i18n";
+import SquishSwitch from "./SquishSwitch";
+import { SemanticSettings } from "./Semantic";
 import { GlideSelect } from "./GlideSelect";
+import { RubberSegment } from "./ReaderControls";
+import { ContentSnippet, TextIndexSettings } from "./TextIndex";
+import { useListColumns } from "./ListColumns";
 import {
   useEffect,
   useLayoutEffect,
   useRef,
   useState,
+  useMemo,
   type ReactNode,
 } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
@@ -14,6 +27,7 @@ import {
   ImageIcon,
   FolderOpen,
   ArrowUpRight,
+  ExternalLink,
   Copy,
   Link2,
   Plus,
@@ -46,8 +60,11 @@ import {
   statusNames,
   kindNames,
   message,
+  tagMatches,
+  tagSearch,
 } from "./api";
 import { Preview } from "./preview";
+import { ContentReader } from "./ContentReader";
 import { Draft } from "./notes";
 import { MasonryGallery } from "./MasonryGallery";
 import { TagSource } from "./TagSource";
@@ -63,12 +80,14 @@ export function Modal({
   onClose,
   wide = false,
   dismissDisabled = false,
+  className = "",
 }: {
   title: string;
   children: ReactNode;
   onClose: () => void;
   wide?: boolean;
   dismissDisabled?: boolean;
+  className?: string;
 }) {
   const [closing, setClosing] = useState(false);
   const closeTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -106,7 +125,7 @@ export function Modal({
     >
       <div
         ref={ref}
-        className={`modal ${wide ? "modal-wide" : ""}`}
+        className={`modal ${wide ? "modal-wide" : ""} ${className}`}
         role="dialog"
         aria-modal="true"
         aria-label={title}
@@ -120,7 +139,7 @@ export function Modal({
           if (e.key === "Tab") {
             const items = [
               ...(ref.current?.querySelectorAll<HTMLElement>(
-                'button:not([disabled]),input,textarea,select,[tabindex="0"]',
+                'button:not([disabled]),input:not([disabled]),textarea:not([disabled]),select:not([disabled]),summary,a[href],[tabindex="0"]',
               ) ?? []),
             ].filter((n) => n.offsetParent !== null);
             if (items.length) {
@@ -144,7 +163,7 @@ export function Modal({
             className="icon-button"
             onClick={dismiss}
             disabled={dismissDisabled}
-            aria-label="关闭对话框"
+            aria-label={ui("关闭对话框")}
           >
             <X size={18} />
           </button>
@@ -156,7 +175,9 @@ export function Modal({
 }
 
 export function FilesView({
-  files,
+  files: inputFiles,
+  contentQuery,
+  searchHint,
   total,
   view,
   density,
@@ -175,6 +196,8 @@ export function FilesView({
   onReset,
 }: {
   files: LocalFile[];
+  contentQuery: string;
+  searchHint?: string;
   total: number;
   view: string;
   density: string;
@@ -192,6 +215,22 @@ export function FilesView({
   filtered: boolean;
   onReset: () => void;
 }) {
+  const files = useMemo(
+    () =>
+      inputFiles.map((file) => ({
+        ...file,
+        contentMatch:
+          contentQuery.trim() && file.contentMatch?.queryText === contentQuery
+            ? file.contentMatch
+            : undefined,
+        searchMatch:
+          contentQuery.trim() && file.searchMatch?.queryText === contentQuery
+            ? file.searchMatch
+            : undefined,
+      })),
+    [inputFiles, contentQuery],
+  );
+  const listColumns = useListColumns();
   const scroll = useRef<HTMLDivElement>(null);
   const layout = useRef<HTMLDivElement>(null);
   const previousView = useRef(view);
@@ -236,8 +275,9 @@ export function FilesView({
       }, 160);
     };
     window.addEventListener("resize", resizing);
+    window.addEventListener("shiqian-continuous-layout", resizing);
     const obs = new ResizeObserver((es) => {
-      if (liveResize.current) motionSnapshot.current.clear();
+      if (liveResize.current) resizing();
       else capture();
       setWidth(es[0].contentRect.width);
     });
@@ -246,12 +286,14 @@ export function FilesView({
       obs.disconnect();
       clearTimeout(endResize);
       window.removeEventListener("resize", resizing);
+      window.removeEventListener("shiqian-continuous-layout", resizing);
       layoutCapture.current = undefined;
     };
   }, [view, layoutCapture]);
   const capacity = Math.max(2, Math.min(8, Math.floor((width + 14) / 134)));
   useEffect(() => onColumnCapacity(capacity), [capacity, onColumnCapacity]);
-  const rowHeight = density === "compact" ? 58 : 68;
+  const contentSearch = files.some((f) => f.contentMatch);
+  const rowHeight = contentSearch ? 90 : density === "compact" ? 58 : 68;
   const virtual = useVirtualizer({
     count: files.length,
     getScrollElement: () => scroll.current,
@@ -289,7 +331,7 @@ export function FilesView({
       className="file-area"
       ref={scroll}
       role="listbox"
-      aria-label="文件结果"
+      aria-label={ui("文件结果")}
       aria-multiselectable="true"
       tabIndex={0}
       onScroll={() => {
@@ -304,7 +346,17 @@ export function FilesView({
           onMore();
       }}
     >
-      <div ref={layout} className="files-layout-motion" data-layout={view}>
+      <div
+        ref={layout}
+        className="files-layout-motion"
+        data-layout={view}
+        style={
+          {
+            ...listColumns.style,
+            "--list-min-height": `${rowHeight - 7}px`,
+          } as React.CSSProperties
+        }
+      >
         {files.length === 0 ? (
           <div className="empty-state">
             <div className="empty-art">
@@ -315,20 +367,22 @@ export function FilesView({
                 <FileText size={34} strokeWidth={1.4} />
               </div>
               <span className="floating-tag">
-                <Tags size={14} /> 有迹可寻
+                <Tags size={14} /> {ui("有迹可寻")}
               </span>
             </div>
             <h2>
-              {filtered ? "这里还没有符合条件的文件" : "给文件一个被找到的理由"}
+              {filtered
+                ? ui("这里还没有符合条件的文件")
+                : ui("给文件一个被找到的理由")}
             </h2>
             <p>
               {filtered ? (
-                "试试其他关键词，或调整筛选条件。"
+                searchHint || ui("试试其他关键词，或调整筛选条件。")
               ) : (
                 <>
-                  把图片、文档和灵感留在原来的位置，
+                  {ui("把图片、文档和灵感留在原来的位置，")}
                   <br />
-                  用标签串起它们的用途。
+                  {ui("用标签串起它们的用途。")}
                 </>
               )}
             </p>
@@ -337,20 +391,13 @@ export function FilesView({
               onClick={filtered ? onReset : onAdd}
             >
               {filtered ? <X size={16} /> : <Plus size={16} />}{" "}
-              {filtered ? "清除筛选条件" : "加入第一份文件"}
+              {filtered ? ui("清除筛选条件") : ui("加入第一份文件")}
             </button>
-            <span className="subtle">也可以将文件或文件夹拖入窗口</span>
+            <span className="subtle">{ui("也可以将文件或文件夹拖入窗口")}</span>
           </div>
         ) : (
           <>
-            {view === "list" && (
-              <div className="file-list-heading">
-                <span>文件名称</span>
-                <span>标签</span>
-                <span>修改时间</span>
-                <span>大小</span>
-              </div>
-            )}
+            {view === "list" && listColumns.heading}
             {view === "grid" ? (
               <MasonryGallery
                 files={files}
@@ -381,12 +428,14 @@ export function FilesView({
                     <div
                       className="virtual-row list-row"
                       key={f.id}
+                      data-index={row.index}
+                      ref={virtual.measureElement}
                       style={{
                         transform: `translateY(${row.start}px)`,
-                        height: rowHeight,
+                        minHeight: rowHeight,
                       }}
                     >
-                      <FileTagsHover file={f}>
+                      <FileTagsHover file={f} onlyWhenTruncated>
                         {(hoverHandlers) => (
                           <button
                             {...hoverHandlers}
@@ -398,7 +447,9 @@ export function FilesView({
                             onClick={(event) => onSelect(f, event)}
                             onDoubleClick={() => onOpen(f)}
                           >
-                            <span className="file-art">
+                            <span
+                              className={`file-art ${f.kind !== "image" && f.kind !== "pdf" ? "is-glyph" : ""}`}
+                            >
                               <Preview file={f} compact />
                               <SelectionCheck
                                 checked={selected.includes(f.id)}
@@ -406,33 +457,47 @@ export function FilesView({
                               />
                             </span>
                             <span className="file-description">
-                              <span className="file-name" title={f.name}>
+                              <span className="file-name" data-tooltip={f.name}>
                                 {f.name}
                                 {f.favorite && (
                                   <Star size={12} fill="currentColor" />
                                 )}
                               </span>
-                              <span className="file-subline" title={f.path}>
+                              <ContentSnippet file={f} />
+                              <span
+                                className="file-subline"
+                                data-tooltip={f.webSource?.url || f.path}
+                              >
                                 {f.status !== "available"
                                   ? statusNames[f.status]
-                                  : f.parent}
+                                  : f.webSource?.url || f.parent}
                               </span>
                             </span>
                             <span className="list-tags">
-                              {f.tags.slice(0, 2).map((t) => (
-                                <span className="tag-pill" key={t.id}>
-                                  {t.name}
+                              {f.tags.map((t) => (
+                                <span
+                                  style={tagStyle(t.id)}
+                                  className={`tag-pill tag-color tone-${tagTone(t.id)} ${t.source === "folder" || t.createdBy === "folder" ? "is-folder" : ""}`}
+                                  key={t.id}
+                                >
+                                  <span className="tag-pill-name">
+                                    {t.name}
+                                  </span>
                                   <TagSource tag={t} />
                                 </span>
                               ))}
-                              {f.tags.length > 2 && (
-                                <small>+{f.tags.length - 2}</small>
-                              )}
                             </span>
-                            <span className="list-date">
-                              {date(f.modified)}
+                            <span
+                              className="list-date"
+                              data-tooltip={
+                                f.webSource ? ui("采集时间") : ui("修改时间")
+                              }
+                            >
+                              {date(f.webSource?.capturedAt || f.modified)}
                             </span>
-                            <span className="list-size">{size(f.bytes)}</span>
+                            <span className="list-size">
+                              {f.kind === "web" ? "—" : size(f.bytes)}
+                            </span>
                           </button>
                         )}
                       </FileTagsHover>
@@ -449,7 +514,8 @@ export function FilesView({
                   disabled={loading}
                 >
                   {loading ? <LoaderCircle className="spin" size={16} /> : null}
-                  加载更多 · 已显示 {files.length} / {total}
+                  {ui("加载更多 · 已显示")}
+                  {files.length} / {total}
                 </button>
               </div>
             )}
@@ -464,7 +530,7 @@ export function TagPicker({
   tags,
   onPick,
   onCreate,
-  placeholder = "添加标签",
+  placeholder = ui("添加标签"),
   busy = false,
   appliedIds = [],
 }: {
@@ -490,10 +556,14 @@ export function TagPicker({
     (t) =>
       t.createdBy !== "folder" &&
       !applied.has(t.id) &&
-      t.name.toLocaleLowerCase().includes(text.trim().toLocaleLowerCase()),
+      [t.name, ...(t.aliases || [])].some((name) =>
+        name.toLocaleLowerCase().includes(text.trim().toLocaleLowerCase()),
+      ),
   );
-  const exact = tags.find(
-    (t) => t.name.toLocaleLowerCase() === text.trim().toLocaleLowerCase(),
+  const exact = tags.find((t) =>
+    [t.name, ...(t.aliases || [])].some(
+      (name) => name.toLocaleLowerCase() === text.trim().toLocaleLowerCase(),
+    ),
   );
   function submit() {
     if (!text.trim()) return;
@@ -551,11 +621,12 @@ export function TagPicker({
           {text.trim() && !exact && (
             <button className="create-tag" onClick={submit}>
               <Plus size={14} />
-              创建“{text.trim()}”
+              {ui("创建“")}
+              {text.trim()}”
             </button>
           )}
           {!text.trim() && !choices.length && (
-            <div className="subtle">输入标签名称，按 Enter 创建</div>
+            <div className="subtle">{ui("输入标签名称，按 Enter 创建")}</div>
           )}
         </div>
       )}
@@ -576,11 +647,14 @@ export function Inspector({
   onReveal,
   onCopy,
   onRelink,
+  onOpenSource,
   onPreview,
+  onClose,
   onAnalyze,
   onCancelAI,
   onConfirmAI,
   onConfigureAI,
+  onContentSaved,
   busy,
 }: {
   files: LocalFile[];
@@ -595,16 +669,23 @@ export function Inspector({
   onReveal: () => void;
   onCopy: () => void;
   onRelink: () => void;
+  onOpenSource: () => void;
   onPreview: () => void;
+  onClose: () => void;
   onAnalyze: () => void;
   onCancelAI: () => void;
   onConfirmAI: (tag: Tag) => void;
   onConfigureAI: () => void;
+  onContentSaved: (undoId?: string) => void;
   busy: boolean;
 }) {
   const f = files[0];
-  const [tab, setTab] = useState("annotation");
+  const [tab, setTab] = useState("content");
   const tagsContainer = useRef<HTMLDivElement>(null);
+  const metadata = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    if (metadata.current) metadata.current.scrollTop = 0;
+  }, [tab, files.map((file) => file.id).join(":")]);
   const allTags = [
     ...new Map(files.flatMap((f) => f.tags).map((t) => [t.id, t])).values(),
   ];
@@ -621,266 +702,440 @@ export function Inspector({
     return (
       <aside className="inspector inspector-empty">
         <Tags size={32} strokeWidth={1} />
-        <p>选择文件查看标注</p>
+        <p>{ui("选择文件查看内容")}</p>
       </aside>
     );
   return (
-    <aside className="inspector">
-      <div className="inspector-heading">
-        <span>{files.length > 1 ? "批量标注" : "文件详情"}</span>
-        <small>
-          {files.length > 1 ? `${files.length} 个文件` : kindNames[f.kind]}
-        </small>
-      </div>
-      {files.length === 1 ? (
-        <>
-          <button
-            className="detail-preview"
-            onClick={onPreview}
-            aria-label="放大预览"
+    <aside
+      className={`inspector inspector-content-layout ${tab === "content" && files.length === 1 ? "is-content-only" : ""}`}
+    >
+      {files.length > 1 && (
+        <div className="inspector-heading">
+          <span>{files.length > 1 ? ui("批量标注") : ui("文件详情")}</span>
+          <div className="inspector-header-actions">
+            <small>
+              {files.length} {ui("个文件")}
+            </small>
+            <button
+              className="icon-button"
+              aria-label={ui("关闭文件详情")}
+              data-tooltip={ui("关闭文件详情")}
+              onClick={onClose}
+            >
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+      )}
+      {files.length === 1 && (
+        <div className="inspector-tabs-bar">
+          <RubberSegment
+            index={["content", "annotation", "info"].indexOf(tab)}
+            className="detail-tabs"
+            role="tablist"
+            aria-label={ui("文件详情")}
+            onKeyDown={(e) => {
+              const tabs = ["content", "annotation", "info"];
+              const current = tabs.indexOf(tab);
+              const index =
+                e.key === "ArrowRight"
+                  ? (current + 1) % 3
+                  : e.key === "ArrowLeft"
+                    ? (current + 2) % 3
+                    : e.key === "Home"
+                      ? 0
+                      : e.key === "End"
+                        ? 2
+                        : -1;
+              if (index < 0) return;
+              e.preventDefault();
+              e.stopPropagation();
+              setTab(tabs[index]);
+              e.currentTarget
+                .querySelectorAll<HTMLButtonElement>("button")
+                [index]?.focus();
+            }}
           >
-            <Preview file={f} />
-            <span className="preview-expand">
-              <Maximize2 size={14} />
-            </span>
-            {f.kind === "pdf" && <span className="pdf-first">PDF 首页</span>}
-          </button>
-          <h2 className="detail-filename">{f.name}</h2>
-          <div className="detail-meta">
-            {size(f.bytes)}
-            <span>·</span>
-            {date(f.modified)}
-            <span
-              className={`availability ${f.status === "available" ? "good" : "bad"}`}
-            >
-              {statusNames[f.status]}
-            </span>
-          </div>
-          {f.status !== "available" && (
-            <div className="inline-warning">
-              <AlertCircle size={16} />
-              <span>
-                {f.error}
-                <button onClick={onRelink}>重新关联文件</button>
-              </span>
-            </div>
-          )}
-          <div className="detail-actions">
             <button
-              className="button primary"
-              onClick={onOpen}
-              disabled={f.status !== "available"}
+              role="tab"
+              id="inspector-tab-content"
+              tabIndex={tab === "content" ? 0 : -1}
+              aria-controls="inspector-panel-content"
+              aria-selected={tab === "content"}
+              className={tab === "content" ? "active" : ""}
+              onClick={() => setTab("content")}
             >
-              <ArrowUpRight size={15} />
-              打开文件
+              {ui("内容")}
             </button>
             <button
-              className="icon-button bordered"
-              aria-label="在文件夹中显示"
-              title="在文件夹中显示"
-              onClick={onReveal}
-            >
-              <FolderOpen size={16} />
-            </button>
-            <button
-              className="icon-button bordered"
-              aria-label="复制文件路径"
-              title="复制路径"
-              onClick={onCopy}
-            >
-              <Copy size={15} />
-            </button>
-          </div>
-          <div className="detail-tabs">
-            <button
+              role="tab"
+              id="inspector-tab-annotation"
+              tabIndex={tab === "annotation" ? 0 : -1}
+              aria-controls="inspector-panel-annotation"
+              aria-selected={tab === "annotation"}
               className={tab === "annotation" ? "active" : ""}
               onClick={() => setTab("annotation")}
             >
-              标注
+              {ui("标注")}
             </button>
             <button
+              role="tab"
+              id="inspector-tab-info"
+              tabIndex={tab === "info" ? 0 : -1}
+              aria-controls="inspector-panel-info"
+              aria-selected={tab === "info"}
               className={tab === "info" ? "active" : ""}
               onClick={() => setTab("info")}
             >
-              文件信息
+              {ui("信息")}
             </button>
-          </div>
-        </>
-      ) : (
-        <div className="batch-summary">
-          <div className="batch-glyph">
-            <CheckCheck size={30} />
-          </div>
-          <h2>已选择 {files.length} 个文件</h2>
-          <p>标签将应用到全部所选文件</p>
+          </RubberSegment>
+          <button
+            className="icon-button"
+            aria-label={ui("打开文件")}
+            data-tooltip={ui("打开文件")}
+            onClick={onOpen}
+            disabled={f.status !== "available"}
+          >
+            <ExternalLink size={16} />
+          </button>
+          <button
+            className="icon-button"
+            aria-label={ui("放大预览")}
+            data-tooltip={ui("放大预览")}
+            onClick={onPreview}
+          >
+            <Maximize2 size={16} />
+          </button>
+          <button
+            className="icon-button"
+            aria-label={ui("关闭文件详情")}
+            data-tooltip={ui("关闭文件详情")}
+            onClick={onClose}
+          >
+            <X size={16} />
+          </button>
         </div>
       )}
-      {tab === "annotation" || files.length > 1 ? (
-        <>
-          <div className="inspector-ai">
-            <div className="inspector-ai-actions">
-              <button
-                className="button quiet"
-                disabled={busy || analyzing}
-                onClick={onAnalyze}
-                title="更新待确认的 AI 标签，保留手工、文件夹及已确认标签"
-              >
-                <Sparkles size={14} />
-                AI{" "}
-                {analyzing
-                  ? "识别中"
-                  : retry
-                    ? "重试识别"
-                    : files.length > 1
-                      ? "批量识别"
-                      : f.aiTask
-                        ? "重新识别"
-                        : "识别"}
-              </button>
-              <button className="quiet-link" onClick={onConfigureAI}>
-                设置
-              </button>
-            </div>
-            <AiTaskStatus files={files} busy={busy} onCancel={onCancelAI} />
-          </div>
-          <div className="field-heading">
-            <label>标签</label>
-            <span>{allTags.length}</span>
-          </div>
-          <div className="editable-tags" ref={tagsContainer}>
-            {allTags.map((t) => {
-              const count = files.filter((f) =>
-                f.tags.some((x) => x.id === t.id),
-              ).length;
-              return (
-                <span
-                  className="editable-tag"
-                  key={t.id}
-                  data-motion-tag={t.id}
-                >
-                  <span>{t.name}</span>
-                  {files.length === 1 && <TagSource tag={t} />}
-                  {files.length > 1 &&
-                    files.some((f) =>
-                      f.tags.some(
-                        (x) =>
-                          x.id === t.id &&
-                          x.source === "ai" &&
-                          !x.ai?.confirmed,
-                      ),
-                    ) && (
-                      <span
-                        className="source-badge source-ai"
-                        title="部分文件由 AI 标注"
-                      >
-                        AI
-                      </span>
-                    )}
-                  {files.length === 1 &&
-                    t.source === "ai" &&
-                    !t.ai?.confirmed && (
-                      <button
-                        aria-label={`确认AI标签${t.name}`}
-                        title="确认后，重新识别也会保留此标签"
-                        disabled={busy}
-                        onClick={() => onConfirmAI(t)}
-                      >
-                        <Check size={12} />
-                      </button>
-                    )}
-                  {files.length > 1 && count !== files.length && (
-                    <small>
-                      {count}/{files.length}
-                    </small>
-                  )}
-                  {count !== files.length && (
-                    <button
-                      aria-label={`将${t.name}添加到全部`}
-                      onClick={() => onTag(t, true)}
-                      disabled={busy}
-                    >
-                      <Plus size={12} />
-                    </button>
-                  )}
-                  <button
-                    aria-label={`移除标签${t.name}`}
-                    onClick={() => onTag(t, false)}
-                    disabled={busy}
-                  >
-                    <X size={12} />
-                  </button>
-                </span>
-              );
-            })}
-          </div>
-          <TagPicker
-            tags={tags}
-            appliedIds={tags
-              .filter((tag) =>
-                files.every((file) => file.tags.some((t) => t.id === tag.id)),
-              )
-              .map((tag) => tag.id)}
-            onPick={(t) => onTag(t, true)}
-            onCreate={onCreateTag}
-            busy={busy}
-          />
-          {files.length === 1 && draft && (
+      <div className="inspector-tab-body">
+        <div
+          ref={metadata}
+          hidden={files.length === 1 && tab === "content"}
+          role={files.length === 1 ? "tabpanel" : undefined}
+          id={tab === "content" ? undefined : `inspector-panel-${tab}`}
+          aria-labelledby={`inspector-tab-${tab}`}
+          className={`inspector-metadata ${files.length > 1 ? "is-batch" : ""}`}
+        >
+          {files.length === 1 && tab !== "content" ? (
             <>
-              <div className="field-heading">
-                <label htmlFor="file-note">备注</label>
-                <span className={draft.error ? "error-label" : ""}>
-                  {draft.saving
-                    ? "保存中…"
-                    : draft.error
-                      ? "保存失败"
-                      : draft.text !== draft.saved
-                        ? "待保存"
-                        : "已保存"}
+              <div className="detail-filename-row">
+                <h2 className="detail-filename">{f.name}</h2>
+                <div className="detail-actions">
+                  <button
+                    className="icon-button bordered"
+                    aria-label={ui("在文件夹中显示")}
+                    data-tooltip={ui("在文件夹中显示")}
+                    onClick={onReveal}
+                  >
+                    <FolderOpen size={16} />
+                  </button>
+                  <button
+                    className="icon-button bordered"
+                    aria-label={ui("复制文件路径")}
+                    data-tooltip={ui("复制路径")}
+                    onClick={onCopy}
+                  >
+                    <Copy size={15} />
+                  </button>
+                </div>
+              </div>
+              <div className="detail-meta">
+                {size(f.bytes)}
+                <span>·</span>
+                {date(f.modified)}
+                <span
+                  className={`availability ${f.status === "available" ? "good" : "bad"}`}
+                >
+                  {statusNames[f.status]}
                 </span>
               </div>
-              <textarea
-                id="file-note"
-                className="note-input"
-                placeholder="为什么保存这份文件？记下用途、想法或下一步。"
-                value={draft.text}
-                onChange={(e) => onNote(e.target.value)}
-                onBlur={onFlush}
-                maxLength={20000}
-              />
-              <span className="note-caption">仅在本机保存 · 自动保存备注</span>
-              {draft.error && (
-                <div className="note-error" role="alert">
-                  {draft.error}
-                  <div>
-                    <button onClick={onFlush}>重试保存</button>
-                    <button onClick={onReloadNote}>重新读取备注</button>
-                  </div>
+              {f.status !== "available" && (
+                <div className="inline-warning">
+                  <AlertCircle size={16} />
+                  <span>
+                    {message(f.error)}
+                    <button onClick={onRelink}>{ui("重新关联文件")}</button>
+                  </span>
                 </div>
               )}
             </>
-          )}
-        </>
-      ) : (
-        <dl className="file-properties">
-          <dt>完整路径</dt>
-          <dd className="full-path">{f.path}</dd>
-          <dt>文件类型</dt>
-          <dd>{f.extension.toUpperCase() || "未知类型"}</dd>
-          <dt>文件大小</dt>
-          <dd>{size(f.bytes)}</dd>
-          <dt>修改时间</dt>
-          <dd>{new Date(f.modified).toLocaleString("zh-CN")}</dd>
-          <dt>加入时间</dt>
-          <dd>{new Date(f.added).toLocaleString("zh-CN")}</dd>
-          <dt>文件关联</dt>
-          <dd>
-            <button className="button quiet" onClick={onRelink}>
-              <Link2 size={14} />
-              重新关联
-            </button>
-          </dd>
-        </dl>
-      )}
+          ) : files.length > 1 ? (
+            <div className="batch-summary">
+              <div className="batch-glyph">
+                <CheckCheck size={30} />
+              </div>
+              <h2>
+                {ui("已选择")}
+                {files.length} {ui("个文件")}
+              </h2>
+              <p>{ui("标签将应用到全部所选文件")}</p>
+            </div>
+          ) : null}
+
+          {tab === "annotation" || files.length > 1 ? (
+            <>
+              <div className="inspector-ai">
+                <div className="inspector-ai-actions">
+                  <button
+                    className="button quiet"
+                    disabled={busy || analyzing}
+                    onClick={onAnalyze}
+                    data-tooltip={ui(
+                      "更新待确认的 AI 标签，保留手工、文件夹及已确认标签",
+                    )}
+                  >
+                    <Sparkles size={14} />
+                    AI{" "}
+                    {analyzing
+                      ? ui("识别中")
+                      : retry
+                        ? ui("重试识别")
+                        : files.length > 1
+                          ? ui("批量识别")
+                          : f.aiTask
+                            ? ui("重新识别")
+                            : ui("识别")}
+                  </button>
+                  <button className="quiet-link" onClick={onConfigureAI}>
+                    {ui("设置")}
+                  </button>
+                </div>
+                <AiTaskStatus files={files} busy={busy} onCancel={onCancelAI} />
+              </div>
+              <div className="field-heading">
+                <label>{ui("标签")}</label>
+                <span>{allTags.length}</span>
+              </div>
+              <div className="editable-tags" ref={tagsContainer}>
+                {allTags.map((t) => {
+                  const count = files.filter((f) =>
+                    f.tags.some((x) => x.id === t.id),
+                  ).length;
+                  return (
+                    <span
+                      className="editable-tag"
+                      key={t.id}
+                      data-motion-tag={t.id}
+                    >
+                      <span>{t.name}</span>
+                      {files.length === 1 && <TagSource tag={t} />}
+                      {files.length > 1 &&
+                        files.some((f) =>
+                          f.tags.some(
+                            (x) =>
+                              x.id === t.id &&
+                              x.source === "ai" &&
+                              !x.ai?.confirmed,
+                          ),
+                        ) && (
+                          <span
+                            className="source-badge source-ai"
+                            data-tooltip={ui("部分文件由 AI 标注")}
+                          >
+                            AI
+                          </span>
+                        )}
+                      {files.length === 1 &&
+                        t.source === "ai" &&
+                        !t.ai?.confirmed && (
+                          <button
+                            aria-label={tf("确认AI标签{0}", t.name)}
+                            data-tooltip={ui("确认后，重新识别也会保留此标签")}
+                            disabled={busy}
+                            onClick={() => onConfirmAI(t)}
+                          >
+                            <Check size={12} />
+                          </button>
+                        )}
+                      {files.length > 1 && count !== files.length && (
+                        <small>
+                          {count}/{files.length}
+                        </small>
+                      )}
+                      {count !== files.length && (
+                        <button
+                          aria-label={tf("将{0}添加到全部", t.name)}
+                          onClick={() => onTag(t, true)}
+                          disabled={busy}
+                        >
+                          <Plus size={12} />
+                        </button>
+                      )}
+                      <button
+                        aria-label={tf("移除标签{0}", t.name)}
+                        onClick={() => onTag(t, false)}
+                        disabled={busy}
+                      >
+                        <X size={12} />
+                      </button>
+                    </span>
+                  );
+                })}
+              </div>
+              <TagPicker
+                tags={tags}
+                appliedIds={tags
+                  .filter((tag) =>
+                    files.every((file) =>
+                      file.tags.some((t) => t.id === tag.id),
+                    ),
+                  )
+                  .map((tag) => tag.id)}
+                onPick={(t) => onTag(t, true)}
+                onCreate={onCreateTag}
+                busy={busy}
+              />
+              {files.length === 1 && draft && (
+                <>
+                  <div className="field-heading">
+                    <label htmlFor="file-note">{ui("备注")}</label>
+                    <span className={draft.error ? "error-label" : ""}>
+                      {draft.saving
+                        ? ui("保存中…")
+                        : draft.error
+                          ? ui("保存失败")
+                          : draft.text !== draft.saved
+                            ? ui("待保存")
+                            : ui("已保存")}
+                    </span>
+                  </div>
+                  <textarea
+                    id="file-note"
+                    className="note-input"
+                    placeholder={ui(
+                      "为什么保存这份文件？记下用途、想法或下一步。",
+                    )}
+                    value={draft.text}
+                    onChange={(e) => onNote(e.target.value)}
+                    onBlur={onFlush}
+                    maxLength={20000}
+                  />
+                  <span className="note-caption">
+                    {ui("仅在本机保存 · 自动保存备注")}
+                  </span>
+                  {draft.error && (
+                    <div className="note-error" role="alert">
+                      {message(draft.error)}
+                      <div>
+                        <button onClick={onFlush}>{ui("重试保存")}</button>
+                        <button onClick={onReloadNote}>
+                          {ui("重新读取备注")}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </>
+          ) : tab === "info" ? (
+            <dl className="file-properties">
+              {f.webSource && (
+                <>
+                  <dt>{ui("来源链接")}</dt>
+                  <dd className="full-path">
+                    {f.webSource.url}
+
+                    <button className="button quiet" onClick={onOpenSource}>
+                      <ExternalLink size={14} />
+                      {ui("打开来源网页")}
+                    </button>
+                  </dd>
+                  {f.webSource.image && (
+                    <>
+                      <dt>{ui("图片地址")}</dt>
+                      <dd className="full-path">{f.webSource.image.url}</dd>
+                      {f.webSource.image.finalUrl !== f.webSource.image.url && (
+                        <>
+                          <dt>{ui("实际下载地址")}</dt>
+                          <dd className="full-path">
+                            {f.webSource.image.finalUrl}
+                          </dd>
+                        </>
+                      )}
+                      <dt>{ui("图片尺寸")}</dt>
+                      <dd>
+                        {f.webSource.image.width} × {f.webSource.image.height}
+                      </dd>
+                      <dt>{ui("图片校验")}</dt>
+                      <dd className="full-path">{f.webSource.image.sha256}</dd>
+                    </>
+                  )}
+                  <dt>{ui("采集时间")}</dt>
+                  <dd>
+                    {new Date(f.webSource.capturedAt).toLocaleString(
+                      currentLanguage(),
+                    )}
+                  </dd>
+                </>
+              )}
+              <dt>
+                {f.kind === "web" ? ui("本机资料描述文件") : ui("完整路径")}
+              </dt>
+              <dd className="full-path">{f.path}</dd>
+              <dt>{ui("文件类型")}</dt>
+              <dd>
+                {f.kind === "web"
+                  ? ui("网页资料")
+                  : f.extension.toUpperCase() || ui("未知类型")}
+              </dd>
+              <dt>
+                {f.kind === "web" ? ui("资料描述文件大小") : ui("文件大小")}
+              </dt>
+              <dd>{size(f.bytes)}</dd>
+              {f.kind !== "web" && (
+                <>
+                  <dt>{ui("修改时间")}</dt>
+                  <dd>
+                    {new Date(f.modified).toLocaleString(currentLanguage())}
+                  </dd>
+                </>
+              )}
+              <dt>{ui("加入时间")}</dt>
+              <dd>{new Date(f.added).toLocaleString(currentLanguage())}</dd>
+              <dt>{ui("文件关联")}</dt>
+              <dd>
+                {f.kind === "web" ? (
+                  ui("网页资料通过来源链接访问")
+                ) : (
+                  <>
+                    <button
+                      className="button quiet"
+                      onClick={onRelink}
+                      disabled={f.kind === "web"}
+                    >
+                      <Link2 size={14} />
+                      {ui("重新关联")}
+                    </button>
+                  </>
+                )}
+              </dd>
+            </dl>
+          ) : null}
+        </div>
+        {files.length === 1 && (
+          <div
+            className="inspector-document"
+            aria-hidden={tab !== "content"}
+            inert={tab !== "content"}
+            data-active={tab === "content"}
+            role="tabpanel"
+            id="inspector-panel-content"
+            aria-labelledby="inspector-tab-content"
+          >
+            <ContentReader key={f.id} file={f} onSaved={onContentSaved} />
+          </div>
+        )}
+      </div>
     </aside>
   );
 }
@@ -900,9 +1155,7 @@ export function QuickTagPanel({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const lock = useRef(false);
-  const exact = tags.find(
-    (t) => t.name.toLocaleLowerCase() === name.trim().toLocaleLowerCase(),
-  );
+  const exact = tags.find((t) => tagMatches(t, name));
   async function apply(value: string) {
     if (!value.trim() || lock.current || (!count && exact)) return;
     lock.current = true;
@@ -920,7 +1173,7 @@ export function QuickTagPanel({
   return (
     <div className="modal-content quick-tag-panel">
       <p className="muted">
-        {count ? `应用到 ${count} 个所选文件` : "新建到标签库"}
+        {count ? tf("应用到 {0} 个所选文件", count) : ui("新建到标签库")}
       </p>
       <form
         className="manager-create"
@@ -931,8 +1184,8 @@ export function QuickTagPanel({
       >
         <input
           autoFocus
-          aria-label="标签名称"
-          placeholder={count ? "搜索或新建标签" : "新标签名称"}
+          aria-label={ui("标签名称")}
+          placeholder={count ? ui("搜索或新建标签") : ui("新标签名称")}
           value={name}
           disabled={pending}
           onKeyDown={(e) => {
@@ -950,7 +1203,7 @@ export function QuickTagPanel({
           ) : (
             <Plus size={15} />
           )}{" "}
-          {count ? "添加" : "创建"}
+          {count ? ui("添加") : ui("创建")}
         </button>
       </form>
       {error && (
@@ -961,11 +1214,7 @@ export function QuickTagPanel({
       {count > 0 ? (
         <div className="quick-tag-choices">
           {tags
-            .filter((t) =>
-              t.name
-                .toLocaleLowerCase()
-                .includes(name.trim().toLocaleLowerCase()),
-            )
+            .filter((t) => tagSearch(t, name))
             .map((t) => (
               <button
                 key={t.id}
@@ -976,10 +1225,17 @@ export function QuickTagPanel({
                 <span>{t.name}</span>
               </button>
             ))}
-          {!tags.length && <p className="muted">输入名称即可新建并标注</p>}
+          {!tags.length && (
+            <p className="muted">{ui("输入名称即可新建并标注")}</p>
+          )}
         </div>
       ) : (
-        exact && <p className="muted">此标签已存在</p>
+        exact && (
+          <p className="muted">
+            {ui("已对应标签「")}
+            {exact.name}」
+          </p>
+        )
       )}
       <button
         className="button quiet quick-tag-manage"
@@ -987,7 +1243,7 @@ export function QuickTagPanel({
         onClick={onManage}
       >
         <Edit3 size={14} />
-        管理标签
+        {ui("管理标签")}
       </button>
     </div>
   );
@@ -1000,6 +1256,8 @@ export function TagManager({
   onRename,
   onDelete,
   onExport,
+  onMerge,
+  onAliases,
   busy,
 }: {
   tags: Tag[];
@@ -1008,6 +1266,8 @@ export function TagManager({
   onRename: (t: Tag, s: string) => Promise<void>;
   onDelete: (t: Tag) => void;
   onExport: (t: Tag) => void;
+  onMerge: (t: Tag) => void;
+  onAliases: (t: Tag) => void;
   busy: boolean;
 }) {
   const [query, setQuery] = useState("");
@@ -1034,12 +1294,12 @@ export function TagManager({
   }
   return (
     <div className="modal-content">
-      <p className="muted">重命名会同步到所有关联文件</p>
+      <p className="muted">{ui("重命名会同步到所有关联文件")}</p>
       <form
         className="manager-create"
         onSubmit={(e) => {
           e.preventDefault();
-          if (query.trim())
+          if (query.trim() && !tags.some((t) => tagMatches(t, query)))
             void submit(
               () => onCreate(query.trim()),
               () => setQuery(""),
@@ -1047,8 +1307,8 @@ export function TagManager({
         }}
       >
         <input
-          aria-label="新标签名称"
-          placeholder="搜索或新建标签"
+          aria-label={ui("新标签名称")}
+          placeholder={ui("搜索或新建标签")}
           value={query}
           disabled={disabled}
           onChange={(e) => setQuery(e.target.value)}
@@ -1057,9 +1317,14 @@ export function TagManager({
               e.preventDefault();
           }}
         />
-        <button className="button primary" disabled={disabled || !query.trim()}>
+        <button
+          className="button primary"
+          disabled={
+            disabled || !query.trim() || tags.some((t) => tagMatches(t, query))
+          }
+        >
           <Plus size={15} />
-          创建
+          {ui("创建")}
         </button>
       </form>
       {error && (
@@ -1069,13 +1334,7 @@ export function TagManager({
       )}
       <div className="tag-manager-list">
         {tags
-          .filter(
-            (t) =>
-              t.id === editing ||
-              t.name
-                .toLocaleLowerCase()
-                .includes(query.trim().toLocaleLowerCase()),
-          )
+          .filter((t) => t.id === editing || tagSearch(t, query))
           .map((t) => (
             <div className="tag-manager-row" key={t.id}>
               <Tags size={16} />
@@ -1092,7 +1351,7 @@ export function TagManager({
                 >
                   <input
                     autoFocus
-                    aria-label="标签新名称"
+                    aria-label={ui("标签新名称")}
                     value={value}
                     disabled={disabled}
                     onChange={(e) => setValue(e.target.value)}
@@ -1110,8 +1369,8 @@ export function TagManager({
                   />
                   <button
                     className="icon-button"
-                    aria-label="确认重命名"
-                    title="保存"
+                    aria-label={ui("确认重命名")}
+                    data-tooltip={ui("保存")}
                     disabled={disabled || !value.trim()}
                   >
                     <Check size={16} />
@@ -1119,8 +1378,8 @@ export function TagManager({
                   <button
                     type="button"
                     className="icon-button"
-                    aria-label="取消重命名"
-                    title="取消"
+                    aria-label={ui("取消重命名")}
+                    data-tooltip={ui("取消")}
                     disabled={disabled}
                     onClick={() => {
                       setEditing("");
@@ -1134,8 +1393,8 @@ export function TagManager({
                 <>
                   <button
                     className="manager-tag-name"
-                    title="重命名标签"
-                    aria-label={`重命名${t.name}`}
+                    data-tooltip={ui("重命名标签")}
+                    aria-label={tf("重命名{0}", t.name)}
                     disabled={disabled}
                     onClick={() => {
                       setEditing(t.id);
@@ -1143,15 +1402,62 @@ export function TagManager({
                       setError("");
                     }}
                   >
-                    <span>{t.name}</span>
+                    <span data-tooltip={(t.aliases ?? []).join("、")}>
+                      {t.name}
+                      {!!t.aliases?.length && (
+                        <em className="alias-count">
+                          {t.aliases.length} {ui("别名")}
+                        </em>
+                      )}
+                    </span>
                     <TagSource tag={t} pool />
                     <Edit3 size={13} />
                   </button>
-                  <small>{t.count} 个文件</small>
+                  <small>
+                    {t.count} {ui("个文件")}
+                  </small>
                   <button
                     className="icon-button"
-                    title="导出此标签的文件"
-                    aria-label={`导出标签${t.name}的文件`}
+                    aria-label={tf("管理{0}的别名", t.name)}
+                    data-tooltip={
+                      t.createdBy === "folder"
+                        ? ui("文件夹标签不设置别名")
+                        : tf(
+                            "规范名称与别名{0}",
+                            t.aliases?.length
+                              ? tf(" · {0} 个", t.aliases.length)
+                              : "",
+                          )
+                    }
+                    disabled={disabled || t.createdBy === "folder"}
+                    onClick={() => onAliases(t)}
+                  >
+                    <Link2 size={14} />
+                  </button>
+                  <button
+                    className="icon-button"
+                    aria-label={tf("合并{0}", t.name)}
+                    data-tooltip={
+                      t.createdBy === "folder"
+                        ? ui("文件夹标签不能合并")
+                        : ui("合并到其他标签")
+                    }
+                    disabled={
+                      disabled ||
+                      t.createdBy === "folder" ||
+                      !tags.some(
+                        (other) =>
+                          other.id !== t.id && other.createdBy !== "folder",
+                      )
+                    }
+                    onClick={() => onMerge(t)}
+                  >
+                    <Tags size={14} />
+                  </button>
+                  <button
+                    className="icon-button"
+                    data-tooltip={ui("导出此标签的文件")}
+                    aria-label={tf("导出标签{0}的文件", t.name)}
                     disabled={disabled || t.count === 0}
                     onClick={() => onExport(t)}
                   >
@@ -1159,7 +1465,7 @@ export function TagManager({
                   </button>
                   <button
                     className="icon-button"
-                    aria-label={`删除${t.name}`}
+                    aria-label={tf("删除{0}", t.name)}
                     onClick={() => onDelete(t)}
                     disabled={disabled}
                   >
@@ -1170,7 +1476,9 @@ export function TagManager({
             </div>
           ))}
       </div>
-      {tags.length === 0 && <div className="simple-empty">暂无标签</div>}
+      {tags.length === 0 && (
+        <div className="simple-empty">{ui("暂无标签")}</div>
+      )}
     </div>
   );
 }
@@ -1182,6 +1490,11 @@ export function SettingsPanel({
   setTheme,
   density,
   setDensity,
+  showColumnControls,
+  setShowColumnControls,
+  onAppearanceChange,
+  onRepair,
+  onWatch,
   onBackup,
   onRestore,
   onPackageExport,
@@ -1197,6 +1510,14 @@ export function SettingsPanel({
   setTheme: (s: string) => void;
   density: string;
   setDensity: (s: string) => void;
+  onAppearanceChange: (
+    key: "language" | "accentColor" | "uiFontSize" | "tagDropTilt",
+    value: string | number | boolean,
+  ) => void;
+  showColumnControls: boolean;
+  setShowColumnControls: (value: boolean) => void;
+  onRepair: () => void;
+  onWatch: () => void;
   onBackup: () => void;
   onRestore: () => void;
   onPackageExport: () => void;
@@ -1208,29 +1529,28 @@ export function SettingsPanel({
 }) {
   return (
     <div className="modal-content settings-content">
-      <section>
+      <SettingsSection title={ui("使用说明")}>
         <div className="setting-row">
           <div>
-            <strong>使用说明</strong>
-            <p>查看文件导入、标签和资料交接的基本操作</p>
+            <strong>{ui("使用说明")}</strong>
+            <p>{ui("查看文件导入、标签和资料交接的基本操作")}</p>
           </div>
           <button className="button" onClick={onHelp}>
-            查看使用说明
+            {ui("查看使用说明")}
           </button>
         </div>
-      </section>
-      <section>
-        <h3>外观</h3>
+      </SettingsSection>
+      <SettingsSection title={ui("外观")}>
         <div className="setting-row">
           <div>
-            <strong>外观</strong>
-            <p>跟随系统，或选择固定主题</p>
+            <strong>{ui("外观")}</strong>
+            <p>{ui("跟随系统，或选择固定主题")}</p>
           </div>
           <div className="segmented">
             {[
-              ["system", Monitor, "系统"],
-              ["light", Sun, "浅色"],
-              ["dark", Moon, "深色"],
+              ["system", Monitor, ui("系统")],
+              ["light", Sun, ui("浅色")],
+              ["dark", Moon, ui("深色")],
             ].map(([value, Icon, label]) => {
               const I = Icon as typeof Sun;
               return (
@@ -1240,7 +1560,7 @@ export function SettingsPanel({
                   onClick={() => setTheme(String(value))}
                 >
                   <I size={14} />
-                  {String(label)}
+                  {ui(String(label))}
                 </button>
               );
             })}
@@ -1248,65 +1568,181 @@ export function SettingsPanel({
         </div>
         <div className="setting-row">
           <div>
-            <strong>文件卡片密度</strong>
-            <p>调整浏览时的留白</p>
+            <strong>{ui("主题颜色")}</strong>
+            <p>{ui("主题色同步到工作台与标签浮窗")}</p>
+          </div>
+          <div
+            className="accent-choices"
+            role="group"
+            aria-label={ui("主题颜色")}
+          >
+            {Object.entries(accentColors).map(([id, color]) => (
+              <WarmTooltip
+                key={id}
+                text={ui(color.name)}
+                detail={color.light.toUpperCase()}
+                swatch={color.light}
+              >
+                <button
+                  data-accent-choice={id}
+                  className="accent-choice"
+                  aria-label={ui(color.name)}
+                  aria-pressed={(boot.settings.accentColor || DEFAULT_ACCENT_COLOR) === id}
+                  style={{ "--swatch": color.light } as React.CSSProperties}
+                  onClick={() => onAppearanceChange("accentColor", id)}
+                >
+                  <span />
+                </button>
+              </WarmTooltip>
+            ))}
+          </div>
+        </div>
+        <div className="setting-row">
+          <div>
+            <strong>{ui("界面语言")}</strong>
+            <p>{ui("不改变文件、标签名称或备注")}</p>
           </div>
           <GlideSelect
-            ariaLabel="文件卡片密度"
-            value={density}
-            onChange={setDensity}
+            ariaLabel={ui("界面语言")}
+            value={boot.settings.language || "zh-CN"}
+            onChange={(value) => onAppearanceChange("language", value)}
             options={[
-              { value: "comfortable", label: "舒展" },
-              { value: "compact", label: "紧凑" },
+              { value: "zh-CN", label: "简体中文" },
+              { value: "en", label: "English" },
             ]}
           />
         </div>
-      </section>
+        <div className="setting-row">
+          <div>
+            <strong>{ui("字体大小")}</strong>
+            <p>{ui("调整工作台和标签浮窗的界面文字大小")}</p>
+          </div>
+          <GlideSelect
+            ariaLabel={ui("字体大小")}
+            value={String(boot.settings.uiFontSize || 13)}
+            onChange={(value) =>
+              onAppearanceChange("uiFontSize", Number(value))
+            }
+            options={[
+              { value: "12", label: ui("较小") },
+              { value: "13", label: ui("默认") },
+              { value: "14", label: ui("较大") },
+              { value: "15", label: ui("大") },
+              { value: "16", label: ui("最大") },
+            ]}
+            disabled={busy}
+          />
+        </div>
+        <div className="setting-row">
+          <div>
+            <strong>{ui("显示列数调节")}</strong>
+            <p>{ui("显示瀑布流滑块和列数；隐藏后仍可用 Ctrl＋滚轮调节")}</p>
+          </div>
+          <SquishSwitch
+            ariaLabel={ui("显示列数调节")}
+            checked={showColumnControls}
+            onChange={setShowColumnControls}
+            disabled={busy}
+          />
+        </div>
+        <div className="setting-row">
+          <div>
+            <strong>{ui("标签拖放立体动效")}</strong>
+            <p>{ui("拖动标签经过文件时，卡片跟随鼠标轻微倾斜")}</p>
+          </div>
+          <SquishSwitch
+            ariaLabel={ui("标签拖放立体动效")}
+            checked={boot.settings.tagDropTilt !== false}
+            disabled={busy}
+            onChange={(value) => onAppearanceChange("tagDropTilt", value)}
+          />
+        </div>
+        <div className="setting-row">
+          <div>
+            <strong>{ui("文件卡片密度")}</strong>
+            <p>{ui("调整浏览时的留白")}</p>
+          </div>
+          <GlideSelect
+            ariaLabel={ui("文件卡片密度")}
+            value={density}
+            onChange={setDensity}
+            options={[
+              { value: "comfortable", label: ui("舒展") },
+              { value: "compact", label: ui("紧凑") },
+            ]}
+          />
+        </div>
+      </SettingsSection>
       <AutoTagSettings
         folderEnabled={boot.settings.folderAutoTagging !== false}
       />
-      <section>
-        <h3>资料交接</h3>
-        <p className="muted">携带原文件、标签、备注与收藏，接收后直接使用。</p>
+      <TextIndexSettings />
+      <SemanticSettings />
+      <SettingsSection title={ui("资料交接")}>
+        <p className="muted">
+          {ui("携带原文件、标签、备注与收藏，接收后直接使用。")}
+        </p>
         <div className="settings-buttons">
           <button className="button" onClick={onPackageExport} disabled={busy}>
             <Download size={16} />
-            导出资料包
+            {ui("导出资料包")}
           </button>
           <button className="button" onClick={onPackageImport} disabled={busy}>
             <Upload size={16} />
-            导入资料包
+            {ui("导入资料包")}
           </button>
         </div>
-      </section>
-      <section>
-        <h3>备份与恢复</h3>
+      </SettingsSection>
+      <SettingsSection title={ui("文件位置")}>
+        <div className="setting-row">
+          <div>
+            <strong>{ui("文件夹监听")}</strong>
+            <p>{ui("按规则自动加入新文件，支持暂停与补扫")}</p>
+          </div>
+          <button className="button" onClick={onWatch} disabled={busy}>
+            <FolderOpen size={16} />
+            {ui("管理监听目录")}
+          </button>
+        </div>
+        <div className="setting-row">
+          <div>
+            <strong>{ui("路径修复")}</strong>
+            <p>{ui("文件夹移动、改名或换盘后重新定位文件")}</p>
+          </div>
+          <button className="button" onClick={onRepair} disabled={busy}>
+            <FolderOpen size={16} />
+            {ui("修复文件路径")}
+          </button>
+        </div>
+      </SettingsSection>
+      <BrowserCaptureSettings refreshKey={boot} />
+      <SettingsSection title={ui("备份与恢复")}>
         <p className="muted">
-          备份包含标签、备注和文件位置。原文件需另行备份。
+          {ui("备份包含标签、备注和文件位置。原文件需另行备份。")}
         </p>
         <div className="settings-buttons">
           <button className="button" onClick={onBackup} disabled={busy}>
             <Download size={16} />
-            导出标注备份
+            {ui("导出标注备份")}
           </button>
           <button className="button" onClick={onRestore} disabled={busy}>
             <Upload size={16} />
-            从备份恢复
+            {ui("从备份恢复")}
           </button>
         </div>
-        <p className="subtle">恢复前会自动保存当前库的备份。</p>
+        <p className="subtle">{ui("恢复前会自动保存当前库的备份。")}</p>
         <BackupStatus refreshKey={boot} />
-      </section>
-      <section>
-        <h3>本地存储</h3>
+      </SettingsSection>
+      <SettingsSection title={ui("本地存储")}>
         <div className="setting-row">
           <div>
-            <strong>预览缓存</strong>
-            <p>清理后会自动生成，标签和原文件不受影响</p>
+            <strong>{ui("预览缓存")}</strong>
+            <p>{ui("图片 384 MiB · 文档摘要 128 MiB，自动清理较旧缓存")}</p>
+            <p>{ui("清理后按需生成，标签和原文件不受影响")}</p>
           </div>
           <button className="button quiet" onClick={onClear} disabled={busy}>
             <RefreshCw size={14} />
-            清理
+            {ui("清理")}
           </button>
         </div>
         <div className="data-location">
@@ -1315,18 +1751,24 @@ export function SettingsPanel({
           <button
             className="icon-button"
             onClick={onData}
-            aria-label="打开数据目录"
+            aria-label={ui("打开数据目录")}
           >
             <FolderOpen size={16} />
           </button>
         </div>
-      </section>
+      </SettingsSection>
       <div className="about-line">
-        <span>拾签 {boot.version}</span>
-        <span>本地优先 · 无需账号</span>
+        <span>
+          {ui("拾签")}
+          {boot.version}
+        </span>
+        <span>{ui("本地优先 · 无需账号")}</span>
       </div>
-      <button className="button quiet" onClick={onDiagnostics}>
-        预览诊断报告
+      <button
+        className="button quiet settings-diagnostics-action"
+        onClick={onDiagnostics}
+      >
+        {ui("预览诊断报告")}
       </button>
     </div>
   );
@@ -1345,27 +1787,31 @@ export function ImportDetails({
     <div className="modal-content">
       <div className="import-counts">
         <span>
-          <strong>{job.added}</strong>新增
+          <strong>{job.added}</strong>
+          {ui("新增")}
         </span>
         <span>
-          <strong>{job.existing}</strong>已存在
+          <strong>{job.existing}</strong>
+          {ui("已存在")}
         </span>
         <span>
-          <strong>{job.skipped}</strong>跳过
+          <strong>{job.skipped}</strong>
+          {ui("跳过")}
         </span>
         <span>
-          <strong>{job.failed}</strong>失败
+          <strong>{job.failed}</strong>
+          {ui("失败")}
         </span>
       </div>
       <p className="muted">
         {job.cancelled
-          ? "任务已取消，已加入的文件保留。"
+          ? ui("任务已取消，已加入的文件保留。")
           : job.done
-            ? "加入完成。原文件保持在原位置。"
-            : "正在读取文件信息，缩略图会按需生成。"}
+            ? ui("加入完成。原文件保持在原位置。")
+            : ui("正在读取文件信息，缩略图会按需生成。")}
       </p>
       <p className="subtle">
-        隐藏文件、系统文件、链接目录及应用自身数据会跳过。
+        {ui("隐藏文件、系统文件、链接目录及应用自身数据会跳过。")}
       </p>
       {job.errors.length > 0 && (
         <ul className="import-errors">
@@ -1378,12 +1824,13 @@ export function ImportDetails({
         <>
           <button className="button" disabled={busy} onClick={onRetry}>
             <RefreshCw size={14} />
-            重试失败项
+            {ui("重试失败项")}
           </button>
           {job.failed > job.failedPaths.length && (
             <p className="subtle">
-              本次最多重试已记录的 {job.failedPaths.length}{" "}
-              个路径，其余请重新选择来源文件夹。
+              {ui("本次最多重试已记录的")}
+              {job.failedPaths.length}{" "}
+              {ui("个路径，其余请重新选择来源文件夹。")}
             </p>
           )}
         </>

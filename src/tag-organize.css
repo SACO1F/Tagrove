@@ -1,0 +1,225 @@
+.organize-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.organize-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.merge-flow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.merge-flow > span {
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--accent-soft);
+  font-weight: 600;
+}
+.merge-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  border-radius: 14px;
+  background: var(--hover);
+}
+.merge-summary span {
+  color: var(--muted);
+}
+.collections-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 8px;
+  min-width: 0;
+  height: 39px;
+}
+.collection-items {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 0;
+  min-width: 0;
+  height: 39px;
+  box-sizing: content-box;
+  padding: 0 0 6px;
+  margin-bottom: -6px;
+  overflow-x: auto;
+  scrollbar-width: auto;
+}
+.collection-items::-webkit-scrollbar {
+  height: 6px;
+}
+.collection-items::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 3px;
+}
+.collections-bar:empty {
+  display: none;
+}
+.collection-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 12px;
+  background: var(--accent-soft);
+}
+.collection-chip button {
+  background: none;
+  border: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink);
+  padding: 8px 10px;
+  border-radius: 12px;
+}
+.collection-chip button:hover {
+  background: var(--hover);
+}
+.collection-chip button:last-child {
+  padding-left: 4px;
+}
+.collection-error {
+  margin: 0;
+  padding: 0 30px 12px;
+  color: var(--danger);
+}
+.floating-search {
+  margin: 0 20px 12px;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.floating-search input {
+  min-width: 0;
+  width: 100%;
+  background: color-mix(in srgb, var(--panel) 38%, transparent);
+  border: 0;
+  border-radius: 10px;
+  padding: 9px 11px;
+}
+.aliases-dialog label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: var(--muted);
+}
+.aliases-dialog input,
+.aliases-dialog textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--ink);
+  padding: 11px 12px;
+  border-radius: 12px;
+  font: inherit;
+}
+.aliases-dialog textarea {
+  resize: vertical;
+  min-height: 110px;
+  max-height: 240px;
+}
+.tag-manager-list .tag-manager-row {
+  grid-template-columns: 16px minmax(0, 1fr) 58px repeat(4, 30px);
+}
+.alias-count {
+  font-style: normal;
+  font-size: calc(10px * var(--ui-font-scale, 1));
+  color: var(--muted);
+  margin-left: 7px;
+  white-space: nowrap;
+}
+.collection-manager-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) repeat(4, 30px);
+  gap: 6px;
+  align-items: center;
+}
+.collection-manager-row > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.collection-path {
+  overflow-wrap: anywhere;
+  padding: 12px;
+  background: var(--hover);
+  border-radius: 12px;
+}
+@media (max-width: 540px) {
+  .alias-count {
+    display: none;
+  }
+}
+
+.toolbar-collections {
+  flex: 1 1 0;
+  min-width: 0;
+  position: relative;
+}
+.toolbar-collections .collection-chip,
+.toolbar-collections .collections-bar > button,
+.toolbar-collections .collection-items > button {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.toolbar-collections .collection-error {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 5;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+}
+.app-shell .toolbar,
+.workspace-file-column[data-size="narrow"] .toolbar {
+  flex-wrap: nowrap;
+}
+.toolbar > .filter-button,
+.toolbar > .view-controls {
+  flex-shrink: 0;
+}
+
+.collection-summary h3 {
+  margin: 0 0 14px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
+}
+.collection-summary dl {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+.collection-summary dl > div {
+  display: grid;
+  grid-template-columns: 80px minmax(0, 1fr);
+  gap: 14px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
+  line-height: 1.6;
+}
+.collection-summary dt {
+  color: var(--muted);
+}
+.collection-summary dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.toolbar .filter-button,
+.toolbar .collections-bar > .button {
+  height: 39px;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: 0;
+  padding-bottom: 0;
+}

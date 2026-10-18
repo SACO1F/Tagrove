@@ -1,0 +1,35 @@
+.office-layout {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+.office-layout-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  flex-shrink: 0;
+}
+.office-layout > .pdf-reader,
+.office-layout > .flow-zoom-reader {
+  min-height: 0;
+  flex: 1;
+}
+.office-engine-status {
+  flex: 1;
+  min-height: 0;
+}
+.office-engine-error {
+  flex-shrink: 0;
+  padding: 12px 16px;
+  color: var(--danger);
+  overflow-wrap: anywhere;
+}
+.office-layout .pdf-message {
+  overflow: auto;
+  flex-shrink: 1;
+}

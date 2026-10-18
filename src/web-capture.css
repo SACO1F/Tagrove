@@ -1,0 +1,155 @@
+.web-content {
+  padding: 24px;
+  max-width: 76ch;
+  margin: 0 auto;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.web-content h2 {
+  font-size: calc(21px * var(--ui-font-scale, 1));
+  line-height: 1.4;
+  margin: 16px 0;
+}
+.web-source-kind {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--accent);
+  font-size: calc(12px * var(--ui-font-scale, 1));
+}
+.web-source-link {
+  max-width: 100%;
+  text-align: left;
+  align-items: flex-start;
+}
+.web-source-link span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.web-excerpt {
+  white-space: pre-wrap;
+  font-size: calc(15px * var(--ui-font-scale, 1));
+  line-height: 1.8;
+  margin-top: 24px;
+}
+.capture-extension-id {
+  display: block;
+  overflow-wrap: anywhere;
+  color: var(--muted);
+}
+.web-card-preview {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 12px;
+  text-align: left;
+  color: var(--accent);
+  height: 100%;
+  min-width: 0;
+}
+.web-card-preview p {
+  margin: 0;
+  color: var(--ink);
+  font-size: calc(12px * var(--ui-font-scale, 1));
+  line-height: 1.6;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+.web-card-preview small {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.web-card-preview.is-compact {
+  padding: 0;
+  align-items: center;
+  justify-content: center;
+}
+
+.web-content {
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+  zoom: var(--reader-content-scale, 1);
+}
+.web-source-link {
+  white-space: normal;
+  flex-shrink: 1;
+}
+
+.capture-connection-tools {
+  margin: 14px 0;
+}
+.capture-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0;
+}
+.capture-connection-tools small {
+  display: block;
+  line-height: 1.6;
+}
+.web-reading-tools {
+  padding: 0 0 16px;
+  margin-bottom: 20px;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.web-edit-label {
+  display: grid;
+  gap: 8px;
+  margin: 14px 0;
+  font-size: calc(12px * var(--ui-font-scale, 1));
+}
+.web-edit-label input,
+.web-copy-editor {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  color: var(--ink);
+  background: var(--surface, var(--panel));
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px;
+  font: inherit;
+}
+.web-copy-editor {
+  min-height: 280px;
+  resize: vertical;
+  font-size: calc(15px * var(--ui-font-scale, 1));
+  line-height: 1.8;
+}
+.web-copy-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 8px 0 20px;
+}
+.web-copy-confirm {
+  padding: 14px 0;
+  border-top: 1px solid var(--line);
+}
+.web-copy-confirm p {
+  font-size: calc(12px * var(--ui-font-scale, 1));
+  line-height: 1.7;
+}
+.web-copy-confirm button {
+  margin: 4px 6px 4px 0;
+}
+.web-excerpt mark {
+  background: var(--accent-soft);
+  color: var(--ink);
+  border-radius: 3px;
+}
+.web-source-filters input {
+  flex: 1 1 180px;
+  min-width: 0;
+}

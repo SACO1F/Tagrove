@@ -1,0 +1,224 @@
+/* UI colors follow the chosen accent; document paper and user tag colors stay independent. */
+:root {
+  --accent-light: #2c6654;
+  --accent-dark: #a5cbb1;
+  --selection-bg: color-mix(in srgb, var(--accent) 28%, var(--panel));
+}
+:root[data-accent="blue"] {
+  --accent-light: #315c9c;
+  --accent-dark: #a8c7f1;
+}
+:root[data-accent="purple"] {
+  --accent-light: #6c4898;
+  --accent-dark: #cab6ed;
+}
+:root[data-accent="rose"] {
+  --accent-light: #984661;
+  --accent-dark: #ebb3c7;
+}
+:root[data-accent="amber"] {
+  --accent-light: #805716;
+  --accent-dark: #dfc18b;
+}
+:root[data-accent="graphite"] {
+  --accent-light: #4e5965;
+  --accent-dark: #bdc8d4;
+}
+:root[data-accent]:not([data-accent="green"]) {
+  --accent: var(--accent-light);
+  --ink: #2c3037;
+  --muted: #727781;
+  --accent-soft: color-mix(in srgb, var(--accent) 12%, #fff);
+  --bg: color-mix(in srgb, var(--accent) 3%, #fafafa);
+  --sidebar: color-mix(in srgb, var(--accent) 5%, #f7f7f7);
+  --hover: color-mix(in srgb, var(--accent) 8%, #fafafa);
+  --thumb: var(--hover);
+  --line: color-mix(in srgb, var(--accent) 18%, #f5f5f5);
+  --glass-tint: color-mix(in srgb, var(--accent) 6%, #ffffffb8);
+  --glass-outline: color-mix(in srgb, var(--accent) 20%, transparent);
+}
+:root[data-theme="dark"][data-accent]:not([data-accent="green"]) {
+  --accent: var(--accent-dark);
+  --bg: color-mix(in srgb, var(--accent-light) 12%, #181c22);
+  --panel: color-mix(in srgb, var(--accent-light) 12%, #22272e);
+  --sidebar: color-mix(in srgb, var(--accent-light) 8%, #171c22);
+  --accent-soft: color-mix(in srgb, var(--accent) 18%, var(--panel));
+  --hover: color-mix(in srgb, var(--accent) 10%, var(--panel));
+  --thumb: var(--hover);
+  --input: var(--bg);
+  --ink: #e7ebef;
+  --muted: #b0bac5;
+  --line: color-mix(in srgb, var(--accent) 22%, var(--panel));
+  --glass-surface: color-mix(in srgb, var(--panel) 72%, transparent);
+  --glass-strong: color-mix(in srgb, var(--panel) 93%, transparent);
+  --glass-tint: color-mix(in srgb, var(--bg) 78%, transparent);
+}
+:root[data-accent]:not([data-accent="green"]) .app-shell {
+  background:
+    radial-gradient(
+      ellipse at 10% 5%,
+      color-mix(in srgb, var(--accent) 12%, transparent),
+      transparent 60%
+    ),
+    var(--bg);
+}
+:root[data-accent]:not([data-accent="green"]) .button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+:root[data-theme="dark"][data-accent]:not([data-accent="green"])
+  .button.primary {
+  color: var(--bg);
+}
+:root[data-accent]:not([data-accent="green"])
+  .button.primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 86%, var(--ink));
+}
+.accent-choices {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  max-width: 220px;
+}
+.accent-choice {
+  width: 28px;
+  height: 28px;
+  padding: 4px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+}
+.accent-choice > span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--swatch);
+}
+.accent-choice[aria-pressed="true"] {
+  border-color: var(--accent);
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+:root[lang="en"] .sidebar {
+  --sidebar-label-size: 12px;
+}
+:root[lang="en"] .sidebar-bottom button span {
+  font-size: calc(11px * var(--ui-font-scale, 1));
+}
+
+:root[data-accent]:not([data-accent="green"]) {
+  --tag-action-fill: color-mix(in srgb, var(--accent-soft) 68%, transparent);
+  --tag-action-hover: color-mix(in srgb, var(--accent-soft) 88%, transparent);
+  --tag-action-shadow: 0 8px 24px
+    color-mix(in srgb, var(--accent) 12%, transparent);
+}
+:root[data-accent]:not([data-accent="green"]) .preview-placeholder {
+  color: var(--muted);
+}
+
+/* One highlight covers both the tag filter and its rename action. */
+.app-shell .sidebar-tag-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 30px;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  border-radius: 9px;
+  transition:
+    background 160ms ease,
+    box-shadow 160ms ease;
+}
+.app-shell .sidebar-tag-row:hover,
+.app-shell .sidebar-tag-row:focus-within {
+  background: var(--hover);
+  box-shadow: inset 0 0 0 1px var(--control-edge);
+}
+.app-shell .sidebar-tag-row:has(.sidebar-tag-filter.active) {
+  background: var(--accent-soft);
+}
+.app-shell .sidebar-tag-row > .sidebar-tag-filter {
+  background: transparent;
+  box-shadow: none;
+}
+.app-shell .sidebar-tag-row > .sidebar-tag-edit {
+  width: 26px;
+  height: 28px;
+  padding: 0;
+  justify-self: center;
+}
+.app-shell .sidebar-tag-row > button:focus-visible {
+  outline-offset: -2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-shell .sidebar-tag-row {
+    transition: none;
+  }
+}
+
+:root[data-accent="teal"] {
+  --accent-light: #286f73;
+  --accent-dark: #99cdd0;
+}
+:root[data-accent="terracotta"] {
+  --accent-light: #94523a;
+  --accent-dark: #e9b59d;
+}
+:root[data-accent="indigo"] {
+  --accent-light: #475781;
+  --accent-dark: #b8c5ea;
+}
+.app-shell .sidebar .sidebar-tag-row > .sidebar-tag-edit {
+  border-radius: 8px;
+  transition:
+    background 160ms ease,
+    box-shadow 160ms ease,
+    color 160ms ease;
+}
+.app-shell .sidebar .sidebar-tag-row > .sidebar-tag-edit:hover,
+.app-shell .sidebar .sidebar-tag-row > .sidebar-tag-edit:focus-visible {
+  color: var(--accent);
+  background: var(--hover);
+  box-shadow:
+    0 2px 6px color-mix(in srgb, var(--ink) 12%, transparent),
+    inset 0 0 0 1px var(--glass-outline);
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-shell .sidebar .sidebar-tag-row > .sidebar-tag-edit {
+    transition: none;
+  }
+}
+
+/* Separate explanatory copy from the action it introduces. */
+.auto-tag-settings .folder-backfill-action {
+  margin-top: 12px;
+}
+.auto-tag-settings .ai-new-tags-switch {
+  margin-top: 12px;
+}
+.auto-tag-settings .ai-consent-switch {
+  margin-top: 16px;
+}
+.settings-content .settings-diagnostics-action {
+  margin-top: 16px;
+}
+.setting-row > div:first-child {
+  min-width: 0;
+}
+.setting-row .glide-select-trigger {
+  flex-shrink: 0;
+}
+
+:root[data-accent="vermilion"] {
+  --accent-light: #ac352b;
+  --accent-dark: #f3afa2;
+}
+:root[data-accent="moss"] {
+  --accent-light: #626d20;
+  --accent-dark: #c7d28b;
+}
+:root[data-accent="cocoa"] {
+  --accent-light: #715044;
+  --accent-dark: #d7baab;
+}

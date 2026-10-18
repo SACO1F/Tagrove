@@ -1,3 +1,6 @@
+import { currentLanguage } from "./i18n";
+import { t as ui, tf } from "./i18n";
+import { SemanticTaskSection } from "./Semantic";
 import { useEffect, useState } from "react";
 import { FolderOpen, RefreshCw } from "lucide-react";
 import {
@@ -10,6 +13,7 @@ import {
 } from "./api";
 import { ImportDetails } from "./components";
 import { TaskGlyph } from "./TaskStatus";
+import { TextIndexSettings } from "./TextIndex";
 
 export function useTasks(onError?: (text: string) => void) {
   const [snapshot, setSnapshot] = useState<TaskSnapshot>();
@@ -46,14 +50,14 @@ export function TransferProgress({ status }: { status: TransferStatus }) {
     <div className="task-progress" role="status">
       <span>
         <TaskGlyph status="working" />
-        {status.phase}
+        {ui(status.phase)}
       </span>
       {ratio !== undefined && (
-        <progress aria-label="当前阶段进度" max={1} value={ratio} />
+        <progress aria-label={ui("当前阶段进度")} max={1} value={ratio} />
       )}
       <small>
         {status.fileTotal > 0
-          ? `${status.completed} / ${status.fileTotal} 个文件 · `
+          ? tf("{0} / {1} 个文件 · ", status.completed, status.fileTotal)
           : ""}
         {size(status.bytes)}
         {status.totalBytes > 0 ? ` / ${size(status.totalBytes)}` : ""}
@@ -76,8 +80,12 @@ const states: Record<string, string> = {
 export function TaskPanel({
   snapshot,
   onRetryImport,
+  onWatch,
+  onSemantic,
 }: {
   snapshot?: TaskSnapshot;
+  onWatch: () => void;
+  onSemantic: (ids: string[]) => void;
   onRetryImport: (paths: string[]) => Promise<void>;
 }) {
   const [busy, setBusy] = useState(false),
@@ -97,16 +105,18 @@ export function TaskPanel({
   if (!snapshot)
     return (
       <div className="modal-content" role="status">
-        正在读取任务…
+        {ui("正在读取任务…")}
       </div>
     );
   const { transfer, ai } = snapshot;
   const imported: ImportJob | undefined = snapshot.import;
   return (
     <div className="modal-content task-panel">
+      <TextIndexSettings compact />
+      <SemanticTaskSection onSelect={onSemantic} />
       {transfer.busy && (
         <section>
-          <h3>{names[transfer.task?.kind || ""] || "资料包任务"}</h3>
+          <h3>{ui(names[transfer.task?.kind || ""] || "资料包任务")}</h3>
           <TransferProgress status={transfer} />
           {transfer.task?.kind !== "backup.restore" && (
             <button
@@ -114,14 +124,14 @@ export function TaskPanel({
               disabled={busy}
               onClick={() => void run(() => api("package.cancel"))}
             >
-              取消任务
+              {ui("取消任务")}
             </button>
           )}
         </section>
       )}
       {imported && (
         <section>
-          <h3>文件加入</h3>
+          <h3>{ui("文件加入")}</h3>
           <ImportDetails
             job={imported}
             onRetry={() => run(() => onRetryImport(imported.failedPaths || []))}
@@ -133,16 +143,35 @@ export function TaskPanel({
               disabled={busy}
               onClick={() => void run(() => api("import.cancel"))}
             >
-              停止加入
+              {ui("停止加入")}
             </button>
           )}
         </section>
       )}
+      {!!snapshot.watch?.rules.length && (
+        <section>
+          <h3>{ui("文件夹监听")}</h3>
+          <p className="muted">
+            {snapshot.watch.rules.filter((x) => !x.rule.paused).length}{" "}
+            {ui("个启用目录 · 待处理")}{" "}
+            {snapshot.watch.rules.reduce((n, x) => n + x.status.pending, 0)}{" "}
+            {ui("· 本次加入")}{" "}
+            {snapshot.watch.rules.reduce((n, x) => n + x.status.added, 0)}
+          </p>
+          <button className="button" onClick={onWatch}>
+            <FolderOpen size={14} />
+            {ui("管理监听目录")}
+          </button>
+        </section>
+      )}
       <section>
-        <h3>AI 分析</h3>
+        <h3>{ui("AI 分析")}</h3>
         <p className="muted">
-          等待 {ai.queued || 0} · 处理中 {ai.running || 0} · 完成 {ai.done || 0}{" "}
-          · 失败 {ai.failed || 0}
+          {ui("等待")}
+          {ai.queued || 0} {ui("· 处理中")}
+          {ai.running || 0} {ui("· 完成")}
+          {ai.done || 0} {ui("· 失败")}
+          {ai.failed || 0}
         </p>
         {ai.failed > 0 && (
           <button
@@ -151,7 +180,7 @@ export function TaskPanel({
             onClick={() => void run(() => api("ai.retry_failed"))}
           >
             <RefreshCw size={14} />
-            重试失败项
+            {ui("重试失败项")}
           </button>
         )}
         {(ai.queued || ai.running) > 0 && (
@@ -160,14 +189,14 @@ export function TaskPanel({
             disabled={busy}
             onClick={() => void run(() => api("ai.cancel"))}
           >
-            取消等待与处理中的识别
+            {ui("取消等待与处理中的识别")}
           </button>
         )}
       </section>
       <section>
-        <h3>最近资料包任务</h3>
-        <p className="subtle">本次运行，保留最近 12 项。</p>
-        {!transfer.history.length && <p className="muted">暂无记录</p>}
+        <h3>{ui("最近资料包任务")}</h3>
+        <p className="subtle">{ui("本次运行，保留最近 12 项。")}</p>
+        {!transfer.history.length && <p className="muted">{ui("暂无记录")}</p>}
         {transfer.history.map((task) => (
           <article className="task-record" key={task.id}>
             <div>
@@ -180,17 +209,22 @@ export function TaskPanel({
                       : "done"
                 }
               />
-              <strong>{names[task.kind] || "资料包任务"}</strong>
-              <span>{states[task.state]}</span>
+              <strong>{ui(names[task.kind] || "资料包任务")}</strong>
+              <span>{ui(states[task.state])}</span>
               <small>
-                {new Date(task.startedAt).toLocaleTimeString("zh-CN", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
+                {new Date(task.startedAt).toLocaleTimeString(
+                  currentLanguage(),
+                  {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  },
+                )}
               </small>
             </div>
             {task.result?.fileCount !== undefined && (
-              <p>{task.result.fileCount} 个文件</p>
+              <p>
+                {task.result.fileCount} {ui("个文件")}
+              </p>
             )}
             {task.result?.notice && <p>{task.result.notice}</p>}
             {task.error && (
@@ -209,7 +243,7 @@ export function TaskPanel({
                   }
                 >
                   <FolderOpen size={14} />
-                  打开接收文件夹
+                  {ui("打开接收文件夹")}
                 </button>
               )}
           </article>

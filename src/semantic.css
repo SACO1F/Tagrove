@@ -1,0 +1,203 @@
+.semantic-settings {
+  display: grid;
+  gap: 14px;
+  padding-block: 20px;
+  border-top: 1px solid var(--line);
+}
+.semantic-settings h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+.semantic-settings p {
+  margin: 0;
+  line-height: 1.65;
+}
+.semantic-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.semantic-fields label,
+.semantic-query-label {
+  display: grid;
+  gap: 7px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
+}
+.semantic-fields input,
+.semantic-query-label textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--ink);
+  padding: 10px 12px;
+  font: inherit;
+}
+.semantic-query-label textarea {
+  min-height: 98px;
+  resize: vertical;
+  font-size: calc(14px * var(--ui-font-scale, 1));
+}
+.semantic-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
+  line-height: 1.65;
+}
+.semantic-check input {
+  accent-color: var(--accent);
+  margin-top: 4px;
+  flex-shrink: 0;
+}
+.semantic-consent {
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--panel);
+}
+.semantic-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.semantic-actions .button {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+}
+.semantic-summary,
+.semantic-hint {
+  font-size: calc(12px * var(--ui-font-scale, 1));
+  color: var(--muted);
+  line-height: 1.65;
+}
+.semantic-plan {
+  padding: 15px;
+  background: var(--panel);
+  border-radius: 12px;
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+.semantic-plan p {
+  overflow-wrap: anywhere;
+}
+.semantic-plan ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 200px;
+  overflow: auto;
+}
+.semantic-plan li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: space-between;
+  padding-block: 6px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
+  overflow-wrap: anywhere;
+}
+.semantic-plan small {
+  color: var(--muted);
+}
+.semantic-error,
+.semantic-warning {
+  color: var(--ink);
+  background: var(--panel);
+  border-radius: 10px;
+  padding: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
+  line-height: 1.65;
+}
+.semantic-dialog-body {
+  display: grid;
+  gap: 18px;
+}
+.semantic-dialog p {
+  line-height: 1.65;
+  margin: 0;
+}
+.semantic-dialog .reader-segment button {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 7px;
+}
+.semantic-dialog .reader-segment {
+  width: 100%;
+}
+@media (max-width: 600px) {
+  .semantic-fields {
+    grid-template-columns: 1fr;
+  }
+}
+
+.semantic-settings .semantic-hint,
+.semantic-dialog .semantic-hint,
+.semantic-settings .semantic-summary,
+.semantic-plan small {
+  color: var(--ink);
+  opacity: 0.82;
+}
+
+.semantic-dialog .reader-segment {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.semantic-dialog .reader-segment > button {
+  height: 32px;
+  min-width: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--ink);
+}
+.semantic-dialog .reader-segment > button[aria-selected="true"] {
+  color: var(--accent);
+  font-weight: 600;
+}
+.semantic-panel {
+  display: grid;
+  gap: 18px;
+}
+.semantic-settings .setting-row p {
+  color: var(--ink);
+  opacity: 0.82;
+}
+
+.semantic-queue {
+  min-width: 0;
+}
+.semantic-queue-list {
+  max-height: 320px;
+  overflow: auto;
+  margin-block: 12px;
+}
+.semantic-queue-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 2px;
+  border-bottom: 1px solid var(--line);
+  font-size: calc(13px * var(--ui-font-scale, 1));
+}
+.semantic-queue-name {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.semantic-queue-name small {
+  display: block;
+  margin-top: 4px;
+}
+.semantic-queue-row > small {
+  flex-shrink: 0;
+  font-size: calc(12px * var(--ui-font-scale, 1));
+}
+.semantic-queue-row input {
+  flex-shrink: 0;
+  accent-color: var(--accent);
+}

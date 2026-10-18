@@ -1,3 +1,4 @@
+import { t as ui, tf } from "./i18n";
 import { useEffect, useRef, useState } from "react";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { Download, Upload, FolderOpen, RefreshCw } from "lucide-react";
@@ -12,6 +13,8 @@ type Preview = {
   fileCount: number;
   bytes: number;
   tagCount?: number;
+  aliasCount?: number;
+  aliasConflicts?: string[];
   version?: string;
   missing?: string[];
   files: {
@@ -42,7 +45,7 @@ export function TransferDialog({
   const [result, setResult] = useState<Result>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [phase, setPhase] = useState("准备");
+  const [phase, setPhase] = useState(ui("准备"));
   const [processed, setProcessed] = useState(0);
   const [cancelling, setCancelling] = useState(false);
   const [cancelAvailable, setCancelAvailable] = useState(false);
@@ -90,14 +93,14 @@ export function TransferDialog({
     try {
       const chosen = isExport
         ? await save({
-            title: "保存资料包",
+            title: ui("保存资料包"),
             defaultPath: "拾签资料.sqtagpack",
-            filters: [{ name: "拾签资料包", extensions: ["sqtagpack"] }],
+            filters: [{ name: ui("拾签资料包"), extensions: ["sqtagpack"] }],
           })
         : await open({
-            title: "选择资料包",
+            title: ui("选择资料包"),
             multiple: false,
-            filters: [{ name: "拾签资料包", extensions: ["sqtagpack"] }],
+            filters: [{ name: ui("拾签资料包"), extensions: ["sqtagpack"] }],
           });
       if (typeof chosen === "string") {
         setPath(chosen);
@@ -113,7 +116,7 @@ export function TransferDialog({
       const chosen = await open({
         directory: true,
         multiple: false,
-        title: "选择接收文件的位置",
+        title: ui("选择接收文件的位置"),
       });
       if (typeof chosen === "string") setDestination(chosen);
     } catch (e) {
@@ -127,7 +130,7 @@ export function TransferDialog({
     setCancelAvailable(false);
     setError("");
     setCancelling(false);
-    setPhase("校验");
+    setPhase(ui("校验"));
     setStatus(undefined);
     setProcessed(0);
     try {
@@ -147,7 +150,7 @@ export function TransferDialog({
     setCancelAvailable(false);
     setError("");
     setCancelling(false);
-    setPhase("准备");
+    setPhase(ui("准备"));
     setStatus(undefined);
     setProcessed(0);
     try {
@@ -167,7 +170,7 @@ export function TransferDialog({
   const missing = preview?.missing || [];
   return (
     <Modal
-      title={isExport ? "导出资料包" : "导入资料包"}
+      title={isExport ? ui("导出资料包") : ui("导入资料包")}
       dismissDisabled={busy}
       onClose={onClose}
     >
@@ -176,14 +179,14 @@ export function TransferDialog({
           <>
             <p className="muted">
               {isExport
-                ? "原文件、标签、备注与收藏一起交接。"
-                : "按原文件夹归类复制，并加入当前资料库。"}
+                ? ui("原文件、标签、备注与收藏一起交接。")
+                : ui("按原文件夹归类复制，并加入当前资料库。")}
             </p>
             {isExport && (
               <label className="transfer-field">
-                <span>交接范围</span>
+                <span>{ui("交接范围")}</span>
                 <GlideSelect
-                  ariaLabel="资料包范围"
+                  ariaLabel={ui("资料包范围")}
                   value={tagId}
                   disabled={busy || ids.length > 0}
                   onChange={setTagId}
@@ -191,8 +194,8 @@ export function TransferDialog({
                     {
                       value: "",
                       label: ids.length
-                        ? `所选 ${ids.length} 个文件`
-                        : "全部文件",
+                        ? tf("所选 {0} 个文件", ids.length)
+                        : ui("全部文件"),
                     },
                     ...(!ids.length
                       ? tags.map((t) => ({
@@ -205,13 +208,13 @@ export function TransferDialog({
               </label>
             )}
             <label className="transfer-field">
-              <span>{isExport ? "资料包保存位置" : "资料包文件"}</span>
+              <span>{isExport ? ui("资料包保存位置") : ui("资料包文件")}</span>
               <div className="export-destination">
                 <input
-                  aria-label="资料包路径"
+                  aria-label={ui("资料包路径")}
                   value={path}
                   disabled={busy}
-                  placeholder="选择或粘贴 .sqtagpack 路径"
+                  placeholder={ui("选择或粘贴 .sqtagpack 路径")}
                   onChange={(e) => {
                     setPath(e.target.value);
                     if (!isExport) setPreview(undefined);
@@ -219,7 +222,7 @@ export function TransferDialog({
                 />
                 <button
                   className="button"
-                  aria-label="选择资料包"
+                  aria-label={ui("选择资料包")}
                   onClick={() => void choosePath()}
                   disabled={busy}
                 >
@@ -235,21 +238,21 @@ export function TransferDialog({
                   disabled={busy || !path.trim()}
                 >
                   <RefreshCw size={14} />
-                  校验并预览
+                  {ui("校验并预览")}
                 </button>
                 <label className="transfer-field">
-                  <span>文件接收位置</span>
+                  <span>{ui("文件接收位置")}</span>
                   <div className="export-destination">
                     <input
-                      aria-label="资料包接收目录"
+                      aria-label={ui("资料包接收目录")}
                       value={destination}
                       disabled={busy}
-                      placeholder="选择或粘贴文件夹路径"
+                      placeholder={ui("选择或粘贴文件夹路径")}
                       onChange={(e) => setDestination(e.target.value)}
                     />
                     <button
                       className="button"
-                      aria-label="选择资料包接收目录"
+                      aria-label={ui("选择资料包接收目录")}
                       onClick={() => void chooseDestination()}
                       disabled={busy}
                     >
@@ -261,24 +264,40 @@ export function TransferDialog({
             )}
             {preview && (
               <div className="transfer-preview">
+                {preview.aliasConflicts?.map((c) => (
+                  <p className="tag-form-error" role="alert" key={c}>
+                    {c}
+                  </p>
+                ))}
                 <div className="transfer-counts">
-                  <strong>{preview.fileCount} 个文件</strong>
+                  <strong>
+                    {preview.fileCount} {ui("个文件")}
+                  </strong>
                   <span>{size(preview.bytes)}</span>
+                  {!!preview.aliasCount && (
+                    <span>
+                      {preview.aliasCount} {ui("个别名")}
+                    </span>
+                  )}
                   {preview.tagCount !== undefined && (
-                    <span>{preview.tagCount} 个标签</span>
+                    <span>
+                      {preview.tagCount} {ui("个标签")}
+                    </span>
                   )}
                 </div>
                 <details>
                   <summary>
-                    查看文件清单{preview.fileCount > 100 ? "（前 100 项）" : ""}
+                    {ui("查看文件清单")}
+                    {preview.fileCount > 100 ? ui("（前 100 项）") : ""}
                   </summary>
                   <ul>
                     {preview.files.map((f, i) => (
                       <li key={i}>
                         <span>{f.name}</span>
                         <small>
-                          {f.tagCount} 标签{f.hasNote ? " · 备注" : ""}
-                          {f.favorite ? " · 收藏" : ""}
+                          {f.tagCount} {ui("标签")}
+                          {f.hasNote ? ui(" · 备注") : ""}
+                          {f.favorite ? ui(" · 收藏") : ""}
                         </small>
                       </li>
                     ))}
@@ -289,10 +308,11 @@ export function TransferDialog({
             {missing.length > 0 && (
               <div role="alert" className="tag-form-error">
                 <p>
-                  {missing.length} 个原文件缺失或变化，请刷新或重新关联后导出。
+                  {missing.length}{" "}
+                  {ui("个原文件缺失或变化，请刷新或重新关联后导出。")}
                 </p>
                 <details>
-                  <summary>查看文件</summary>
+                  <summary>{ui("查看文件")}</summary>
                   {missing.map((name, i) => (
                     <p key={i}>{name}</p>
                   ))}
@@ -301,8 +321,12 @@ export function TransferDialog({
             )}
             <p className="subtle">
               {isExport
-                ? "原文件保留，不包含 AI 配置。单包最多 10,000 个文件 / 8 GB。"
-                : "同名标签复用；已有文件、备注与收藏保留。待确认 AI 标签继续待确认，导入不会触发 AI 识别。同一资料包只能导入一次。"}
+                ? ui(
+                    "原文件保留，不包含 AI 配置。单包最多 10,000 个文件 / 8 GB。",
+                  )
+                : ui(
+                    "同名标签复用；已有文件、备注与收藏保留。待确认 AI 标签继续待确认，导入不会触发 AI 识别。同一资料包只能导入一次。",
+                  )}
             </p>
             {busy ? (
               <div className="transfer-working" role="status">
@@ -312,7 +336,8 @@ export function TransferDialog({
                   <>
                     <TaskGlyph status="working" />
                     <span>
-                      {phase} · 已处理 {size(processed)}
+                      {ui(phase)} {ui("· 已处理")}
+                      {size(processed)}
                     </span>
                   </>
                 )}
@@ -326,10 +351,10 @@ export function TransferDialog({
                     );
                   }}
                 >
-                  {cancelling ? "正在取消…" : "取消任务"}
+                  {cancelling ? ui("正在取消…") : ui("取消任务")}
                 </button>
                 <button className="button" onClick={onClose}>
-                  后台运行
+                  {ui("后台运行")}
                 </button>
               </div>
             ) : (
@@ -339,19 +364,21 @@ export function TransferDialog({
                 disabled={
                   !preview ||
                   missing.length > 0 ||
+                  !!preview?.aliasConflicts?.length ||
                   !path.trim() ||
                   (!isExport && !destination.trim())
                 }
               >
                 {isExport ? <Download size={16} /> : <Upload size={16} />}{" "}
-                {isExport ? "导出资料包" : "确认导入"}
+                {isExport ? ui("导出资料包") : ui("确认导入")}
               </button>
             )}
           </>
         ) : (
           <div role="status" className="export-result">
             <strong>
-              {isExport ? "已导出" : "已导入"} {result.fileCount} 个文件
+              {isExport ? ui("已导出") : ui("已导入")} {result.fileCount}{" "}
+              {ui("个文件")}
             </strong>
             <p className="export-path">{result.path}</p>
             {result.notice && <p>{result.notice}</p>}
@@ -365,7 +392,7 @@ export function TransferDialog({
                 }
               >
                 <FolderOpen size={16} />
-                打开资料文件夹
+                {ui("打开资料文件夹")}
               </button>
             )}
           </div>

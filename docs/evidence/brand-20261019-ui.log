@@ -1,0 +1,1 @@
+PASS actual desktop logo bytes match source, expanded/collapsed sidebar, dark/English, floating 28px, favicon; real Chrome extension loads with original ID and new icons, popup/queue headers fit with no page errors.

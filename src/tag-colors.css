@@ -50,3 +50,54 @@
   background: var(--tag-bg);
   color: var(--tag-ink);
 }
+
+.tag-color[style*="--custom-tag-color"] {
+  --tag-bg: color-mix(in srgb, var(--custom-tag-color) 23%, #fff);
+  --tag-ink: color-mix(in srgb, var(--custom-tag-color) 35%, #15251d);
+}
+:root[data-theme="dark"] .tag-color[style*="--custom-tag-color"] {
+  --tag-bg: color-mix(in srgb, var(--custom-tag-color) 30%, #172c22);
+  --tag-ink: color-mix(in srgb, var(--custom-tag-color) 18%, #fff);
+}
+.float-color-editor {
+  display: grid;
+  gap: 20px;
+}
+.color-preview {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 12px 16px;
+  border-radius: 12px;
+  overflow-wrap: anywhere;
+}
+.color-swatches {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.color-swatches button {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 3px solid transparent;
+}
+.color-swatches button[aria-pressed="true"] {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+}
+.custom-color-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: calc(13px * var(--ui-font-scale, 1));
+}
+.custom-color-label input {
+  width: 56px;
+  height: 34px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+}

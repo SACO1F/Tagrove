@@ -1,0 +1,127 @@
+.date-filter-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  width: 160px;
+  flex-shrink: 0;
+}
+.app-shell .filter-line .date-filter-field > input {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  height: 32px;
+  padding: 5px 34px 5px 8px;
+  font-variant-numeric: tabular-nums;
+}
+.app-shell .date-filter-field > .date-calendar-trigger {
+  position: absolute;
+  right: 3px;
+  top: 0;
+  bottom: 0;
+  margin-block: auto;
+  transform: none;
+  width: 28px;
+  height: 28px;
+  color: var(--muted);
+}
+.date-field-error {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 2;
+  padding: 3px 5px;
+  color: var(--ink);
+  background: var(--panel);
+  font-size: calc(10px * var(--ui-font-scale, 1));
+  white-space: nowrap;
+}
+.date-calendar {
+  position: fixed;
+  z-index: 105;
+  width: 288px;
+  padding: 12px;
+  border-radius: 14px;
+  background: var(--panel);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  box-shadow: 0 8px 28px #00000020;
+  animation: date-calendar-enter 150ms ease-out;
+}
+.date-calendar-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.date-calendar-heading strong {
+  font-size: calc(13px * var(--ui-font-scale, 1));
+  font-weight: 600;
+}
+.date-calendar-selectors {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 80px;
+  gap: 8px;
+  margin: 8px 0;
+}
+.date-calendar-selectors input {
+  width: 100%;
+  min-width: 0;
+  font-variant-numeric: tabular-nums;
+}
+.date-calendar-grid > [role="row"] {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 2px;
+}
+.date-calendar-grid [role="columnheader"] {
+  text-align: center;
+  font-size: calc(10px * var(--ui-font-scale, 1));
+  color: var(--muted);
+  padding: 6px 0;
+}
+.date-calendar-grid button {
+  height: 30px;
+  padding: 0;
+  border-radius: 7px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
+  font-variant-numeric: tabular-nums;
+}
+.date-calendar-grid .outside-month {
+  color: var(--muted);
+  opacity: 0.65;
+}
+.date-calendar-grid [aria-selected="true"] {
+  color: var(--panel);
+  background: var(--accent);
+}
+.date-calendar-grid [aria-current="date"]:not([aria-selected="true"]) {
+  color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.date-calendar-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+  margin-top: 8px;
+}
+.date-calendar-footer button {
+  font-size: calc(11px * var(--ui-font-scale, 1));
+}
+@keyframes date-calendar-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .date-calendar {
+    animation: none;
+  }
+}

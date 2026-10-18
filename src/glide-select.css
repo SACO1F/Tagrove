@@ -10,7 +10,7 @@
   border: 1px solid var(--line);
   background: var(--input);
   color: var(--ink);
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale, 1));
   white-space: nowrap;
   transition:
     background 150ms,
@@ -74,7 +74,7 @@
   padding: 0 10px;
   border-radius: 6px;
   text-align: left;
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-font-scale, 1));
   background: transparent;
 }
 .glide-select-options > button:hover:not(:disabled) {

@@ -1,3 +1,4 @@
+import { t as ui } from "./i18n";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { LogicalSize } from "@tauri-apps/api/dpi";
 
@@ -25,9 +26,9 @@ export function FloatingResizeHandles({
           role={direction === "SouthEast" ? "button" : undefined}
           tabIndex={direction === "SouthEast" ? 0 : undefined}
           aria-label={
-            direction === "SouthEast" ? "调整标签浮窗大小" : undefined
+            direction === "SouthEast" ? ui("调整标签浮窗大小") : undefined
           }
-          title="拖动调整浮窗大小"
+          data-tooltip={ui("拖动调整浮窗大小")}
           onPointerDown={(e) => {
             if (e.button !== 0) return;
             e.preventDefault();

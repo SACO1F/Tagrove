@@ -1,3 +1,4 @@
+import { t as ui, tf } from "./i18n";
 import { useEffect, useState } from "react";
 import { Files, Tags, Search, PackageOpen, Sparkles } from "lucide-react";
 import { Modal } from "./components";
@@ -64,7 +65,9 @@ export function FirstRunGuide({
     try {
       saveOnboarding(localStorage, library, next);
     } catch {
-      onNotice("引导状态未能保存，下次启动可能再次显示；文件和标签不受影响");
+      onNotice(
+        ui("引导状态未能保存，下次启动可能再次显示；文件和标签不受影响"),
+      );
     }
     setConfigure(false);
     setStep(next);
@@ -72,9 +75,13 @@ export function FirstRunGuide({
   if (step === "done") return null;
   if (step === "guide")
     return (
-      <Modal key="guide" title="快速上手拾签" onClose={() => advance("done")}>
+      <Modal
+        key="guide"
+        title={ui("快速上手拾签")}
+        onClose={() => advance("done")}
+      >
         <div className="modal-content first-run">
-          <p className="muted">四步开始整理，让资料更容易被找到。</p>
+          <p className="muted">{ui("四步开始整理，让资料更容易被找到。")}</p>
           <ol className="first-run-steps">
             {instructions.map(({ icon: Icon, title, text }) => (
               <li key={title}>
@@ -82,18 +89,18 @@ export function FirstRunGuide({
                   <Icon size={20} />
                 </span>
                 <div>
-                  <strong>{title}</strong>
-                  <p>{text}</p>
+                  <strong>{ui(title)}</strong>
+                  <p>{ui(text)}</p>
                 </div>
               </li>
             ))}
           </ol>
           <p className="subtle">
-            AI 可以稍后在偏好设置中配置；AI 建议标签需要你确认。
+            {ui("AI 可以稍后在偏好设置中配置；AI 建议标签需要你确认。")}
           </p>
           <div className="first-run-actions">
             <button className="button primary" onClick={() => advance("done")}>
-              开始使用
+              {ui("开始使用")}
             </button>
           </div>
         </div>
@@ -102,7 +109,7 @@ export function FirstRunGuide({
   return (
     <Modal
       key={configure ? "configure" : "ai"}
-      title={configure ? "设置 AI 自动标注" : "启用 AI 自动标注？"}
+      title={configure ? ui("设置 AI 自动标注") : ui("启用 AI 自动标注？")}
       onClose={() => {
         if (!saving) advance("guide");
       }}
@@ -112,8 +119,9 @@ export function FirstRunGuide({
         {configure ? (
           <>
             <p className="muted">
-              填写服务信息并保存。需要自动识别时，请勾选启用
-              AI；也可以暂不设置。
+              {ui(
+                "填写服务信息并保存。需要自动识别时，请勾选启用 AI；也可以暂不设置。",
+              )}
             </p>
             <AutoTagSettings
               folderEnabled={folderEnabled}
@@ -131,15 +139,19 @@ export function FirstRunGuide({
               <Sparkles size={28} />
             </span>
             <p>
-              让 AI
-              分析新导入的图片和文档，优先匹配已有标签，并提出待确认的标签建议。
+              {ui(
+                "让 AI 分析新导入的图片和文档，优先匹配已有标签，并提出待确认的标签建议。",
+              )}
             </p>
             <p className="muted">
-              启用后，识别内容会发送到你配置的 AI
-              服务，远程服务可能收费。暂不设置也能使用手工标注、搜索和标签浮窗。
+              {ui(
+                "启用后，识别内容会发送到你配置的 AI 服务，远程服务可能收费。暂不设置也能使用手工标注、搜索和标签浮窗。",
+              )}
             </p>
             {aiConfigured && (
-              <p className="subtle">已检测到 AI 配置，可以保留或调整。</p>
+              <p className="subtle">
+                {ui("已检测到 AI 配置，可以保留或调整。")}
+              </p>
             )}
           </>
         )}
@@ -149,14 +161,14 @@ export function FirstRunGuide({
             disabled={saving}
             onClick={() => advance("guide")}
           >
-            {aiConfigured ? "保持当前设置" : "暂不设置"}
+            {aiConfigured ? ui("保持当前设置") : ui("暂不设置")}
           </button>
           {!configure && (
             <button
               className="button primary"
               onClick={() => setConfigure(true)}
             >
-              设置 AI
+              {ui("设置 AI")}
             </button>
           )}
         </div>

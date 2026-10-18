@@ -719,6 +719,46 @@ fn sidebar_width_is_validated_persisted_and_restored_from_backup() {
 }
 
 #[test]
+fn inspector_width_is_validated_persisted_and_restored_from_backup() {
+    let mut f = Fixture::new();
+    f.store
+        .save_settings(&json!({"key":"inspectorWidth","value":620}))
+        .unwrap();
+    for invalid in [
+        json!(299),
+        json!(901),
+        json!(419.5),
+        json!("420"),
+        Value::Null,
+    ] {
+        assert!(f
+            .store
+            .save_settings(&json!({"key":"inspectorWidth","value":invalid}))
+            .is_err());
+    }
+    assert_eq!(
+        f.store.bootstrap().unwrap()["settings"]["inspectorWidth"],
+        620
+    );
+    let backup = f.files.join("inspector-width.sqtagbackup");
+    f.store.export_backup(&backup).unwrap();
+    f.store
+        .save_settings(&json!({"key":"inspectorWidth","value":300}))
+        .unwrap();
+    f.store.restore_backup(&backup).unwrap();
+    assert_eq!(
+        f.store.bootstrap().unwrap()["settings"]["inspectorWidth"],
+        620
+    );
+    let root = f.store.root.clone();
+    drop(f.store);
+    assert_eq!(
+        Store::open(&root).unwrap().bootstrap().unwrap()["settings"]["inspectorWidth"],
+        620
+    );
+}
+
+#[test]
 fn floating_window_preferences_validate_dimensions_and_preserve_pinning_choice() {
     let mut f = Fixture::new();
     let size = json!({"width":496,"height":572});
@@ -916,4 +956,229 @@ fn tag_export_rejects_empty_and_app_data_and_sanitizes_folder_names() {
         b"original manifest-name file"
     );
     assert_eq!(fs::read(&a.path).unwrap(), b"original manifest-name file");
+}
+
+#[test]
+fn pdf_reader_bypasses_thumbnail_and_checks_original_revision() {
+    let mut f = Fixture::new();
+    let original = b"%PDF-1.7\nreader document\n%%EOF";
+    let file = f.add("reader.pdf", original);
+    fs::write(fsops::cache_path(&f.store.root, &file, false), b"thumbnail").unwrap();
+    assert_eq!(
+        fsops::preview(&f.store.root, &file, false).unwrap()["kind"],
+        "image"
+    );
+    let data = fsops::pdf_document(&f.store.root, &file).unwrap();
+    assert_eq!(data["kind"], "pdf");
+    assert_eq!(
+        STANDARD.decode(data["data"].as_str().unwrap()).unwrap(),
+        original
+    );
+    fs::write(
+        &file.path,
+        b"%PDF-1.7\nchanged document with a new size\n%%EOF",
+    )
+    .unwrap();
+    assert!(fsops::pdf_document(&f.store.root, &file).is_err());
+}
+
+#[test]
+fn pdf_reader_bounds_size_and_rejects_other_types_or_missing_files() {
+    let mut f = Fixture::new();
+    let text = f.add("not-pdf.txt", b"text");
+    assert!(fsops::pdf_document(&f.store.root, &text).is_err());
+    let path = f.files.join("large.pdf");
+    let handle = fs::File::create(&path).unwrap();
+    handle.set_len(64 * 1024 * 1024 + 1).unwrap();
+    drop(handle);
+    f.store.add_file(&fsops::inspect(&path).unwrap()).unwrap();
+    let id = f
+        .store
+        .all_paths()
+        .unwrap()
+        .into_iter()
+        .find(|(_, p)| p.ends_with("large.pdf"))
+        .unwrap()
+        .0;
+    let large = f.store.file(&id).unwrap();
+    assert!(fsops::pdf_document(&f.store.root, &large).is_err());
+    let small = f.add("missing.pdf", b"%PDF-1.7\n%%EOF");
+    fs::remove_file(&small.path).unwrap();
+    assert!(fsops::pdf_document(&f.store.root, &small).is_err());
+}
+
+#[test]
+fn html_preview_reads_existing_other_records_and_enforces_encoding_bounds() {
+    let mut f = Fixture::new();
+    let html = f.add("page.html", "<h1>中文静态页面</h1>".as_bytes());
+    assert_eq!(html.kind, "other");
+    fs::write(fsops::cache_path(&f.store.root, &html, false), b"not html").unwrap();
+    assert_eq!(
+        fsops::html_document(&f.store.root, &html).unwrap()["text"],
+        "<h1>中文静态页面</h1>"
+    );
+    let utf = f.add("unicode.htm", &[255, 254, 0x2d, 0x4e, 0x87, 0x65]);
+    assert_eq!(
+        fsops::html_document(&f.store.root, &utf).unwrap()["text"],
+        "中文"
+    );
+    let text = f.add("other.txt", b"not html");
+    assert!(fsops::html_document(&f.store.root, &text).is_err());
+    let large = f.add("too-big.html", &vec![b'a'; 2 * 1024 * 1024 + 1]);
+    assert!(fsops::html_document(&f.store.root, &large).is_err());
+    fs::write(&html.path, b"changed").unwrap();
+    assert!(fsops::html_document(&f.store.root, &html).is_err());
+}
+
+#[test]
+fn floating_history_undo_identity_rejects_stale_and_replayed_requests() {
+    let mut f = Fixture::new();
+    let file = f.add("history.txt", b"history");
+    let a = f.store.create_tag("第一步").unwrap();
+    let b = f.store.create_tag("第二步").unwrap();
+    f.tag(&[&file.id], &[&a.id]);
+    let first = f.store.undo.last().unwrap().id.clone();
+    f.tag(&[&file.id], &[&b.id]);
+    let second = f.store.undo.last().unwrap().id.clone();
+    assert_ne!(first, second);
+    assert!(f
+        .store
+        .undo_checked(&first)
+        .unwrap_err()
+        .starts_with("UNDO_CHANGED"));
+    assert_eq!(f.store.file(&file.id).unwrap().tags.len(), 2);
+    f.store.undo_checked(&second).unwrap();
+    assert!(f
+        .store
+        .undo_checked(&second)
+        .unwrap_err()
+        .starts_with("UNDO_CHANGED"));
+    assert_eq!(f.store.file(&file.id).unwrap().tags[0].id, a.id);
+    // Advancing guards does not change earlier entry identities.
+    f.store.undo_checked(&first).unwrap();
+    assert!(f.store.file(&file.id).unwrap().tags.is_empty());
+}
+#[test]
+fn floating_annotation_returns_its_own_undo_identity_only_for_changes() {
+    let mut f = Fixture::new();
+    let file = f.add("annotation-history.txt", b"history");
+    let tag = f.store.create_tag("浮窗步骤").unwrap();
+    let payload = json!({"tagId":tag.id,"ids":[file.id],"paths":[]});
+    let result = f.store.annotate(&payload).unwrap();
+    assert_eq!(result["undoId"], f.store.undo.last().unwrap().id);
+    let repeated = f.store.annotate(&payload).unwrap();
+    assert!(repeated.get("undoId").is_none());
+    f.store
+        .undo_checked(result["undoId"].as_str().unwrap())
+        .unwrap();
+    assert!(f.store.file(&file.id).unwrap().tags.is_empty());
+}
+
+#[test]
+fn mutation_noop_does_not_borrow_an_earlier_undo_identity() {
+    let mut f = Fixture::new();
+    let file = f.add("toast-noop.txt", b"fixture");
+    let tag = f.store.create_tag("步骤身份").unwrap();
+    let first = f
+        .patch(
+            "files.tags",
+            &[&file.id],
+            json!({"add":[tag.id],"remove":[]}),
+        )
+        .unwrap();
+    let same = f
+        .patch(
+            "files.tags",
+            &[&file.id],
+            json!({"add":[tag.id],"remove":[]}),
+        )
+        .unwrap();
+    assert!(same["undoId"].is_null());
+    assert_eq!(
+        f.store.undo.last().unwrap().id,
+        first["undoId"].as_str().unwrap()
+    );
+    f.store
+        .undo_checked(first["undoId"].as_str().unwrap())
+        .unwrap();
+    assert!(f.store.file(&file.id).unwrap().tags.is_empty());
+}
+
+#[test]
+fn markdown_atomic_save_preserves_associations_bom_crlf_and_rejects_stale_source() {
+    let mut f = Fixture::new();
+    let file = f.add("说明.md", "\u{feff}# 原内容\r\n正文\r\n".as_bytes());
+    let tag = f.store.create_tag("编辑保留").unwrap();
+    f.tag(&[&file.id], &[&tag.id]);
+    let before = crate::text_document::read(&f.store.file(&file.id).unwrap()).unwrap();
+    let save = json!({"id":file.id,"revision":before["revision"],"digest":before["digest"],"text":"# 新内容\n正文更新\n"});
+    let result = f.store.save_markdown(&save).unwrap();
+    assert_eq!(
+        fs::read(&file.path).unwrap(),
+        "\u{feff}# 新内容\r\n正文更新\r\n".as_bytes()
+    );
+    let current = f.store.file(&file.id).unwrap();
+    assert_eq!(current.tags[0].id, tag.id);
+    assert_eq!(current.status, "available");
+    assert_eq!(
+        current.identity,
+        fsops::inspect(Path::new(&file.path)).unwrap().identity
+    );
+    assert_eq!(result["text"], "# 新内容\r\n正文更新\r\n");
+    assert!(f
+        .store
+        .save_markdown(&save)
+        .unwrap_err()
+        .starts_with("FILE_CHANGED"));
+    let mut bad =
+        json!({"id":file.id,"revision":result["revision"],"digest":"wrong","text":"不得写入"});
+    assert!(f
+        .store
+        .save_markdown(&bad)
+        .unwrap_err()
+        .starts_with("FILE_CHANGED"));
+    bad["digest"] = result["digest"].clone();
+    fs::write(&file.path, "外部修改").unwrap();
+    assert!(f
+        .store
+        .save_markdown(&bad)
+        .unwrap_err()
+        .starts_with("FILE_CHANGED"));
+    assert_eq!(fs::read_to_string(&file.path).unwrap(), "外部修改");
+    assert!(fs::read_dir(&f.files).unwrap().all(|e| !e
+        .unwrap()
+        .file_name()
+        .to_string_lossy()
+        .starts_with(".shiqian-edit-")));
+}
+#[test]
+fn markdown_editor_rejects_partial_non_utf8_readonly_and_non_markdown_writes() {
+    let mut f = Fixture::new();
+    let huge = f.add("huge.md", &vec![b'a'; 1024 * 1024 + 1]);
+    assert!(crate::text_document::read(&huge)
+        .unwrap_err()
+        .starts_with("PREVIEW_TOO_LARGE"));
+    let binary = f.add("wrong.md", &[255, 254, 0]);
+    assert!(crate::text_document::read(&binary)
+        .unwrap_err()
+        .starts_with("TEXT_ENCODING"));
+    let plain = f.add("plain.txt", b"original");
+    assert!(f
+        .store
+        .save_markdown(&json!({"id":plain.id}))
+        .unwrap_err()
+        .starts_with("EDIT_UNSUPPORTED"));
+    assert_eq!(fs::read(&plain.path).unwrap(), b"original");
+    let file = f.add("readonly.md", b"original");
+    let doc = crate::text_document::read(&file).unwrap();
+    let mut permissions = fs::metadata(&file.path).unwrap().permissions();
+    let original = permissions.clone();
+    permissions.set_readonly(true);
+    fs::set_permissions(&file.path, permissions).unwrap();
+    let saved = f.store.save_markdown(
+        &json!({"id":file.id,"revision":doc["revision"],"digest":doc["digest"],"text":"new"}),
+    );
+    fs::set_permissions(&file.path, original).unwrap();
+    assert!(saved.unwrap_err().starts_with("ACCESS_DENIED"));
+    assert_eq!(fs::read(&file.path).unwrap(), b"original");
 }

@@ -59,11 +59,23 @@ impl Store {
             self.save_floating_presets(&ids)?;
             ids
         };
+        let previous = ids.clone();
         let tags = self.floating_tag_pool()?;
-        let ids: Vec<_> = ids
+        let mut seen = HashSet::new();
+        let mut ids: Vec<_> = ids
             .into_iter()
-            .filter(|id| tags.iter().any(|t| &t.id == id))
+            .filter(|id| tags.iter().any(|t| &t.id == id) && seen.insert(id.clone()))
             .collect();
+        // Saved shortcuts now define order, not visibility. Include all eligible
+        // ordinary tags, including those created before this behavior existed.
+        for tag in &tags {
+            if seen.insert(tag.id.clone()) {
+                ids.push(tag.id.clone());
+            }
+        }
+        if ids != previous {
+            self.save_floating_presets(&ids)?;
+        }
         Ok(json!({"ids":ids,"tags":tags}))
     }
     pub fn save_floating_presets(&mut self, ids: &[String]) -> Result<Value> {
@@ -121,6 +133,7 @@ impl Store {
             .execute_batch("SAVEPOINT floating_annotation")
             .map_err(sql_err)?;
         let mut undo = Undo {
+            id: uuid::Uuid::new_v4().to_string(),
             label: format!("浮窗标注「{}」", tag.name),
             steps: vec![],
             guards: vec![],
@@ -203,7 +216,7 @@ impl Store {
             )
         })();
         match result {
-            Ok(value) => {
+            Ok(mut value) => {
                 if let Err(e) = self.conn.execute_batch("RELEASE floating_annotation") {
                     let _ = self.conn.execute_batch(
                         "ROLLBACK TO floating_annotation; RELEASE floating_annotation",
@@ -211,6 +224,7 @@ impl Store {
                     return Err(sql_err(e));
                 }
                 if !undo.steps.is_empty() {
+                    value["undoId"] = json!(undo.id.clone());
                     self.undo.push(undo);
                     if self.undo.len() > 20 {
                         self.undo.remove(0);

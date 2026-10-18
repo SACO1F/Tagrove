@@ -1,6 +1,9 @@
 /* A full-width app toolbar keeps the controls at the window's top-left. */
 .app-shell {
   display: grid;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
   grid-template-columns: auto minmax(0, 1fr);
   grid-template-rows: 32px minmax(0, 1fr);
 }
@@ -8,6 +11,8 @@
   grid-column: 1 / -1;
   grid-row: 1;
   height: 32px;
+  min-width: 0;
+  overflow: hidden;
   padding: 0 0 0 4px;
   background: color-mix(in srgb, var(--panel) 65%, transparent);
 }
@@ -23,6 +28,7 @@
 }
 .app-shell .app-topbar .top-leading-actions {
   gap: 2px;
+  flex: 0 0 auto;
 }
 .app-shell .app-topbar .icon-button {
   width: 30px;
@@ -59,12 +65,15 @@
 }
 .window-controls {
   display: flex;
+  flex: 0 0 138px;
+  min-width: 138px;
   align-self: stretch;
 }
 .app-shell .window-controls button,
 .startup-window .window-controls button {
   display: inline-flex;
   width: 46px;
+  flex: 0 0 46px;
   align-items: center;
   justify-content: center;
   border-radius: 0;
@@ -124,7 +133,7 @@
   border: 1px solid var(--control-edge);
   background: var(--glass-surface);
   color: var(--muted);
-  font-size: 10px;
+  font-size: calc(10px * var(--ui-font-scale, 1));
   white-space: nowrap;
   transition:
     background 160ms ease,

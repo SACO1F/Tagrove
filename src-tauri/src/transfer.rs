@@ -1,6 +1,6 @@
 //! Portable originals + annotations. No database, settings, paths or credentials in the archive.
 use crate::{
-    db::{validate_tag, Store},
+    db::{validate_tag_source, Store},
     fsops,
     model::*,
 };
@@ -115,6 +115,8 @@ impl Control {
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Entry {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    web_source: Option<crate::capture::Source>,
     name: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     parent_folder: Option<String>,
@@ -231,7 +233,7 @@ impl Store {
         let mut bytes = 0u64;
         for fid in ids {
             let f = self.file(&fid)?;
-            if !safe_name(&f.name) {
+            if f.web_source.is_none() && !safe_name(&f.name) {
                 return Err(err(
                     "TRANSFER_FILENAME",
                     format!("文件名过长或无法跨设备使用：{}", f.name),
@@ -273,7 +275,17 @@ pub fn export(plan: Plan, path: &Path, expected: &str, control: &Control) -> Res
         .ok_or_else(|| err("TRANSFER_PATH", "请选择保存位置"))?;
     let mut output = tempfile::NamedTempFile::new_in(parent).map_err(|e| err("TRANSFER_IO", e))?;
     let mut manifest = Manifest {
-        format: 2,
+        format: if plan.files.iter().any(|f|f.web_source.as_ref().is_some_and(|s|s.kind=="web_image")) {7} else if plan.files.iter().any(|f| f.web_source.as_ref().is_some_and(|s| s.reading.is_some())) { 6 } else if plan
+            .files
+            .iter()
+            .any(|f| f.web_source.as_ref().is_some_and(|s| s.kind == "web_image"))
+        {
+            5
+        } else if plan.files.iter().any(|f| f.web_source.is_some()) {
+            4
+        } else {
+            3
+        },
         package_id: id(),
         app_version: env!("CARGO_PKG_VERSION").into(),
         created_at: now(),
@@ -298,17 +310,39 @@ pub fn export(plan: Plan, path: &Path, expected: &str, control: &Control) -> Res
             if fsops::identity(&input) != f.identity || fsops::revision(&before) != f.revision {
                 return Err(err("FILE_CHANGED", &f.name));
             }
-            let entry = format!("files/{i:05}/{}", f.name);
+            let portable = f
+                .web_source
+                .as_ref()
+                .map(|w| {
+                    if w.kind == "web_image" {
+                        crate::image_capture::portable_name(w)
+                    } else {
+                        crate::capture::portable_name(&w.title)
+                    }
+                })
+                .unwrap_or_else(|| f.name.clone());
+            let entry = format!("files/{i:05}/{}", portable);
             zip.start_file(&entry, options)
                 .map_err(|e| err("TRANSFER_IO", e))?;
             let hash = digest(&mut input, &mut zip, before.len(), control)?;
+            if f.web_source
+                .as_ref()
+                .and_then(|s| s.image.as_ref())
+                .is_some_and(|image| image.sha256 != hash)
+            {
+                return Err(err(
+                    "FILE_CHANGED",
+                    "采集图片内容已变化，请核对原图后重新关联",
+                ));
+            }
             if fsops::revision(&input.metadata().map_err(|e| err("TRANSFER_IO", e))?) != f.revision
             {
                 return Err(err("FILE_CHANGED", &f.name));
             }
             control.completed.store((i + 1) as u64, Ordering::SeqCst);
             manifest.files.push(Entry {
-                name: f.name.clone(),
+                web_source: f.web_source.clone(),
+                name: portable,
                 parent_folder: Some(
                     Path::new(&f.parent)
                         .file_name()
@@ -392,7 +426,7 @@ fn inspect(path: &Path, control: &Control) -> Result<(ZipArchive<File>, Manifest
     let m: Manifest = serde_json::from_slice(&content).map_err(|e| err("INVALID_PACKAGE", e))?;
     if !valid_time(m.created_at)
         || m.app_version.len() > 100
-        || ![1, 2].contains(&m.format)
+        || ![1, 2, 3, 4, 5, 6, 7].contains(&m.format)
         || uuid::Uuid::parse_str(&m.package_id).is_err()
         || m.files.is_empty()
         || m.files.len() > MAX_FILES
@@ -403,8 +437,31 @@ fn inspect(path: &Path, control: &Control) -> Result<(ZipArchive<File>, Manifest
     let mut expected = HashSet::from(["manifest.json".to_string(), "manifest.sha256".to_string()]);
     let mut total = 0u64;
     for (i, f) in m.files.iter().enumerate() {
+        if let Some(web) = &f.web_source {
+            web.validate()?;
+            if web.reading.is_some() && m.format < 6 {
+                return Err(err("INVALID_PACKAGE", "阅读副本需要资料包格式 6"));
+            }
+            let image = web.kind == "web_image";
+            if let Some(img)=&web.image {if m.format<7 && (u64::from(img.width)*u64::from(img.height)>40_000_000 || !matches!(img.mime.as_str(),"image/png"|"image/jpeg"|"image/webp") || f.bytes>16*1024*1024) {return Err(err("INVALID_PACKAGE","增强图片需要资料包格式 7"));}}
+
+            if (image
+                && (m.format < 5
+                    || f.sha256 != web.image.as_ref().unwrap().sha256
+                    || !f.name.ends_with(&format!(
+                        ".{}",
+                        crate::image_capture::extension(web.image.as_ref().unwrap())
+                    ))))
+                || (!image && (m.format < 4 || !f.name.ends_with(".sqweb")))
+            {
+                return Err(err("INVALID_PACKAGE", "网页资料包格式无效"));
+            }
+        }
+        if f.name.ends_with(".sqweb") && f.web_source.is_none() {
+            return Err(err("INVALID_PACKAGE", "网页资料缺少来源信息"));
+        }
         if !safe_name(&f.name)
-            || (m.format == 2 && f.parent_folder.is_none())
+            || (m.format >= 2 && f.parent_folder.is_none())
             || f.parent_folder
                 .as_ref()
                 .map(|name| !safe_name(name))
@@ -422,7 +479,25 @@ fn inspect(path: &Path, control: &Control) -> Result<(ZipArchive<File>, Manifest
         }
         let mut tag_names = HashSet::new();
         for t in &f.tags {
-            validate_tag(&t.name)?;
+            validate_tag_source(
+                &t.name,
+                if t.source == "folder" || t.created_by == "folder" {
+                    "folder"
+                } else {
+                    "manual"
+                },
+            )?;
+            if t.aliases.len() > 20
+                || (!t.aliases.is_empty() && (m.format < 3 || t.created_by != "manual"))
+            {
+                return Err(err("INVALID_PACKAGE", "标签别名格式无效"));
+            }
+            let mut alias_keys = HashSet::from([key(&t.name)]);
+            for a in &t.aliases {
+                if validate_tag_source(a, "manual")? != *a || !alias_keys.insert(key(a)) {
+                    return Err(err("INVALID_PACKAGE", "标签别名重复或无效"));
+                }
+            }
             if t.ai
                 .as_ref()
                 .map(|a| {
@@ -445,6 +520,31 @@ fn inspect(path: &Path, control: &Control) -> Result<(ZipArchive<File>, Manifest
             .ok_or_else(|| err("INVALID_PACKAGE", "资料过大"))?;
         if total > MAX_BYTES {
             return Err(err("TRANSFER_LIMIT", "资料包超过 8 GB"));
+        }
+    }
+    // Validate the sender namespace before receiver-specific coalescing.
+    let mut namespace = std::collections::HashMap::new();
+    let mut per_owner: std::collections::HashMap<String, HashSet<String>> =
+        std::collections::HashMap::new();
+    for t in m
+        .files
+        .iter()
+        .flat_map(|f| &f.tags)
+        .filter(|t| t.created_by != "folder")
+    {
+        let owner = key(&t.name);
+        for n in std::iter::once(&t.name).chain(&t.aliases) {
+            if namespace
+                .insert(key(n), owner.clone())
+                .is_some_and(|previous| previous != owner)
+            {
+                return Err(err("INVALID_PACKAGE", "资料包内规范名称与别名关系冲突"));
+            }
+        }
+        let aliases = per_owner.entry(owner).or_default();
+        aliases.extend(t.aliases.iter().map(|a| key(a)));
+        if aliases.len() > 20 {
+            return Err(err("INVALID_PACKAGE", "资料包内同一标签的别名超过 20 个"));
         }
     }
     let mut actual = HashSet::new();
@@ -473,6 +573,78 @@ fn inspect(path: &Path, control: &Control) -> Result<(ZipArchive<File>, Manifest
         control.completed.store((i + 1) as u64, Ordering::SeqCst);
     }
     Ok((zip, m, sha(&content)))
+}
+fn alias_conflicts(m: &Manifest, s: &Store) -> Result<Vec<String>> {
+    let mut space = std::collections::HashMap::new();
+    for t in s.tags()?.into_iter().filter(|t| t.created_by != "folder") {
+        for n in std::iter::once(&t.name).chain(&t.aliases) {
+            space.insert(key(n), key(&t.name));
+        }
+    }
+    let folder_names: HashSet<String> = s
+        .tags()?
+        .into_iter()
+        .filter(|t| t.created_by == "folder")
+        .map(|t| key(&t.name))
+        .collect();
+    let mut counts: std::collections::HashMap<String, HashSet<String>> = s
+        .tags()?
+        .into_iter()
+        .filter(|t| t.created_by != "folder")
+        .map(|t| (key(&t.name), t.aliases.iter().map(|a| key(a)).collect()))
+        .collect();
+    let mut conflicts = vec![];
+    for t in m
+        .files
+        .iter()
+        .flat_map(|f| &f.tags)
+        .filter(|t| t.created_by != "folder")
+    {
+        let owner = space
+            .get(&key(&t.name))
+            .cloned()
+            .unwrap_or_else(|| key(&t.name));
+        if !t.aliases.is_empty() && folder_names.contains(&key(&t.name)) {
+            conflicts.push(format!(
+                "「{}」与本机文件夹标签同名，不能导入其别名",
+                t.name
+            ));
+        }
+        let aliases = counts.entry(owner.clone()).or_default();
+        aliases.extend(t.aliases.iter().map(|a| key(a)).filter(|a| a != &owner));
+        if aliases.len() > 20 {
+            conflicts.push(format!("「{}」导入后别名超过 20 个", t.name));
+        }
+        for n in std::iter::once(&t.name).chain(&t.aliases) {
+            if let Some(existing) = space.get(&key(n)) {
+                if existing != &owner {
+                    conflicts.push(format!(
+                        "「{n}」已属于另一个标签，不能作为「{}」的别名",
+                        t.name
+                    ));
+                }
+            } else {
+                space.insert(key(n), owner.clone());
+            }
+        }
+    }
+    conflicts.sort();
+    conflicts.dedup();
+    Ok(conflicts)
+}
+pub fn preview_in_library(path: &Path, control: &Control, s: &Store) -> Result<Value> {
+    let (_, m, fingerprint) = inspect(path, control)?;
+    let mut value = summary(&m, &fingerprint);
+    value["aliasConflicts"] = json!(alias_conflicts(&m, s)?);
+    value["aliasCount"] = json!(m
+        .files
+        .iter()
+        .flat_map(|f| &f.tags)
+        .flat_map(|t| &t.aliases)
+        .map(|a| key(a))
+        .collect::<HashSet<_>>()
+        .len());
+    Ok(value)
 }
 pub fn preview(path: &Path, control: &Control) -> Result<Value> {
     let (_, m, fingerprint) = inspect(path, control)?;
@@ -735,6 +907,12 @@ impl Store {
         let m = &prepared.manifest;
         let folder = &prepared.folder;
         let extracted = &prepared.extracted;
+        if !alias_conflicts(m, self)?.is_empty() {
+            return Err(err(
+                "TAG_NAME_CONFLICT",
+                "资料包别名与当前标签冲突，请先整理标签再导入",
+            ));
+        }
         let receipt = format!("packageReceipt:{}", m.package_id);
         self.check_package_receipt(&m.package_id)?;
         control.check()?;
@@ -760,15 +938,38 @@ impl Store {
                 control.check()?;
                 let fid = id();
                 self.conn.execute("INSERT INTO files(id,path,path_key,parent,name,name_key,extension,kind,bytes,modified,added,revision,identity,note,note_key,favorite) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",params![fid,meta.path,meta.path,meta.parent,meta.name,key(&meta.name),meta.extension,meta.kind,meta.bytes,meta.modified,f.added,meta.revision,meta.identity,f.note,key(&f.note),f.favorite]).map_err(sql_err)?;
+                if let Some(web) = &f.web_source {
+                    web.validate()?;
+                    self.conn
+                        .execute(
+                            "INSERT INTO capture_receipts VALUES(?,?,?,?)",
+                            params![id(), "imported", crate::capture::source_dedupe(web), fid],
+                        )
+                        .map_err(sql_err)?;
+                    let name = if web.kind == "web_image" {
+                        crate::image_capture::portable_name(web)
+                    } else {
+                        web.display_title().to_owned()
+                    };
+                    let kind = if web.kind == "web_image" {
+                        "image"
+                    } else {
+                        "web"
+                    };
+                    self.conn.execute("UPDATE files SET name=?,name_key=?,kind=?,web_source=?,web_key=?,modified=? WHERE id=?",params![name,key(&name),kind,serde_json::to_string(web).map_err(|e|err("INVALID_PACKAGE",e))?,key(&web.text()),web.captured_at,fid]).map_err(sql_err)?;
+                }
                 for t in &f.tags {
                     let tag = self.create_tag_with_source(&t.name, &t.created_by)?;
+                    if !t.aliases.is_empty() {
+                        self.import_aliases(&tag.id, &t.aliases)?;
+                    }
                     let ai =
                         t.ai.as_ref()
                             .map(|a| serde_json::to_string(a).unwrap())
                             .unwrap_or_else(|| "{}".into());
                     self.conn
                         .execute(
-                            "INSERT INTO file_tags(file_id,tag_id,source,ai_meta) VALUES(?,?,?,?)",
+                            "INSERT INTO file_tags(file_id,tag_id,source,ai_meta) VALUES(?,?,?,?) ON CONFLICT(file_id,tag_id) DO UPDATE SET source=excluded.source,ai_meta=excluded.ai_meta WHERE (CASE excluded.source WHEN 'folder' THEN 4 WHEN 'manual' THEN 3 ELSE 1+COALESCE(json_extract(excluded.ai_meta,'$.confirmed'),0) END) > (CASE file_tags.source WHEN 'folder' THEN 4 WHEN 'manual' THEN 3 ELSE 1+COALESCE(json_extract(file_tags.ai_meta,'$.confirmed'),0) END)",
                             params![fid, tag.id, t.source, ai],
                         )
                         .map_err(sql_err)?;

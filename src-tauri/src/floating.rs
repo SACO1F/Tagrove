@@ -16,6 +16,7 @@ pub fn open(app: &tauri::AppHandle, state: &AppState) -> Result<Value> {
         .clamp(320., 1000.);
     let topmost = settings["floatingAlwaysOnTop"].as_bool().unwrap_or(true);
     if let Some(w) = app.get_webview_window("floating") {
+        w.unminimize().map_err(|e| err("WINDOW_ERROR", e))?;
         let position = w.outer_position().ok().map(|p| (p.x, p.y));
         let current = options(app)?;
         place(
@@ -70,6 +71,7 @@ pub fn open(app: &tauri::AppHandle, state: &AppState) -> Result<Value> {
         remember_geometry(&w, state);
     }
     let _ = app.emit("library-changed", ());
+    let _ = app.emit("floating-visibility", json!({"visible": true}));
     Ok(json_ok())
 }
 
@@ -78,6 +80,15 @@ fn place(
     position: Option<(i32, i32)>,
     width: f64,
     height: f64,
+) -> Result<()> {
+    place_with_width(window, position, width, height, None)
+}
+fn place_with_width(
+    window: &tauri::WebviewWindow,
+    position: Option<(i32, i32)>,
+    width: f64,
+    height: f64,
+    physical_width: Option<u32>,
 ) -> Result<()> {
     let mut monitors = window
         .available_monitors()
@@ -98,13 +109,23 @@ fn place(
             }
         })
         .collect();
-    if let Some(p) = crate::window_geometry::fit(&areas, position, width, height) {
+    let placement = if physical_width.is_some() {
+        crate::window_geometry::transition(&areas, position, width, height)
+    } else {
+        crate::window_geometry::fit(&areas, position, width, height)
+    };
+    if let Some(p) = placement {
         window
             .set_position(tauri::PhysicalPosition::new(p.x, p.y))
             .map_err(|e| err("WINDOW_ERROR", e))?;
-        window
-            .set_size(tauri::LogicalSize::new(p.width, p.height))
-            .map_err(|e| err("WINDOW_ERROR", e))?;
+        if let Some(pixels) = physical_width {
+            let scale = window.scale_factor().map_err(|e| err("WINDOW_ERROR",e))?;
+            window.set_size(tauri::PhysicalSize::new(pixels, (p.height * scale).round() as u32))
+                .map_err(|e| err("WINDOW_ERROR",e))?;
+        } else {
+            window.set_size(tauri::LogicalSize::new(p.width, p.height))
+                .map_err(|e| err("WINDOW_ERROR",e))?;
+        }
     }
     Ok(())
 }
@@ -120,8 +141,11 @@ fn persist_geometry(state: &AppState, value: &Value) {
     if let Ok(mut store) = state.store() {
         let _ = store.save_settings(&json!({"key":"floatingPosition","value":value["position"]}));
         // Compact/minimized events must not overwrite the last expanded size.
-        if value["size"]["height"].as_u64().is_some_and(|h| h >= 320) {
-            let _ = store.save_settings(&json!({"key":"floatingSize","value":value["size"]}));
+        if value["size"]["height"].as_f64().is_some_and(|h| h >= 300.) {
+            let (width,height) = crate::window_geometry::expanded_size(
+                value["size"]["width"].as_f64().unwrap_or(340.),
+                value["size"]["height"].as_f64().unwrap_or(460.));
+            let _ = store.save_settings(&json!({"key":"floatingSize","value":{"width":width,"height":height}}));
         }
     }
 }
@@ -169,6 +193,10 @@ fn remember_geometry(window: &tauri::WebviewWindow, state: &AppState) {
     });
 }
 
+pub fn visibility(app: &tauri::AppHandle) -> Value {
+    json!({"visible": app.get_webview_window("floating").is_some_and(|w| w.is_visible().unwrap_or(false) && !w.is_minimized().unwrap_or(false))})
+}
+
 pub fn options(app: &tauri::AppHandle) -> Result<Value> {
     let window = app
         .get_webview_window("floating")
@@ -182,7 +210,7 @@ pub fn options(app: &tauri::AppHandle) -> Result<Value> {
         .outer_position()
         .map_err(|e| err("WINDOW_ERROR", e))?;
     Ok(
-        json!({"x":position.x,"y":position.y,"width":size.width,"height":size.height,"collapsed":size.height<100.,"alwaysOnTop":window.is_always_on_top().map_err(|e| err("WINDOW_ERROR",e))?,"resizable":window.is_resizable().map_err(|e| err("WINDOW_ERROR",e))?}),
+        json!({"x":position.x,"y":position.y,"width":size.width,"height":size.height,"collapsed":size.height<100.,"minimized":window.is_minimized().map_err(|e|err("WINDOW_ERROR",e))?,"alwaysOnTop":window.is_always_on_top().map_err(|e| err("WINDOW_ERROR",e))?,"resizable":window.is_resizable().map_err(|e| err("WINDOW_ERROR",e))?}),
     )
 }
 
@@ -191,36 +219,44 @@ pub fn resize(app: &tauri::AppHandle, state: &AppState, collapsed: bool) -> Resu
         .get_webview_window("floating")
         .ok_or_else(|| err("WINDOW_ERROR", "浮窗未打开"))?;
     let current = options(app)?;
-    if collapsed && current["height"].as_f64().unwrap_or_default() >= 320. {
-        state.store()?.save_settings(&json!({"key":"floatingSize","value":{"width":current["width"].as_f64().unwrap_or(340.).round() as u32,"height":current["height"].as_f64().unwrap_or(460.).round() as u32}}))?;
+    if collapsed && current["height"].as_f64().unwrap_or_default() >= 300. {
+        let (width,height) = crate::window_geometry::expanded_size(
+            current["width"].as_f64().unwrap_or(340.),
+            current["height"].as_f64().unwrap_or(460.));
+        state.store()?.save_settings(&json!({"key":"floatingSize","value":{"width":width,"height":height}}))?;
     }
     let settings = state.store()?.bootstrap()?["settings"].clone();
-    let width = settings["floatingSize"]["width"].as_f64().unwrap_or(340.);
     let height = settings["floatingSize"]["height"].as_f64().unwrap_or(460.);
-    window
-        .set_min_size(Some(tauri::LogicalSize::new(
-            280.,
-            if collapsed { 64. } else { 320. },
-        )))
-        .map_err(|e| err("WINDOW_ERROR", e))?;
-    window
-        .set_resizable(!collapsed)
-        .map_err(|e| err("WINDOW_ERROR", e))?;
-    window
-        .set_size(tauri::LogicalSize::new(
-            width,
-            if collapsed { 64. } else { height },
-        ))
-        .map_err(|e| err("WINDOW_ERROR", e))?;
-    let position = window.outer_position().ok().map(|p| (p.x, p.y));
-    place(
-        &window,
-        position,
-        width,
-        if collapsed { 64. } else { height },
-    )?;
+    // Apply Windows frame/constraints as one UI-thread operation. The API runs
+    // on a blocking worker; separate queued setters could expose old geometry
+    // to the subsequent library-changed refresh.
+    let (sender, receiver) = mpsc::sync_channel(1);
+    app.run_on_main_thread(move || {
+        let result = (|| -> Result<()> {
+            let fail = |e| err("WINDOW_ERROR", e);
+            // Capture client pixels before changing frame flags. Persisted sizes
+            // intentionally normalize to >=280, but must not widen a live panel.
+            let pixels = window.inner_size().map_err(fail)?.width;
+            let scale = window.scale_factor().map_err(fail)?;
+            let width = pixels as f64 / scale;
+            let position = window.outer_position().ok().map(|p| (p.x,p.y));
+            window.set_min_size(None::<tauri::LogicalSize<f64>>).map_err(fail)?;
+            window.set_resizable(!collapsed).map_err(fail)?;
+            window.set_min_size(Some(tauri::LogicalSize::new(280., if collapsed {64.} else {320.}))).map_err(fail)?;
+            let target_height = if collapsed {64.} else {height};
+            place_with_width(&window,position,width,target_height,Some(pixels))?;
+            Ok(())
+        })();
+        let _ = sender.send(result);
+    }).map_err(|e|err("WINDOW_ERROR",e))?;
+    receiver.recv_timeout(std::time::Duration::from_secs(3))
+        .map_err(|_|err("WINDOW_ERROR","浮窗尺寸切换超时，请重试"))??;
+    let actual = options(app)?;
+    if actual["collapsed"].as_bool() != Some(collapsed) {
+        return Err(err("WINDOW_ERROR","浮窗尺寸尚未切换，请重试"));
+    }
     save_geometry(app, state);
-    Ok(json_ok())
+    Ok(actual)
 }
 
 pub fn topmost(app: &tauri::AppHandle, state: &AppState, value: bool) -> Result<Value> {
@@ -266,8 +302,9 @@ pub fn close(app: &tauri::AppHandle, state: &AppState) -> Result<Value> {
         }
     }
     if let Some(w) = app.get_webview_window("floating") {
-        let _ = w.hide();
+        w.hide().map_err(|e| err("WINDOW_ERROR", e))?;
     }
+    let _ = app.emit("floating-visibility", json!({"visible": false}));
     Ok(json_ok())
 }
 pub fn finish(app: &tauri::AppHandle, result: Result<Value>) {

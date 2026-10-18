@@ -1,0 +1,53 @@
+.reader-zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.reader-zoom-controls > .icon-button {
+  width: 30px;
+  height: 34px;
+  flex-shrink: 0;
+}
+.reader-zoom-controls .glide-select-trigger {
+  height: 34px;
+  min-height: 34px;
+  width: 112px;
+  font-size: 12px;
+}
+.reader-zoom-bar {
+  display: flex;
+  justify-content: flex-end;
+  flex-shrink: 0;
+  padding: 4px 0 6px;
+}
+.flow-zoom-reader,
+.flow-zoom-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+.flow-zoom-body > section {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  height: 100%;
+  min-height: 0;
+}
+.flow-zoom-body
+  :is(
+    .office-word-scroll,
+    .office-sheet-scroll,
+    .presentation-scroll,
+    .html-source,
+    .document-plain-text,
+    .markdown-editor
+  ) {
+  zoom: var(--reader-content-scale, 1);
+}
+.inspector-tabs-bar {
+  border-bottom: 0;
+}

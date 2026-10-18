@@ -43,6 +43,8 @@ pub fn string_list(v: &Value, name: &str) -> Vec<String> {
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Tag {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub aliases: Vec<String>,
     pub id: String,
     pub name: String,
     pub count: i64,
@@ -96,6 +98,12 @@ pub struct FileRecord {
     pub identity: String,
     pub tags: Vec<Tag>,
     pub ai_task: Option<AiTask>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub content_match: Option<Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub search_match: Option<Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub web_source: Option<crate::capture::Source>,
 }
 
 #[derive(Clone, Default, Debug, Deserialize, Serialize)]
@@ -103,12 +111,21 @@ pub struct FileRecord {
 pub struct Query {
     pub scope: String,
     pub text: String,
+    pub search_mode: String,
+    pub search_scope: String,
+    pub semantic_session: String,
+    #[serde(skip)]
+    pub ranked_ids: Option<Vec<String>>,
+    #[serde(skip)]
+    pub supplemental_ids: Option<Vec<String>>,
     pub include: Vec<String>,
     pub exclude: Vec<String>,
     pub mode: String,
     pub kinds: Vec<String>,
     pub status: String,
     pub directory: String,
+    pub source_host: String,
+    pub capture_kind: String,
     pub recursive: bool,
     pub from: Option<i64>,
     pub to: Option<i64>,
@@ -125,6 +142,8 @@ pub struct ImportJob {
     pub discovered: usize,
     pub processed: usize,
     pub added: usize,
+    #[serde(default)]
+    pub added_ids: Vec<String>,
     pub existing: usize,
     pub skipped: usize,
     pub failed: usize,

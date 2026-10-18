@@ -1,3 +1,4 @@
+import { t as ui, tf } from "./i18n";
 import { useRef, useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { Download, FolderOpen, LoaderCircle } from "lucide-react";
@@ -30,7 +31,7 @@ export function ExportTagDialog({
       const path = await open({
         directory: true,
         multiple: false,
-        title: "选择标签文件导出位置",
+        title: ui("选择标签文件导出位置"),
       });
       if (typeof path === "string") {
         setDestination(path);
@@ -61,7 +62,7 @@ export function ExportTagDialog({
   }
   return (
     <Modal
-      title="导出标签文件"
+      title={ui("导出标签文件")}
       dismissDisabled={busy}
       onClose={() => {
         if (!lock.current) onClose();
@@ -72,20 +73,20 @@ export function ExportTagDialog({
         {!result ? (
           <>
             <p className="muted">
-              {tag.count} 个关联文件 · 复制到新文件夹，原文件保留
+              {tag.count} {ui("个关联文件 · 复制到新文件夹，原文件保留")}
             </p>
             <div className="export-destination">
               <input
-                aria-label="导出位置"
-                placeholder="选择或粘贴文件夹路径"
+                aria-label={ui("导出位置")}
+                placeholder={ui("选择或粘贴文件夹路径")}
                 value={destination}
                 disabled={busy}
                 onChange={(e) => setDestination(e.target.value)}
               />
               <button
                 className="button"
-                aria-label="选择导出文件夹"
-                title="选择文件夹"
+                aria-label={ui("选择导出文件夹")}
+                data-tooltip={ui("选择文件夹")}
                 onClick={() => void choose()}
                 disabled={busy}
               >
@@ -93,7 +94,7 @@ export function ExportTagDialog({
               </button>
             </div>
             <p className="subtle">
-              同名文件自动编号，未能复制的文件列入导出清单。
+              {ui("同名文件自动编号，未能复制的文件列入导出清单。")}
             </p>
             <button
               className="button primary"
@@ -105,20 +106,20 @@ export function ExportTagDialog({
               ) : (
                 <Download size={16} />
               )}{" "}
-              {busy ? "正在复制，请稍候…" : "导出文件夹"}
+              {busy ? ui("正在复制，请稍候…") : ui("导出文件夹")}
             </button>
           </>
         ) : (
           <div role="status" className="export-result">
             <strong>
               {result.failed
-                ? `已复制 ${result.copied} 个，失败 ${result.failed} 个`
-                : `已导出 ${result.copied} 个文件`}
+                ? tf("已复制 {0} 个，失败 {1} 个", result.copied, result.failed)
+                : tf("已导出 {0} 个文件", result.copied)}
             </strong>
             <p className="export-path">{result.path}</p>
             {result.failed > 0 && (
               <details>
-                <summary>查看未导出的文件</summary>
+                <summary>{ui("查看未导出的文件")}</summary>
                 {result.failures.slice(0, 20).map((f, i) => (
                   <p key={i}>
                     {f.path}
@@ -126,7 +127,9 @@ export function ExportTagDialog({
                     {message(f.error)}
                   </p>
                 ))}
-                {result.failed > 20 && <p>完整记录见文件夹内的导出清单。</p>}
+                {result.failed > 20 && (
+                  <p>{ui("完整记录见文件夹内的导出清单。")}</p>
+                )}
               </details>
             )}
             <button
@@ -138,7 +141,7 @@ export function ExportTagDialog({
               }
             >
               <FolderOpen size={16} />
-              打开文件夹
+              {ui("打开文件夹")}
             </button>
           </div>
         )}

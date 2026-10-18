@@ -1,0 +1,123 @@
+.watch-folders {
+  width: 100%;
+}
+.watch-toolbar,
+.watch-editor-actions,
+.watch-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.watch-toolbar {
+  margin: 16px 0;
+}
+.watch-editor,
+.watch-card {
+  padding: 18px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--panel) 80%, transparent);
+  margin-bottom: 14px;
+}
+.watch-editor > label:not(.watch-check) {
+  display: block;
+  font-size: calc(13px * var(--ui-font-scale, 1));
+  font-weight: 550;
+  margin: 12px 0;
+}
+.watch-path-input {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 8px;
+}
+.watch-path-input input {
+  flex: 1;
+  min-width: 0;
+}
+.watch-editor textarea {
+  width: 100%;
+  margin-top: 8px;
+  resize: vertical;
+  min-height: 80px;
+}
+.watch-editor input:not([type="checkbox"]),
+.watch-editor textarea {
+  color: var(--ink);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.watch-editor small {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+  font-weight: 400;
+}
+.watch-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
+  margin-top: 14px;
+}
+.watch-editor-actions {
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+.watch-card-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.watch-card-heading strong {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: calc(13px * var(--ui-font-scale, 1));
+}
+.watch-state {
+  font-size: calc(11px * var(--ui-font-scale, 1));
+  color: var(--muted);
+  white-space: nowrap;
+}
+.watch-state.watching {
+  color: var(--accent);
+}
+.watch-state.offline,
+.watch-state.warning,
+.watch-state.error {
+  color: var(--warning, #9c7845);
+}
+.watch-rule-summary,
+.watch-counts {
+  color: var(--muted);
+  font-size: calc(12px * var(--ui-font-scale, 1));
+  line-height: 1.8;
+  margin: 10px 0;
+}
+.watch-card-actions {
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+.watch-empty {
+  padding: 26px;
+  text-align: center;
+  color: var(--muted);
+}
+.watch-errors {
+  font-size: calc(12px * var(--ui-font-scale, 1));
+  color: var(--muted);
+  margin-top: 10px;
+  overflow-wrap: anywhere;
+}
+.watch-errors summary {
+  cursor: pointer;
+}
+.watch-errors p {
+  margin: 8px 0;
+}

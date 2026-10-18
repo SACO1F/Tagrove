@@ -1,0 +1,118 @@
+.path-repair {
+  width: 100%;
+}
+.repair-root {
+  display: block;
+  margin: 14px 0;
+}
+.repair-root > span {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 7px;
+}
+.repair-root > div {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.repair-root input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--ink);
+  background: var(--panel);
+}
+.repair-scan-actions,
+.repair-filter,
+.repair-pages {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 12px 0;
+}
+.repair-scan-actions [role="status"] {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
+  color: var(--muted);
+}
+.repair-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 14px;
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
+  border-radius: 12px;
+}
+.repair-summary > span {
+  color: var(--muted);
+  font-size: calc(12px * var(--ui-font-scale, 1));
+  line-height: 1.7;
+}
+.repair-results {
+  max-height: 38vh;
+  overflow: auto;
+  scrollbar-gutter: stable;
+}
+.repair-row {
+  padding: 14px 4px;
+  border-bottom: 1px solid var(--line);
+}
+.repair-row-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: space-between;
+}
+.repair-row-heading strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.repair-state {
+  font-size: calc(11px * var(--ui-font-scale, 1));
+  color: var(--muted);
+  white-space: nowrap;
+}
+.repair-state.matched {
+  color: var(--accent);
+}
+.repair-path {
+  font-size: calc(12px * var(--ui-font-scale, 1));
+  color: var(--muted);
+  overflow-wrap: anywhere;
+  margin: 8px 0;
+}
+.repair-reason {
+  font-size: calc(12px * var(--ui-font-scale, 1));
+  color: var(--muted);
+  margin: 8px 0;
+}
+.repair-confirm {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: calc(12px * var(--ui-font-scale, 1));
+  margin: 12px 0;
+}
+.repair-confirm input {
+  accent-color: var(--accent);
+}
+.repair-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+}
+.repair-success {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 24px;
+  color: var(--accent);
+}

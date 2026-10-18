@@ -1,3 +1,4 @@
+import { t as ui, tf } from "./i18n";
 import { useEffect, useState } from "react";
 import { save } from "@tauri-apps/plugin-dialog";
 import { Download } from "lucide-react";
@@ -23,12 +24,18 @@ export function BackupStatus({ refreshKey }: { refreshKey: unknown }) {
   return (
     <p className="subtle">
       {error
-        ? `备份状态暂不可用：${error}`
+        ? tf("备份状态暂不可用：{0}", error)
         : !status
-          ? "正在读取备份状态…"
+          ? ui("正在读取备份状态…")
           : status.lastBackup
-            ? `最近${status.lastBackup.kind === "beforeRestore" ? "保护" : "标注"}备份：${date(status.lastBackup.createdAt)}`
-            : "尚未记录标注备份"}
+            ? tf(
+                "最近{0}备份：{1}",
+                status.lastBackup.kind === "beforeRestore"
+                  ? ui("保护")
+                  : ui("标注"),
+                date(status.lastBackup.createdAt),
+              )
+            : ui("尚未记录标注备份")}
     </p>
   );
 }
@@ -56,7 +63,7 @@ export function DiagnosticPanel() {
     setError("");
     try {
       const path = await save({
-        title: "保存诊断报告",
+        title: ui("保存诊断报告"),
         defaultPath: `拾签诊断-${new Date().toLocaleDateString("sv-SE")}-${Date.now()}.md`,
         filters: [{ name: "Markdown", extensions: ["md"] }],
       });
@@ -73,10 +80,10 @@ export function DiagnosticPanel() {
   return (
     <div className="modal-content diagnostic-panel">
       <p className="muted">
-        报告仅包含版本、计数和任务状态，供你自行分享给开发者。
+        {ui("报告仅包含版本、计数和任务状态，供你自行分享给开发者。")}
       </p>
-      <pre aria-label="诊断报告预览" tabIndex={0}>
-        {text || "正在生成…"}
+      <pre aria-label={ui("诊断报告预览")} tabIndex={0}>
+        {text || ui("正在生成…")}
       </pre>
       <button
         className="button primary"
@@ -84,9 +91,9 @@ export function DiagnosticPanel() {
         onClick={() => void exportReport()}
       >
         <Download size={15} />
-        {busy ? "正在保存…" : "导出当前诊断"}
+        {busy ? ui("正在保存…") : ui("导出当前诊断")}
       </button>
-      {saved && <p role="status">诊断报告已保存</p>}
+      {saved && <p role="status">{ui("诊断报告已保存")}</p>}
       {error && (
         <p role="alert" className="tag-form-error">
           {error}

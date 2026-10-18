@@ -1,13 +1,17 @@
+import { t as ui, tf } from "./i18n";
 import { useEffect, useState } from "react";
 import {
+  Globe,
   FileText,
   File,
   ImageIcon,
   LoaderCircle,
   AlertCircle,
 } from "lucide-react";
-import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+import { pdfEngine, pdfOptions } from "./pdf";
 import { api, LocalFile, message } from "./api";
+import { PreviewCache } from "./preview-cache";
+import { FileGlyph } from "./FileGlyph";
 
 interface PreviewData {
   kind: string;
@@ -20,7 +24,7 @@ interface PreviewData {
 let active = 0;
 const waiting: Array<() => void> = [];
 const previews = new Map<string, Promise<PreviewData>>();
-const readyPreviews = new Map<string, PreviewData>();
+const readyPreviews = new PreviewCache<PreviewData>(24 * 1024 * 1024);
 const ratios = new Map<string, number>();
 export function previewKey(file: LocalFile) {
   return `${file.id}:${file.revision}:${file.identity}:${file.status}`;
@@ -45,25 +49,20 @@ export function clearPreviews() {
 }
 async function load(file: LocalFile, large: boolean): Promise<PreviewData> {
   const key = `${previewKey(file)}:${large}`;
+  const ready = readyPreviews.get(key);
+  if (ready) return ready;
   if (!previews.has(key)) {
     const promise = limited(async () => {
-      const value = await api<PreviewData>("preview", { id: file.id, large });
+      const value = await api<PreviewData>(
+        /^(docx|xlsx|csv|tsv)$/i.test(file.extension)
+          ? "office.summary"
+          : "preview",
+        { id: file.id, large },
+      );
       if (value.kind !== "pdf") return value;
-      const pdf = await import("pdfjs-dist");
-      pdf.GlobalWorkerOptions.workerSrc = workerUrl;
-      const binary = atob(value.data!);
-      const data = Uint8Array.from(binary, (c) => c.charCodeAt(0));
-      const task = pdf.getDocument({
-        data,
-        useSystemFonts: true,
-        cMapUrl: new URL("pdf-assets/cmaps/", document.baseURI).href,
-        cMapPacked: true,
-        standardFontDataUrl: new URL(
-          "pdf-assets/standard_fonts/",
-          document.baseURI,
-        ).href,
-        wasmUrl: new URL("pdf-assets/wasm/", document.baseURI).href,
-      });
+      const pdf = await pdfEngine();
+      const data = Uint8Array.from(atob(value.data!), (c) => c.charCodeAt(0));
+      const task = pdf.getDocument(pdfOptions(data));
       try {
         const doc = await task.promise;
         const page = await doc.getPage(1);
@@ -89,13 +88,13 @@ async function load(file: LocalFile, large: boolean): Promise<PreviewData> {
       .then((value) => {
         if (previews.get(key) === promise) {
           readyPreviews.set(key, value);
-          if (readyPreviews.size > 300)
-            readyPreviews.delete(readyPreviews.keys().next().value!);
+          // Keep only pending promises; resolved promises retain the large payload.
+          previews.delete(key);
         }
         return value;
       })
       .catch((error) => {
-        previews.delete(key);
+        if (previews.get(key) === promise) previews.delete(key);
         return {
           kind: "error",
           revision: file.revision,
@@ -103,7 +102,6 @@ async function load(file: LocalFile, large: boolean): Promise<PreviewData> {
         };
       });
     previews.set(key, promise);
-    if (previews.size > 300) previews.delete(previews.keys().next().value!);
   }
   return previews.get(key)!;
 }
@@ -128,7 +126,8 @@ export function Preview({
     if (
       file.kind === "image" ||
       file.kind === "pdf" ||
-      (large && file.kind === "text")
+      (large && file.kind === "text") ||
+      (!compact && /^(docx|xlsx|csv|tsv)$/i.test(file.extension))
     )
       load(file, large).then((r) => {
         if (alive) setResult(r);
@@ -137,7 +136,32 @@ export function Preview({
     return () => {
       alive = false;
     };
-  }, [file.id, file.revision, file.identity, file.status, large]);
+  }, [file.id, file.revision, file.identity, file.status, large, compact]);
+  if (file.webSource && file.kind === "web")
+    return (
+      <div className={`web-card-preview ${compact ? "is-compact" : ""}`}>
+        <Globe size={compact ? 26 : 38} strokeWidth={1.5} />
+        {!compact && (
+          <>
+            <small>
+              {file.webSource.kind === "web_excerpt"
+                ? ui("文字摘录")
+                : ui("网页链接")}
+            </small>
+            {(file.webSource.reading?.text ?? file.webSource.excerpt) && (
+              <p>{file.webSource.reading?.text ?? file.webSource.excerpt}</p>
+            )}
+            <small>{new URL(file.webSource.url).hostname}</small>
+          </>
+        )}
+      </div>
+    );
+  if (compact && file.kind !== "image" && file.kind !== "pdf")
+    return (
+      <div className="preview-placeholder file-glyph-placeholder">
+        <FileGlyph extension={file.extension} compact />
+      </div>
+    );
   if (!result)
     return (
       <div className="preview-placeholder">
@@ -162,31 +186,47 @@ export function Preview({
         }}
       />
     );
+  if (result.kind === "office-summary" && !compact)
+    return (
+      <div className="office-card-summary">
+        <FileGlyph extension={file.extension} compact />
+        <span className="extension-stamp">{file.extension.toUpperCase()}</span>
+        <pre>{result.text || ui("暂无文字摘要")}</pre>
+      </div>
+    );
   if (result.kind === "text")
     return (
       <div className="text-preview">
-        <pre>{result.text || "（空文件）"}</pre>
-        {result.truncated && <small>仅预览前 200 KiB</small>}
+        <pre>{result.text || ui("（空文件）")}</pre>
+        {result.truncated && <small>{ui("仅预览前 200 KiB")}</small>}
       </div>
     );
-  if (result.kind === "error")
+  if (result.kind === "error" && !/^(docx|xlsx|csv|tsv)$/i.test(file.extension))
     return (
-      <div className="preview-placeholder preview-error" title={result.error}>
+      <div
+        className="preview-placeholder preview-error"
+        data-tooltip={result.error}
+      >
         <AlertCircle size={compact ? 20 : 28} />
-        {!compact && <span>{large ? result.error : "无法预览"}</span>}
+        {!compact && <span>{large ? result.error : ui("无法预览")}</span>}
       </div>
     );
   const Icon =
     file.kind === "image" ? ImageIcon : file.kind === "other" ? File : FileText;
   return (
     <div className={`preview-placeholder file-type-${file.kind}`}>
-      <Icon size={compact ? 23 : 40} strokeWidth={1.25} />
+      {file.kind === "image" ||
+      (file.kind === "other" && !/^(html?|xml)$/i.test(file.extension)) ? (
+        <Icon size={compact ? 23 : 40} strokeWidth={1.25} />
+      ) : (
+        <FileGlyph extension={file.extension} compact={compact} />
+      )}
       {!compact && (
         <span className="extension-stamp">
           {file.extension.toUpperCase() || "FILE"}
         </span>
       )}
-      {large && <small>使用默认程序打开以查看完整内容</small>}
+      {large && <small>{ui("使用默认程序打开以查看完整内容")}</small>}
     </div>
   );
 }

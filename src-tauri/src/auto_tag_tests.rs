@@ -107,10 +107,9 @@ fn folder_tags_remain_searchable_but_cannot_be_pinned_even_from_legacy_settings(
         .save_floating_presets(&[manual.id.clone(), folder.id.clone()])
         .unwrap_err()
         .starts_with("FOLDER_TAG_NOT_ALLOWED"));
-    assert_eq!(
-        f.store.floating_presets().unwrap()["ids"],
-        json!([manual.id])
-    );
+    let ids = f.store.floating_presets().unwrap()["ids"].clone();
+    assert_eq!(ids[0], manual.id);
+    assert!(!ids.as_array().unwrap().contains(&json!(folder.id)));
     f.store
         .conn
         .execute(
@@ -120,7 +119,7 @@ fn folder_tags_remain_searchable_but_cannot_be_pinned_even_from_legacy_settings(
         .unwrap();
     assert_eq!(
         f.store.floating_presets().unwrap()["ids"],
-        json!([manual.id])
+        ids
     );
     assert!(f
         .store
@@ -157,15 +156,8 @@ fn confirming_ai_association_with_folder_label_does_not_pin_it() {
         .store
         .create_tag_with_source("其他目录", "folder")
         .unwrap();
-    let (current, token) = f.start(&file.id);
-    f.store
-        .apply_ai_checked(
-            &current,
-            token,
-            "test",
-            &[(Some(folder.id.clone()), folder.name.clone(), "测试".into())],
-        )
-        .unwrap();
+    // Legacy pending associations remain confirmable; new AI output cannot create them.
+    f.store.conn.execute("INSERT INTO file_tags(file_id,tag_id,source,ai_meta) VALUES(?,?,'ai',?)", rusqlite::params![file.id,folder.id,json!({"model":"legacy","reason":"old fixture","updatedAt":now(),"confirmed":false}).to_string()]).unwrap();
     let current = f.store.file(&file.id).unwrap();
     f.store
         .confirm_ai(&json!({"id":file.id,"tagId":folder.id,"version":current.version}))
@@ -382,7 +374,7 @@ fn backup_fixture(f: &Fixture, legacy: bool) -> PathBuf {
         .run_to_completion(64, std::time::Duration::from_millis(1), None)
         .unwrap();
     if legacy {
-        target.execute_batch("DROP TABLE ai_jobs; ALTER TABLE tags DROP COLUMN created_by; ALTER TABLE file_tags DROP COLUMN source; ALTER TABLE file_tags DROP COLUMN ai_meta; DELETE FROM schema_migrations WHERE version=2; PRAGMA user_version=1;").unwrap();
+        target.execute_batch("DROP TABLE tag_aliases; DELETE FROM schema_migrations WHERE version=3; DROP TABLE ai_jobs; ALTER TABLE tags DROP COLUMN created_by; ALTER TABLE file_tags DROP COLUMN source; ALTER TABLE file_tags DROP COLUMN ai_meta; DELETE FROM schema_migrations WHERE version=2; PRAGMA user_version=1;").unwrap();
     }
     let library_id: String = target
         .query_row("SELECT value FROM library_meta WHERE key='id'", [], |r| {
@@ -591,12 +583,12 @@ fn folder_can_be_disabled_and_backfilled_without_replacing_manual_tags() {
 }
 #[test]
 fn long_folder_names_are_deterministic_and_distinct() {
-    use unicode_segmentation::UnicodeSegmentation;
     let mut f = Fixture::new();
     let prefix = "文".repeat(41);
     let a = f.add(&format!("{prefix}甲/a.txt"), "text", b"a");
     let b = f.add(&format!("{prefix}乙/b.txt"), "text", b"b");
-    assert_eq!(a.tags[0].name.graphemes(true).count(), 40);
+    assert_eq!(a.tags[0].name, format!("{prefix}甲"));
+    assert_eq!(b.tags[0].name, format!("{prefix}乙"));
     assert_ne!(a.tags[0].id, b.tags[0].id);
 }
 #[test]
@@ -839,7 +831,7 @@ fn schema_one_migrates_with_recovery_copy_and_manual_origins() {
     let file = f.add("a.txt", "text", b"a");
     let tag = f.store.create_tag("旧标签").unwrap();
     f.patch(&file.id, vec![tag.id.clone()], vec![]);
-    f.store.conn.execute_batch("DROP TABLE ai_jobs; ALTER TABLE tags DROP COLUMN created_by; ALTER TABLE file_tags DROP COLUMN source; ALTER TABLE file_tags DROP COLUMN ai_meta; DELETE FROM schema_migrations WHERE version=2; PRAGMA user_version=1;").unwrap();
+    f.store.conn.execute_batch("DROP TABLE tag_aliases; DELETE FROM schema_migrations WHERE version=3; DROP TABLE ai_jobs; ALTER TABLE tags DROP COLUMN created_by; ALTER TABLE file_tags DROP COLUMN source; ALTER TABLE file_tags DROP COLUMN ai_meta; DELETE FROM schema_migrations WHERE version=2; PRAGMA user_version=1;").unwrap();
     let root = f.store.root.clone();
     drop(f.store);
     let store = Store::open(&root).unwrap();
@@ -1027,6 +1019,27 @@ fn scoped_ai_cancel_validates_whole_batch_before_changing_jobs() {
 }
 
 #[test]
+fn floating_all_tags_migrates_sparse_order_and_adds_later_tags_without_folders() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path().join("library");
+    let mut s = Store::open(&root).unwrap();
+    let a = s.create_tag("existing A").unwrap();
+    let b = s.create_tag("existing B").unwrap();
+    let folder = s.create_tag_with_source("folder only", "folder").unwrap();
+    let pending = s.create_tag_with_source("pending only", "ai").unwrap();
+    s.save_floating_presets(&[b.id.clone()]).unwrap();
+    let ids = s.floating_presets().unwrap()["ids"].clone();
+    assert_eq!(ids, json!([b.id, a.id]));
+    let c = s.create_tag("later C").unwrap();
+    assert_eq!(s.floating_presets().unwrap()["ids"], json!([b.id, a.id, c.id]));
+    assert!(!ids.as_array().unwrap().contains(&json!(folder.id)));
+    assert!(!ids.as_array().unwrap().contains(&json!(pending.id)));
+    drop(s);
+    let mut reopened = Store::open(&root).unwrap();
+    assert_eq!(reopened.floating_presets().unwrap()["ids"], json!([b.id, a.id, c.id]));
+}
+
+#[test]
 fn workspace_manual_tags_pin_once_preserve_existing_shortcuts_and_survive_restart() {
     let mut f = Fixture::new();
     let file = f.add("workspace.txt", "text", b"synthetic");
@@ -1062,14 +1075,16 @@ fn workspace_manual_tags_pin_once_preserve_existing_shortcuts_and_survive_restar
 }
 
 #[test]
-fn workspace_failed_annotation_does_not_pin_and_explicit_ai_acceptance_does() {
+fn workspace_failed_annotation_preserves_file_and_only_confirmed_ai_enters_palette() {
     let mut f = Fixture::new();
     let file = f.add("workspace-ai.txt", "text", b"synthetic");
     let keep = f.store.create_tag("原快捷标签").unwrap();
     f.store.save_floating_presets(&[keep.id.clone()]).unwrap();
     let rejected = f.store.create_tag("失败操作标签").unwrap();
     assert!(f.store.mutate("files.tags", &json!({"ids":[file.id],"versions":{file.id.clone():file.version-1},"add":[rejected.id],"remove":[]})).is_err());
-    assert_eq!(f.store.floating_presets().unwrap()["ids"], json!([keep.id]));
+    // All existing ordinary tags are visible even if assigning one failed.
+    assert!(!f.store.file(&file.id).unwrap().tags.iter().any(|t| t.id == rejected.id));
+    assert_eq!(f.store.floating_presets().unwrap()["ids"], json!([keep.id, rejected.id]));
     f.apply(&file.id, &["AI 待确认标签"]);
     let pending = f
         .store
@@ -1086,6 +1101,22 @@ fn workspace_failed_annotation_does_not_pin_and_explicit_ai_acceptance_does() {
     f.patch(&file.id, vec![pending.id.clone()], vec![]);
     assert_eq!(
         f.store.floating_presets().unwrap()["ids"],
-        json!([keep.id, pending.id])
+        json!([keep.id, rejected.id, pending.id])
     );
+}
+
+
+#[test]
+fn folder_labels_are_excluded_from_ai_prompt_parser_and_write_boundary() {
+    let mut f=Fixture::new();let file=f.add("folder-guard.txt","text",b"fixture");
+    let folder=f.store.create_tag_with_source("私有目录","folder").unwrap();
+    let normal=f.store.create_tag("学习资料").unwrap();let pool=f.store.tag_pool().unwrap();
+    let body=ai::request_body(&ai::Config::default(),&file,&pool,json!({"type":"text","text":"fixture"})).unwrap();
+    let sent:Value=serde_json::from_str(body["messages"][1]["content"][0]["text"].as_str().unwrap()).unwrap();
+    assert!(!sent["existingTags"].as_array().unwrap().iter().any(|t|t["id"]==folder.id));
+    let response=json!({"choices":[{"message":{"content":json!({"tags":[{"id":folder.id,"name":folder.name},{"id":null,"name":folder.name},{"id":normal.id,"name":normal.name}]}).to_string()}}]});
+    let parsed=ai::parse_response(&response,&pool,true).unwrap();assert_eq!(parsed.len(),1);assert_eq!(parsed[0].0.as_ref(),Some(&normal.id));
+    let (current,token)=f.start(&file.id);
+    f.store.apply_ai_checked(&current,token,"fixture",&[(Some(folder.id.clone()),folder.name.clone(),"folder id".into()),(None,folder.name.clone(),"folder name".into()),(Some(normal.id.clone()),normal.name.clone(),"content".into())]).unwrap();
+    let after=f.store.file(&file.id).unwrap();assert!(!after.tags.iter().any(|t|t.id==folder.id));assert!(after.tags.iter().any(|t|t.id==normal.id&&t.source=="ai"));
 }

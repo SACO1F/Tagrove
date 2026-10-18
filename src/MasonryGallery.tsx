@@ -1,3 +1,4 @@
+import { t as ui, tf } from "./i18n";
 import {
   useCallback,
   useLayoutEffect,
@@ -11,7 +12,8 @@ import { Star, AlertCircle } from "lucide-react";
 import { type LocalFile, statusNames } from "./api";
 import { Preview, previewKey, previewRatio } from "./preview";
 import { TagSource } from "./TagSource";
-import { tagTone } from "./tagColors";
+import { tagTone, tagStyle } from "./tagColors";
+import { ContentSnippet } from "./TextIndex";
 import { SelectionCheck, useTagArrival } from "./microMotion";
 
 function GalleryCard({
@@ -38,7 +40,7 @@ function GalleryCard({
     // Loading a preview can change its ratio without re-rendering the gallery.
     // Update positions in the same commit, before the newly taller image paints.
     if (card.current) onSizeChange(index, card.current.offsetHeight);
-  }, [ratio, index, onSizeChange]);
+  }, [ratio, index, onSizeChange, file.contentMatch?.snippet]);
   return (
     <>
       <button
@@ -77,7 +79,7 @@ function GalleryCard({
           {file.tags.some((t) => t.source === "ai" && !t.ai?.confirmed) && (
             <span
               className="gallery-ai-mark"
-              title="包含 AI 标注，选中文件可确认或重新识别"
+              data-tooltip={ui("包含 AI 标注，选中文件可确认或重新识别")}
             >
               ✦ AI
             </span>
@@ -96,13 +98,14 @@ function GalleryCard({
           <span
             className="gallery-caption"
             role="region"
-            aria-label={`${file.name}的全部标签`}
+            aria-label={tf("{0}的全部标签", file.name)}
           >
             <span className="file-name">{file.name}</span>
             {file.tags.length > 0 && (
               <span className="gallery-tags" ref={tags}>
                 {file.tags.map((tag) => (
                   <span
+                    style={tagStyle(tag.id)}
                     className={`gallery-tag tag-color tone-${tagTone(tag.id)}`}
                     key={tag.id}
                     data-motion-tag={tag.id}
@@ -120,6 +123,7 @@ function GalleryCard({
             <span className="gallery-document-title">{file.name}</span>
           </span>
         )}
+        <ContentSnippet file={file} />
       </button>
     </>
   );

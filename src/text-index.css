@@ -1,0 +1,100 @@
+.text-index-settings h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 6px;
+}
+.index-summary {
+  font-variant-numeric: tabular-nums;
+}
+.index-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 12px 0;
+  color: var(--muted);
+  font-size: calc(12px * var(--ui-font-scale, 1));
+}
+.index-confirm {
+  margin: 12px 0;
+  padding: 12px;
+  background: var(--panel);
+  border-radius: 12px;
+}
+.text-index-settings details {
+  margin-top: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
+  overflow-wrap: anywhere;
+}
+.text-index-settings summary {
+  cursor: pointer;
+}
+.content-snippet {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  text-align: left;
+  padding: 12px;
+  color: var(--ink);
+  font-size: calc(12px * var(--ui-font-scale, 1));
+  line-height: 1.65;
+  background: var(--panel);
+}
+.content-snippet > span {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+.content-snippet small {
+  color: color-mix(in srgb, var(--ink) 72%, var(--panel));
+  font-size: calc(10px * var(--ui-font-scale, 1));
+}
+.file-description .content-snippet {
+  padding: 0;
+  background: transparent;
+}
+.file-description .content-snippet > span {
+  -webkit-line-clamp: 1;
+}
+.file-description:has(.content-snippet) .file-subline {
+  display: none;
+}
+.search-scope {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-right: 6px;
+  flex-shrink: 0;
+}
+.search-scope button {
+  padding: 5px 7px;
+  border-radius: 7px;
+  font-size: calc(11px * var(--ui-font-scale, 1));
+  color: color-mix(in srgb, var(--ink) 72%, var(--panel));
+  white-space: nowrap;
+}
+.search-scope button[aria-pressed="true"] {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.search-box:has(.search-scope) input {
+  min-width: 70px;
+}
+.heading-search.is-open .search-reveal {
+  width: clamp(270px, 34vw, 440px);
+}
+
+.search-explanation {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+  font-size: calc(10px * var(--ui-font-scale, 1));
+  line-height: 1.6;
+  padding: 2px 0;
+}

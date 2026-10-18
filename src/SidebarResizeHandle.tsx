@@ -1,3 +1,4 @@
+import { t as ui, tf } from "./i18n";
 import { useRef, type PointerEvent } from "react";
 
 export const SIDEBAR_MIN = 180;
@@ -49,13 +50,13 @@ export function SidebarResizeHandle({
       className="sidebar-resize-handle"
       role="separator"
       tabIndex={0}
-      aria-label="调整左侧菜单宽度"
+      aria-label={ui("调整左侧菜单宽度")}
       aria-orientation="vertical"
       aria-valuemin={SIDEBAR_CLOSED}
       aria-valuemax={SIDEBAR_MAX}
       aria-valuenow={collapsed ? SIDEBAR_CLOSED : width}
-      aria-valuetext={collapsed ? "已收起" : `${width} 像素`}
-      title="拖动调整宽度；向左缩小可收起"
+      aria-valuetext={collapsed ? ui("已收起") : tf("{0} 像素", width)}
+      data-tooltip={ui("拖动调整宽度；向左缩小可收起")}
       onPointerDown={(e) => {
         if (e.button !== 0 || !e.isPrimary) return;
         e.preventDefault();

@@ -101,17 +101,7 @@ impl Store {
         if name.is_empty() {
             return Ok(false);
         }
-        let name = if name.graphemes(true).count() > 40 {
-            use sha2::{Digest, Sha256};
-            format!(
-                "{}…{}",
-                name.graphemes(true).take(31).collect::<String>(),
-                &format!("{:x}", Sha256::digest(name.as_bytes()))[..8]
-            )
-        } else {
-            name.to_string()
-        };
-        let tag = self.create_tag_with_source(&name, "folder")?;
+        let tag = self.create_tag_with_source(name, "folder")?;
         let removed = self
             .conn
             .execute(
@@ -126,6 +116,72 @@ impl Store {
                 .map_err(sql_err)?;
         }
         Ok(removed + added > 0)
+    }
+    // Recover only exact legacy generated names. User-renamed tags are untouched.
+    pub fn restore_full_folder_names(&self) -> Result<()> {
+        use sha2::{Digest, Sha256};
+        let mut st=self.conn.prepare("SELECT t.id,t.name,f.parent FROM tags t JOIN file_tags ft ON ft.tag_id=t.id JOIN files f ON f.id=ft.file_id WHERE t.created_by='folder' AND ft.source='folder' AND t.name LIKE '%…________' AND f.removed_at IS NULL").map_err(sql_err)?;
+        let rows = st
+            .query_map([], |r| {
+                Ok((
+                    r.get::<_, String>(0)?,
+                    r.get::<_, String>(1)?,
+                    r.get::<_, String>(2)?,
+                ))
+            })
+            .map_err(sql_err)?
+            .collect::<std::result::Result<Vec<_>, _>>()
+            .map_err(sql_err)?;
+        drop(st);
+        let mut candidates = std::collections::HashMap::<String, (String, String, bool)>::new();
+        for (tid, old, parent) in rows {
+            let Some(name) = Path::new(&parent).file_name().and_then(|n| n.to_str()) else {
+                continue;
+            };
+            let name = name.trim();
+            if name.graphemes(true).count() <= 40 {
+                continue;
+            }
+            let legacy = format!(
+                "{}…{}",
+                name.graphemes(true).take(31).collect::<String>(),
+                &format!("{:x}", Sha256::digest(name.as_bytes()))[..8]
+            );
+            if old != legacy {
+                continue;
+            }
+            let entry = candidates
+                .entry(tid)
+                .or_insert((old, name.to_owned(), false));
+            if entry.1 != name {
+                entry.2 = true;
+            }
+        }
+        self.conn
+            .execute_batch("SAVEPOINT folder_names")
+            .map_err(sql_err)?;
+        let result = (|| {
+            for (tid, (old, name, ambiguous)) in candidates {
+                if ambiguous {
+                    continue;
+                }
+                crate::db::validate_tag_source(&name, "folder")?;
+                self.conn.execute("UPDATE tags SET name=?,name_key=?,version=version+1 WHERE id=? AND name=? AND NOT EXISTS(SELECT 1 FROM tags other WHERE other.name_key=? AND other.id<>?)",params![name,key(&name),tid,old,key(&name),tid]).map_err(sql_err)?;
+            }
+            Ok(())
+        })();
+        match result {
+            Ok(()) => self
+                .conn
+                .execute_batch("RELEASE folder_names")
+                .map_err(sql_err),
+            Err(e) => {
+                let _ = self
+                    .conn
+                    .execute_batch("ROLLBACK TO folder_names;RELEASE folder_names");
+                Err(e)
+            }
+        }
     }
 
     pub fn fill_folder_tags(&mut self) -> Result<Value> {
@@ -288,6 +344,7 @@ impl Store {
         tx.execute("INSERT INTO settings(key,value) VALUES('floatingTags',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", [json!(pins).to_string()]).map_err(sql_err)?;
         tx.commit().map_err(sql_err)?;
         self.remember(Undo {
+            id: uuid::Uuid::new_v4().to_string(),
             label: "确认 AI 标注".into(),
             steps: vec![
                 Step {
@@ -352,7 +409,10 @@ impl Store {
         }
         // Validate every choice before making any changes; labels are data, never commands.
         let pool = self.tag_pool()?;
-        for (tid, name, reason) in choices {
+        let choices: Vec<_> = choices.iter().filter(|(tid,name,_)|
+            !crate::ai::is_folder_suggestion(&pool, tid.as_deref(), name)
+        ).collect();
+        for (tid, name, reason) in &choices {
             validate_tag(name)?;
             if reason.chars().count() > 500 {
                 return Err(err("AI_RESPONSE_INVALID", "标签说明过长"));
@@ -371,7 +431,7 @@ impl Store {
             .map_err(sql_err)?;
         let result = (|| {
             self.conn.execute("DELETE FROM file_tags WHERE file_id=? AND source='ai' AND COALESCE(json_extract(ai_meta,'$.confirmed'),0)=0",[&file.id]).map_err(sql_err)?;
-            for (tid, name, reason) in choices {
+            for (tid, name, reason) in &choices {
                 let tid = match tid {
                     Some(tid) => tid.clone(),
                     None => self.create_tag_with_source(name, "ai")?.id,

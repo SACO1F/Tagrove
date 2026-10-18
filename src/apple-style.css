@@ -258,7 +258,7 @@
   color: var(--ink);
   box-shadow: 0 8px 28px #00000024;
   backdrop-filter: blur(20px);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-font-scale, 1));
 }
 .file-tag-hover-tags {
   display: flex;
@@ -343,7 +343,7 @@
   justify-content: space-between;
   padding: 8px 9px 5px;
   color: var(--muted);
-  font-size: 10px;
+  font-size: calc(10px * var(--ui-font-scale, 1));
   font-weight: 550;
 }
 .sidebar-tag-filter > svg {
@@ -354,7 +354,7 @@
   padding: 10px 16px 12px;
   flex-shrink: 0;
   color: var(--muted);
-  font-size: 10px;
+  font-size: calc(10px * var(--ui-font-scale, 1));
 }
 .floating-history ol {
   margin: 0;
@@ -383,7 +383,7 @@
   flex-shrink: 0;
 }
 .floating-history time {
-  font-size: 9px;
+  font-size: calc(9px * var(--ui-font-scale, 1));
   font-variant-numeric: tabular-nums;
   opacity: 0.7;
 }
@@ -435,7 +435,7 @@
   min-height: 0;
   margin: 0;
   gap: 5px;
-  font-size: 10px;
+  font-size: calc(10px * var(--ui-font-scale, 1));
   line-height: 1.5;
   opacity: 1;
   overflow: auto;
@@ -578,10 +578,10 @@
   padding: 20px 32px 18px;
 }
 .app-shell .page-heading h1 {
-  font-size: 24px;
+  font-size: calc(24px * var(--ui-font-scale, 1));
 }
 .app-shell .page-heading h1 > span {
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-font-scale, 1));
   font-weight: 500;
   font-variant-numeric: tabular-nums;
 }
@@ -748,3 +748,6 @@
   text-overflow: ellipsis;
   vertical-align: bottom;
 }
+
+.floating-history .history-undo { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 20px; width:20px; height:20px; padding:0; border-radius:6px; color:var(--accent); }
+.floating-history .history-undo:disabled { opacity:.3; }
