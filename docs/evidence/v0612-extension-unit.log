@@ -1,0 +1,5 @@
+PASS v0.6.10 local recovery: pending state, worker restart, cancel retained, bad image retained, reselect success with same capture and cleared error, completed task blocked, old desktop capability guard.
+PASS v0.6.9: HTTP 403 detail, stage and permanent retry; unknown transport preserved; quota + validation diagnostics; success has no stale diagnostic; HTTP 503 retry; report redaction and legacy fallback.
+PASS v0.6.6 action popup routing without new tabs; blocked-popup fallback preserves draft and badge
+PASS v0.6.2 image draft/menu, capture.image routing, image payload preservation, permanent type vs transient download errors, same-ID retry, unsupported URL rejection; all inherited v0.6.1 queue assertions also passed.
+PASS inherited worker: isolated concurrent drafts / TTL / cap; startup alarm recreation; specific connection failures; permanent vs disk retry; malformed ACK rejected; old sending ID recovery; per-item retry; 200-task no-loss capacity and untrusted-page denial.

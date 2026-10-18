@@ -57,6 +57,12 @@ def main():
     if version == "0.3.0":
         subprocess.run([sys.executable, str(root / "scripts/stable-release-gate.py")], check=True)
     validate_versions(root, version)
+    if version == "0.6.12":
+        if args.directory_name and args.directory_name != "v0.6.12":
+            raise ValueError("The 0.6.12 formal release uses the fixed v0.6.12 directory")
+        # Current packaging uses committed sources and nested extension icons.
+        subprocess.run([sys.executable, str(root / "scripts/release-v0612-delivery.py")], check=True)
+        return
     mappings = {"0.3.0-beta.1": "beta1", "0.3.0-beta.2": "beta2", "0.3.0-beta.3": "beta3", "0.3.0-beta.4": "beta4", "0.3.0-beta.5": "beta5", "0.3.0-beta.6": "beta6", "0.3.0-beta.7": "beta7", "0.3.0-beta.8": "beta8", "0.3.0-beta.9": "beta9"}
     mappings["0.3.0-beta.10"] = "beta10"
     mappings["0.3.0-beta.12"] = "beta12"

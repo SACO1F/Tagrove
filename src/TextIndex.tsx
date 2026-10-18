@@ -1,4 +1,5 @@
 import { SettingsSection } from "./SettingsSection";
+import { ReviewHistory } from "./ReviewHistory";
 import { t as ui, tf } from "./i18n";
 import { useEffect, useState } from "react";
 import { Search, Pause, Play, RefreshCw, Square, Trash2 } from "lucide-react";
@@ -218,7 +219,7 @@ export function TextIndexSettings({ compact = false }: { compact?: boolean }) {
                 )}
               </p>
               <button
-                className="button quiet"
+                className="button quiet index-clear-action"
                 disabled={busy || status.bytes === 0}
                 onClick={() => setConfirm("clear")}
               >
@@ -253,15 +254,16 @@ export function TextIndexSettings({ compact = false }: { compact?: boolean }) {
             </div>
           )}
           {status.errors.length > 0 && (
-            <details>
-              <summary>{ui("查看失败原因（最近 5 项）")}</summary>
-              {status.errors.map((item, i) => (
-                <p key={i}>
-                  {item.name}：{message(item.error)}
-                </p>
-              ))}
+            <ReviewHistory title={ui("查看失败原因（最近 5 项）")} meta={null}>
+              <ul>
+                {status.errors.slice(0, 5).map((item, i) => (
+                  <li key={i}>
+                    <p>{item.name}：{message(item.error)}</p>
+                  </li>
+                ))}
+              </ul>
               <p className="subtle">{ui("修复文件后可重建索引重试。")}</p>
-            </details>
+            </ReviewHistory>
           )}
         </>
       )}

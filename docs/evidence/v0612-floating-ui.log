@@ -1,0 +1,1 @@
+PASS actual desktop: no group dividers light/dark; 30 collapse/expand cycles at 5 live widths incl. below saved minimum, max font, Chinese/English; all DOM resize samples preserve width; native compact mode 64 high, non-resizable; expanded mode restored.

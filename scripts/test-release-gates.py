@@ -28,6 +28,20 @@ class ReleaseGates(unittest.TestCase):
             self.assertTrue(str(gate.call_args.args[0][1]).endswith("stable-release-gate.py"))
             versions.assert_not_called()
 
+    def test_v0612_uses_committed_source_delivery(self):
+        with patch.object(release.sys, "argv", ["package-release.py", "--version", "0.6.12"]), patch.object(release, "validate_versions") as versions, patch.object(release.subprocess, "run") as runner:
+            release.main()
+            versions.assert_called_once()
+            runner.assert_called_once()
+            self.assertTrue(runner.call_args.kwargs["check"])
+            self.assertTrue(str(runner.call_args.args[0][1]).endswith("release-v0612-delivery.py"))
+
+    def test_v0612_rejects_ambiguous_delivery_folder(self):
+        with patch.object(release.sys, "argv", ["package-release.py", "--version", "0.6.12", "--directory-name", "v0.6.12-copy"]), patch.object(release, "validate_versions"), patch.object(release.subprocess, "run") as runner:
+            with self.assertRaisesRegex(ValueError, "fixed v0.6.12 directory"):
+                release.main()
+            runner.assert_not_called()
+
     def test_root_lock_mismatch_is_rejected(self):
         with tempfile.TemporaryDirectory() as name:
             root = Path(name)

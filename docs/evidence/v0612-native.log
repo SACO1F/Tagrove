@@ -1,0 +1,11 @@
+   Compiling shiqian v0.6.12 (D:\AI\Shiqian\src-tauri)
+warning: function `preview` is never used
+   --> src\transfer.rs:649:8
+    |
+649 | pub fn preview(path: &Path, control: &Control) -> Result<Value> {
+    |        ^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `shiqian` (lib) generated 1 warning
+    Finished `release` profile [optimized] target(s) in 2m 56s

@@ -1,11 +1,13 @@
-# Tagrove 文档导航
+# Tagrove 文档 / Documentation
 
-- [中文使用说明](user-manual-v0.6.11.zh-CN.md)
-- [English guide](user-manual-v0.6.11.en.md)
-- [浏览器扩展安装与排障](../browser-extension/README.md)
-- [本轮默认主题与 Logo 更新](brand-update-2026-10-19.zh-CN.md)
-- [v0.6.11 版本说明](release-v0.6.11.md)
-- [v0.6.11 验证范围](validation-v0.6.11.md)
-- [后续开发计划](post-acceptance-plan-2026-10-18.zh-CN.md)
+当前正式版 / Current release：**v0.6.12**。
 
-本轮交付标识为 v0.6.11-brand.1，应用内部版本为 0.6.11。历史记录反映对应日期的验证范围，不代表所有后续版本已重复验收。
+- [中文使用说明](user-manual-v0.6.12.zh-CN.md)
+- [English guide](user-manual-v0.6.12.en.md)
+- [双语产品与插件说明 / Bilingual README](../README.md)
+- [浏览器插件 / Chrome extension](../browser-extension/README.md)
+- [发布说明 / Release notes](release-v0.6.12.md)
+- [验证范围 / Validation](validation-v0.6.12.md)
+- [后续计划 / Development plan](post-acceptance-plan-2026-10-18.zh-CN.md)
+
+历史测试反映对应日期和构建的验证范围。Historical test results apply to their recorded dates and builds.
