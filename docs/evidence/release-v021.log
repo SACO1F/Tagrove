@@ -1,0 +1,35 @@
+
+> shiqian-desktop@0.2.1 package
+> tauri build
+
+        Info Looking up installed tauri packages to check mismatched versions...
+     Running beforeBuildCommand `npm run build`
+
+> shiqian-desktop@0.2.1 prebuild
+> node scripts/prepare-pdf.mjs
+
+
+> shiqian-desktop@0.2.1 build
+> tsc -b && vite build
+
+vite v8.3.1 building client environment for production...
+transforming...
+✓ 1752 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                              0.40 kB │ gzip:   0.29 kB
+dist/assets/pdf.worker.min-Dswkl-cV.mjs  1,265.41 kB
+dist/assets/index-CgE3w9wO.css              35.97 kB │ gzip:   7.84 kB
+dist/assets/index-BOtF7tAf.js              337.53 kB │ gzip: 103.33 kB
+dist/assets/pdf-De-QegZ9.js                430.93 kB │ gzip: 129.03 kB
+
+✓ built in 382ms
+   Compiling shiqian v0.2.1 (D:\AI\Shiqian\src-tauri)
+    Finished `release` profile [optimized] target(s) in 1m 57s
+       Built application at: D:\AI\Shiqian\src-tauri\target\release\shiqian.exe
+        Info Patching D:\AI\Shiqian\src-tauri\target\release\shiqian.exe with bundle type information: nsis
+        Info Target: x64
+     Running makensis to produce D:\AI\Shiqian\src-tauri\target\release\bundle\nsis\拾签_0.2.1_x64-setup.exe
+    Finished 1 bundle at:
+        D:\AI\Shiqian\src-tauri\target\release\bundle\nsis\拾签_0.2.1_x64-setup.exe (5.11 MiB)
+
