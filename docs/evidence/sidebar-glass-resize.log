@@ -1,5 +1,0 @@
-PASS pointer width adjustment and persisted width after reload
-PASS below-threshold auto collapse, eased expansion and remembered width
-PASS drag-to-expand, maximum width and Escape restores uncommitted drag
-PASS keyboard separator controls and reduced-motion preference
-PASS narrow viewport without page overflow, overlapping cards or uncaught UI errors

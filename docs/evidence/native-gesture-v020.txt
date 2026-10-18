@@ -1,1 +1,0 @@
-PASS real pointer-down / move / release on a tag starts native dragging and rejects the floating window as an invalid file target. Full cross-window gesture remains outside the automation tool bounds.

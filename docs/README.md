@@ -11,3 +11,10 @@
 - [后续计划 / Development plan](post-acceptance-plan-2026-10-18.zh-CN.md)
 
 历史测试反映对应日期和构建的验证范围。Historical test results apply to their recorded dates and builds.
+
+## 文档保留范围 / Retained documentation
+
+- [版本变更索引 / Changelog](../CHANGELOG.md)
+- 当前中英文使用说明、正式版验证摘要、插件说明及后续计划保留。
+- 旧测试报告、阶段使用说明、旧截图和一次性测试脚本从 main 分支清理；历史内容可从 v0.6.12 标签追溯。
+- Historical reports and interim assets are removed from the main branch; the v0.6.12 tag remains available for traceability.

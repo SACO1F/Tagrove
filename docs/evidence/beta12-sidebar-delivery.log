@@ -1,7 +1,0 @@
-PASS pointer width adjustment and persisted width after reload
-PASS below-threshold auto collapse, eased expansion and remembered width
-PASS drag-to-expand, maximum width and Escape restores uncommitted drag
-PASS original CSS cascade reproduces the 2px rectangular focus ring
-PASS keyboard-visible focus uses the resize rail, without rectangular green outline
-PASS keyboard separator controls and reduced-motion preference
-PASS narrow viewport without page overflow, overlapping cards or uncaught UI errors

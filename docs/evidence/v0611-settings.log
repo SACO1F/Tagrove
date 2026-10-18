@@ -1,7 +1,0 @@
-PASS English folder example, live font-size control and floating synchronization
-PASS largest text at 950px has no horizontal overflow; AI switch saves; action gaps {
-  folder: { margin: 12, gap: 12 },
-  consent: { margin: 16, gap: 16 },
-  diagnostics: { margin: 16, gap: 16 }
-}
-PASS actual English tooltip, settings survive normal app exit and restart; no page errors

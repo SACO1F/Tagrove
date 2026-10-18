@@ -1,9 +1,0 @@
-PASS candidate version
-PASS current-user install
-PASS non-admin current-user branch
-PASS WebView2 detection
-PASS runtime install failure branch
-PASS uninstall optional application-data branch
-PASS upgrade guards application-data deletion
-PASS x64 application payload
-Static generated NSIS script inspection only. No installer/uninstaller was run; no registration or user application data changed.

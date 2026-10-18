@@ -23,7 +23,7 @@
 
 交接资料时在发送端导出 `.sqtagpack`，接收端从偏好设置导入资料包到本机文件夹。先用少量合成文件核对数量、标签、备注与收藏，再交接实际资料。`.sqtagbackup` 主要恢复标注数据库，不包含原文件。
 
-[使用说明](user-manual-v0.3.zh-CN.md) · [升级与恢复](upgrade-v0.3.zh-CN.md) · [跨电脑交接步骤](colleague-handoff-v0.3.zh-CN.md) · [已知限制](known-issues-v0.3.md) · [验证结果](validation-v0.3-rc1.md) · [正式验收清单](stable-release-acceptance.md)
+使用说明（历史资料，见 v0.6.12 源码快照） · 升级与恢复（历史资料，见 v0.6.12 源码快照） · 跨电脑交接步骤（历史资料，见 v0.6.12 源码快照） · 已知限制（历史资料，见 v0.6.12 源码快照） · 验证结果（历史资料，见 v0.6.12 源码快照） · [正式验收清单](stable-release-acceptance.md)
 
 ## 校验与正式交付
 

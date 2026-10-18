@@ -1,6 +1,0 @@
-PASS grid/list repeated single click deselects; switching file, Ctrl toggling and Shift range remain correct
-PASS top-left controls ordered undo, refresh, sidebar; redundant workspace heading removed
-PASS persistent sorting/actions in empty and full selection; Jelly select-all/clear states; top-left remains fixed after sidebar toggle; toolbar fits 960/1360px
-PASS five icon tooltips in light/dark, icon-only actions, tooltip bounds/ARIA and favorite mutation
-PASS export icon opens selected-file dialog; remove icon opens confirmation and cancel preserves file
-PASS keyboard focus/Escape, reduced motion and no page errors

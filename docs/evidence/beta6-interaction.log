@@ -1,4 +1,0 @@
-PASS workspace creation without a file and applying an existing tag both synchronize the open native palette; prior shortcuts preserved without duplicates
-PASS real Tauri drag-point events: badge follows near right edge with details open/closed, stays in bounds and still highlights a file
-PASS all four custom selectors in both themes: click selection, gliding highlight, keyboard selection and Escape focus behavior; both glass add buttons have transparent edges and no white inset ring
-PASS reduced-motion mode and no page errors

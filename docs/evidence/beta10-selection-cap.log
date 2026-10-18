@@ -1,2 +1,0 @@
-PASS 1001-result selection gives explicit limit feedback without partially selecting or modifying files
-PASS Ctrl+A applies the same 1000-file limit without partial selection

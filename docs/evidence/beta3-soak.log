@@ -1,2 +1,0 @@
-PASS continuous-operation baseline: 600.185s, 3313 note/query cycles, grid/list/theme + floating open/close + reload, stable file count
-WebView main-page after-GC JS heap: 2988288 -> 4333392 bytes; DOM nodes 505 -> 582. Observational baseline, not an all-day memory-leak certification.

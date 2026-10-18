@@ -1,6 +1,0 @@
-page.evaluate: Execution context was destroyed, most likely because of a navigation
-    at api (D:\AI\Shiqian\scripts\beta3-window-desktop.cjs:14:12)
-    at D:\AI\Shiqian\scripts\beta3-window-desktop.cjs:24:24 {
-  log: [],
-  name: 'Error'
-}

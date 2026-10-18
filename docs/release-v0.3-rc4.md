@@ -16,7 +16,7 @@
 
 资料包沿用 v2 原父目录分类，新版可读 v1；接收端应使用 RC.2 或后续支持 v2 的版本。
 
-[使用说明](user-manual-v0.3.zh-CN.md) · [升级说明](upgrade-v0.3.zh-CN.md) · [验证记录](validation-v0.3-rc4.md) · [同事交接](colleague-handoff-v0.3.zh-CN.md) · [已知限制](known-issues-v0.3.md) · [正式验收](stable-release-acceptance.md)
+使用说明（历史资料，见 v0.6.12 源码快照） · 升级说明（历史资料，见 v0.6.12 源码快照） · 验证记录（历史资料，见 v0.6.12 源码快照） · 同事交接（历史资料，见 v0.6.12 源码快照） · 已知限制（历史资料，见 v0.6.12 源码快照） · [正式验收](stable-release-acceptance.md)
 
 本轮安装器、独立程序、源码和 Markdown 文档在本地交付目录，SHA256SUMS.txt 可核对完整性。GitHub Release 设为正式可用版及最新推荐下载。已完成的构建和回归记录见验证文档；多屏、干净系统与八小时运行等实机验收仍未完成，验收记录保持原状，不将其标为通过。
 

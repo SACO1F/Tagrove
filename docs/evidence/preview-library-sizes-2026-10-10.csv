@@ -1,3 +1,0 @@
-package,version,file,raw_bytes,gzip_bytes,tarball_bytes,package_unpacked_bytes
-docx-preview,0.4.1,package/dist/docx-preview.min.js,75527,20678,213924,977732
-jszip,3.10.2,package/dist/jszip.min.js,97781,28430,179348,693061

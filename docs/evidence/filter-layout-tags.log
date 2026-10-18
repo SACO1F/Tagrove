@@ -1,7 +1,0 @@
-PASS image hover shows every tag and folder provenance without changing card geometry, selection or file metadata
-PASS ordinary document preview contains all 36 tags; long names wrap and tags scroll inside the preview
-PASS list rows show the complete label set on hover, beyond the two-label summary
-PASS keyboard focus exposes the same labels and untagged files do not open an empty panel
-PASS dark-mode full tag panel remains inside the viewport and below modal layers
-PASS light and dark picture tags match floating tag colors; palette has multiple distinct colors
-PASS enlarged 48px add button is taller than 43px tag cards and stays usable above the annotation bar at three native sizes

@@ -1,7 +1,0 @@
-PASS collapse has intermediate widths, continuous label opacity, stable icon sizes/vertical positions and retained DOM
-PASS expand has intermediate widths, continuous label opacity, stable icon sizes/vertical positions and retained DOM
-PASS collapsed index is inert; expand-index button restores retained scroll; rapid reversal settles expanded
-PASS light both add buttons share translucent gradients, blur and borders; 48px floating button; pointer clicks open both dialogs
-PASS dark both add buttons share translucent gradients, blur and borders; 48px floating button; pointer clicks open both dialogs
-PASS glass button remains above assist row and scrolling tags without blocking wheel scrolling
-PASS reduced motion and no uncaught UI errors

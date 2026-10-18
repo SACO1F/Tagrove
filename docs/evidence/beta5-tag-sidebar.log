@@ -1,4 +1,0 @@
-PASS folder tags absent from detail candidates and cannot be manually reapplied by Enter
-PASS all 120 matching files (across pagination) receive shared new tag; 10 nonmatching files unchanged; folder tags preserved
-PASS all seven navigation/footer highlights centered on icons when collapsed, vertically centered when expanded, in both themes
-PASS no page errors

@@ -1,7 +1,0 @@
-{
-  "checks": [
-    "网格视图: tag-drop routing highlights and annotates the exact card",
-    "列表视图: tag-drop routing highlights and annotates the exact card",
-    "Dropping on workspace chrome rejects annotation"
-  ]
-}

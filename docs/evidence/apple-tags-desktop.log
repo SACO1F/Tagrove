@@ -1,6 +1,0 @@
-PASS accepted AI labels leave the pool after their last removal and file details remain open
-PASS deleting a global label does not reset the selected file or close its details
-PASS deleting the active filter label removes that filter while retaining file details
-PASS Apple-style buttons and multiselect checks in gallery/list preserve the original green theme
-PASS floating palette retains exactly three recent operations after reload and has no undo control
-PASS consistent light/dark Apple-style surfaces without uncaught UI errors

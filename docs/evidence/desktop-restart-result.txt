@@ -1,1 +1,0 @@
-PASS A new application process reads the note flushed on native window close.

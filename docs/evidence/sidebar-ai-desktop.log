@@ -1,8 +1,0 @@
-PASS real import -> folder tag -> extracted content -> worker -> existing/new AI associations; unsupported file keeps folder tag
-PASS duplicate imports do not repeat AI requests
-PASS accepting a generated AI label removes its badge and updates the open floating palette automatically, retaining other pending associations
-PASS reanalysis retains manual/folder/confirmed tags and replaces unconfirmed AI tags
-PASS a user edit during inference prevents a stale response overwriting tags
-PASS cancel discards an in-flight result
-PASS real desktop displays AI badges, confirmation and settings without revealing stored key
-PASS real backup round-trip preserves confirmed provenance and disables AI

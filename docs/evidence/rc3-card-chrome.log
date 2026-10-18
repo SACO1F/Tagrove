@@ -1,6 +1,0 @@
-PASS light md: open/close card transition retains 40x40 document icon and fixed tag dimensions; card widths 260.6,251.3,241.0,217.6,199.9,190.5,188.3,188.3,188.3,188.5,195.6,209.5,229.7,247.9,259.4,260.8,260.8,260.8
-PASS light png: open/close card transition retains 40x40 document icon and fixed tag dimensions; card widths 260.5,254.3,239.5,221.0,203.7,191.7,188.3,188.3,188.3,188.7,194.7,208.0,224.5,243.9,256.7,260.7,260.8,260.8
-PASS dark md: open/close card transition retains 40x40 document icon and fixed tag dimensions; card widths 260.3,253.4,238.0,214.3,198.7,189.6,188.3,188.3,188.3,188.5,194.7,208.0,226.2,244.0,256.0,260.7,260.8,260.8
-PASS dark png: open/close card transition retains 40x40 document icon and fixed tag dimensions; card widths 260.1,253.4,239.6,221.0,203.7,192.3,188.3,188.3,188.3,188.5,193.8,209.5,231.4,247.9,258.5,260.8,260.8,260.8
-PASS reduced-motion skips resize animation and preserves icon size
-PASS no uncaught page errors

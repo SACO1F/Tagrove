@@ -1,9 +1,0 @@
-locator.waitFor: Timeout 12000ms exceeded.
-Call log:
-  - waiting for locator('.palette-tag').first() to be visible
-
-    at findPalette (D:\AI\Shiqian\scripts\floating-controls-desktop-smoke.cjs:43:55)
-    at async D:\AI\Shiqian\scripts\floating-controls-desktop-smoke.cjs:51:15 {
-  log: [ "  - waiting for locator('.palette-tag').first() to be visible" ],
-  name: 'TimeoutError'
-}

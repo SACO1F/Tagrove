@@ -1,1 +1,0 @@
-PASS Native window close flushes an edit made less than 500ms earlier into SQLite.

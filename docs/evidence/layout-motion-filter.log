@@ -1,4 +1,0 @@
-PASS filter expands and collapses through intermediate heights; conditions persist and rapid reversals settle correctly
-PASS four grid/list round trips keep card positions stable from the first painted frame
-PASS each view restores its own scroll offset without transient displaced cards
-PASS dark theme, narrow viewport and reduced motion keep filtering and view transitions usable

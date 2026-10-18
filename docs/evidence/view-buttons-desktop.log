@@ -1,5 +1,0 @@
-COUNT { font: '14px', text: '2', height: 27 }
-PASS light sliding indicator has intermediate frames, lands on list, does not intercept pointer hit testing and supports keyboard selection
-PASS dark sliding indicator has intermediate frames, lands on list, does not intercept pointer hit testing and supports keyboard selection
-PASS rapid switches settle on final selected button
-PASS reduced motion switches highlight directly

@@ -1,8 +1,0 @@
-    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.84s
-     Running unittests src\lib.rs (src-tauri\target\debug\deps\shiqian_lib-685136b91283f750.exe)
-
-running 1 test
-BENCH: 10,000 files, 40 tags, 30,000 links, varied Chinese notes; 120 queries; p50=113.64ms p95=137.46ms max=159.46ms seed+query=14.05s
-test tests::representative_ten_thousand_file_search_benchmark ... ok
-
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 83 filtered out; finished in 14.09s

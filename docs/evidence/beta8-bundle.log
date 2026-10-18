@@ -1,6 +1,0 @@
-        Info Patching D:\AI\Shiqian\src-tauri\target\release\shiqian.exe with bundle type information: nsis
-        Info Target: x64
-     Running makensis to produce D:\AI\Shiqian\src-tauri\target\release\bundle\nsis\拾签_0.3.0-beta.8_x64-setup.exe
-    Finished 1 bundle at:
-        D:\AI\Shiqian\src-tauri\target\release\bundle\nsis\拾签_0.3.0-beta.8_x64-setup.exe (5.69 MiB)
-

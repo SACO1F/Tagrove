@@ -1,5 +1,0 @@
-PASS applied tags excluded; all 16 unused candidates available; last candidate scrolls into view and applies
-PASS Enter cannot reapply an existing tag; batch candidates keep tags missing from some selected files
-PASS 12 complete details toggle cycles at scroll offset 1800: 1800,1800,1800,1800,1800,1800,1800,1800,1800,1800,1800,1800
-PASS light/dark filter and density selectors match workspace sorting; density saves
-PASS no page errors

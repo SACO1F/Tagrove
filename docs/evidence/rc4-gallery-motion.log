@@ -1,6 +1,0 @@
-PASS 增加列数: translated card animation and settled non-overlapping masonry
-PASS 减少列数: translated card animation and settled non-overlapping masonry
-PASS slow WebView viewport resizing 1360→1180→1360: 62 size updates, 1488 stable-lane/monotonic-size observations, no restarted card animations or overlap
-PASS narrow-window/capacity changes settle without overlap
-PASS eight-column capacity resize 8→5→8 without overlap
-PASS reduced-motion column changes skip animations; no uncaught page errors

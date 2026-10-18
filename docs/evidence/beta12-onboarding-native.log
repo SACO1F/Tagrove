@@ -1,6 +1,0 @@
-PASS first run AI reminder -> skip -> four-step guide; pending guide survives reload; completed flow does not repeat; AI stays disabled
-PASS preferences reopen usage guide, one dialog only, Escape dismisses it
-PASS closing AI reminder advances to interactive guide; invalid AI settings remain editable and do not advance
-NATIVE IPC: AI settings saved
-PASS real AI configuration save advances to guide; no model request or real file used
-PASS light/dark and 960x640 guide; completed reload does not show onboarding (floating tested only in native mode); no uncaught page errors

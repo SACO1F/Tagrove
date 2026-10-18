@@ -14,6 +14,6 @@ RC.3 保留图片与卡片的 300ms 缓进缓出过渡，为内部固定尺寸�
 
 安装包：`Shiqian-v0.3.0-rc.3-Windows-x64-setup.exe`。升级前导出标注备份，关闭旧版工作台与浮窗，卸载时保留应用数据。
 
-[使用说明](user-manual-v0.3.zh-CN.md) · [升级说明](upgrade-v0.3.zh-CN.md) · [同事交接](colleague-handoff-v0.3.zh-CN.md) · [验证记录](validation-v0.3-rc3.md) · [已知限制](known-issues-v0.3.md) · [实机验收](stable-release-acceptance.md)
+使用说明（历史资料，见 v0.6.12 源码快照） · 升级说明（历史资料，见 v0.6.12 源码快照） · 同事交接（历史资料，见 v0.6.12 源码快照） · 验证记录（历史资料，见 v0.6.12 源码快照） · 已知限制（历史资料，见 v0.6.12 源码快照） · [实机验收](stable-release-acceptance.md)
 
 本轮候选安装包、独立程序、源码和文档在本地交付目录，SHA256SUMS.txt 可核对文件。未发布 GitHub Release，未标为正式稳定版；实机门槛保留。

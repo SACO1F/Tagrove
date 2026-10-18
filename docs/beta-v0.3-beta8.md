@@ -49,4 +49,4 @@
 
 发布前核对源码六处版本、安装包和 EXE 原生产品版本；已有交付程序与当前构建不同则停止。只有确认构建验证完成后才使用 `scripts/package-release.py --refresh-binaries` 显式刷新同版本候选文件。
 
-使用与验收结果见 [候选验收记录](validation-v0.3-beta8.md)。开发格式与 API 约定见 [资料包格式 v1](transfer-package-format-v1.md)。
+使用与验收结果见 候选验收记录（历史资料，见 v0.6.12 源码快照）。开发格式与 API 约定见 资料包格式 v1（历史资料，见 v0.6.12 源码快照）。

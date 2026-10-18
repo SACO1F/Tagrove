@@ -1,7 +1,0 @@
-PASS dialogs animate in/out, trap keyboard focus, deduplicate dismissal and return focus without changing file layout
-PASS persistent selection checks have intermediate frames without resizing cards; Ctrl add/remove and both layouts retain correct selection
-PASS new tags animate in workspace and floating palette; latest three records animate with outgoing cleanup and persist across reload without an undo button
-PASS nine-dot menu supports animated highlight, keyboard navigation, dialog focus return and reopening during dismissal without stale overlays
-PASS running AI has lattice feedback; cancelling selected file leaves other job queued; late response is discarded; accepting suggestion removes badge, updates pool/palette and animates locally
-PASS failed AI visibly offers retry, retry completes, and batch selection shows actual per-state counts and pending labels
-PASS light/dark themes, reduced motion, narrow windows and fixed glass-action layering without uncaught UI errors

@@ -1,1 +1,0 @@
-PASS New final Release process reads the close-flushed note, four-column preference and collapsed sidebar from SQLite.

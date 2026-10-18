@@ -1,6 +1,0 @@
-PASS dark workspace and floating theme synchronize with native Windows title bar
-PASS pin/unpin controls change actual native topmost state and survive WebView reload
-PASS native resizing, adaptive columns, keyboard sizing and collapse/reload/expand preserve custom dimensions
-PASS full-card selection highlight and nine-dot button above label layer without selecting or dragging another tag
-PASS minimum size keeps controls visible; light and dark themes remain consistent
-PASS recreating native palette restores persisted geometry and topmost choice without uncaught UI errors

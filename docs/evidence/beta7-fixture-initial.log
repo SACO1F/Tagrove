@@ -1,6 +1,0 @@
-page.evaluate: INVALID_INPUT: 不支持的设置
-    at api (D:\AI\Shiqian\scripts\beta7-toolbar-regression.cjs:11:36)
-    at D:\AI\Shiqian\scripts\beta7-toolbar-regression.cjs:16:9 {
-  log: [],
-  name: 'Error'
-}

@@ -1,4 +1,0 @@
-PASS Ctrl+A selects all 127 paginated results; text input retains native select-all behavior
-PASS five native close requests share one save/status/close sequence; main hides and can reopen from palette
-PASS held startup retains 32px titlebar with native maximize/restore and completes bootstrap
-PASS synthetic bootstrap failure retains native minimize/close/reopen and retry recovery; no uncaught page errors

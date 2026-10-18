@@ -1,5 +1,0 @@
-PASS stable hover animation, exact target frame, tag cursor, unchanged card geometry and no hover writes
-PASS switching targets, invalid-drop feedback, Escape and leaving the workspace clear the highlight
-PASS gallery/list successful annotation retains confirmation after drag-end, errors leave associations unchanged
-PASS completion feedback never highlights a different file after the tagged file leaves the active filter
-PASS shared glass colors, light/dark/narrow layouts, reduced-motion feedback and no uncaught UI errors

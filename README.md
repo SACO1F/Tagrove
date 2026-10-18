@@ -215,5 +215,6 @@ This release includes SQLite 3.51.3 and recovery regressions. Automated checks, 
 
 - [中文使用说明](docs/user-manual-v0.6.12.zh-CN.md) · [English guide](docs/user-manual-v0.6.12.en.md)
 - [v0.6.12 发布说明 / Release notes](docs/release-v0.6.12.md)
+- [完整版本变更 / Changelog](CHANGELOG.md)
 - [后续计划 / Development plan](docs/post-acceptance-plan-2026-10-18.zh-CN.md)
 - [第三方声明 / Third-party notices](THIRD_PARTY_NOTICES.md)

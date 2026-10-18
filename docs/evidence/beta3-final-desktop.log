@@ -1,3 +1,0 @@
-PASS native close request kept active transfer and main window alive, task feedback visible
-PASS native background import: query latencies 5, 6, 5, 4, 6, 6 ms, note edit retained, restore/exit gated, cancel rollback
-PASS task failure retry, small additive transfer/dedup, backup status/restore, diagnostic privacy/preview/export IPC, light/dark/960px/reduced-motion; no page errors; native save picker not exercised

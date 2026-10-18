@@ -1,2 +1,0 @@
-PASS alpha17 fixture: file/tag/note/theme/sidebar/backup persisted
-PASS alpha17 -> beta1: identical persisted file annotations/settings + old backup inspect/restore + automatic safety backup

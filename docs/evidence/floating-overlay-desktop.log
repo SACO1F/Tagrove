@@ -1,5 +1,0 @@
-PASS sidebar switches one tag at a time across both groups and clicking it again clears the tag filter
-PASS bottom sidebar actions have rounded inset hover highlights and centered icons when expanded or collapsed
-PASS scrolling moves tags behind a stationary foreground add button above the file-annotation bar; button still opens its dialog
-PASS light/dark tag cards have no white perimeter or inset white highlight while selection remains visible
-PASS minimum native size, collapse and expand retain accessible foreground action without overflow or uncaught UI errors

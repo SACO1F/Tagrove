@@ -1,6 +1,0 @@
-page.evaluate: Command plugin:window|set_size not allowed by ACL
-    at size (D:\AI\Shiqian\scripts\rc4-gallery-motion-regression.cjs:62:9)
-    at D:\AI\Shiqian\scripts\rc4-gallery-motion-regression.cjs:70:11 {
-  log: [],
-  name: 'Error'
-}

@@ -1,2 +1,0 @@
-PASS native background import: query latencies 4, 4, 4, 5, 4, 5 ms, note edit retained, restore/exit gated, cancel rollback
-PASS task failure retry, small additive transfer/dedup, backup status/restore, diagnostic privacy/preview/export IPC, light/dark/960px/reduced-motion; no page errors; native save picker not exercised

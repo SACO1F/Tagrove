@@ -1,4 +1,0 @@
-PASS grid/list switch slides in opposite directions, fades to full opacity and leaves no animation on initial load
-PASS rapid view switches cancel old motion and preserve each view's scroll offset
-PASS detail panel expands and collapses through intermediate widths without overlapping cards; hidden controls are inert and saved notes/tags survive
-PASS rapid detail reversals, dark theme, narrow window and reduced-motion preferences remain usable without browser errors

@@ -1,6 +1,0 @@
-...
-----------------------------------------------------------------------
-Ran 3 tests in 0.068s
-
-OK
-PASS actual Windows product-version inspection rejects Beta.2 program and accepts Beta.3 EXE/installer; no files modified

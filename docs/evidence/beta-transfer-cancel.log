@@ -1,2 +1,0 @@
-PASS cancel actual 1GB export: no published partial package, source unchanged, busy released
-PASS cancel actual 1GB extraction: own copies cleaned, database unchanged, originals preserved

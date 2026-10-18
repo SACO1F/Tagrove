@@ -1,2 +1,0 @@
-PASS main native decorations disabled; 32px titlebar at y=0; maximize/restore, dblclick handler, minimize/reopen and edge handles visibility
-PASS close button follows existing hide-with-palette path; palette reopens main; light/dark custom titlebar and no page errors

@@ -1,9 +1,0 @@
-Source ZIP integrity: PASS (578 files)
-SHA256 assets: PASS (5 assets)
-All six source versions and both native binary versions: PASS
-Application assets match current build outputs; source/docs refreshed.
-Shiqian-v0.3.0-beta.10-guide.zh-CN.md: 3305 bytes
-Shiqian-v0.3.0-beta.10-source.zip: 21426430 bytes
-Shiqian-v0.3.0-beta.10-validation.zh-CN.md: 7197 bytes
-Shiqian-v0.3.0-beta.10-Windows-x64-setup.exe: 5970591 bytes
-Shiqian-v0.3.0-beta.10-Windows-x64.exe: 14569472 bytes

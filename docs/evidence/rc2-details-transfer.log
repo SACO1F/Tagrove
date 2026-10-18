@@ -1,3 +1,0 @@
-PASS selected card stays visible after details resize; ease-in-out animation and monotonic widths 260.8,260.8,255.9,236.4,209.5,192.3,188.3,188.3,188.3,188.3; count position stable
-PASS transfer range uses Glide Select; keyboard selection, Escape and focus; empty selection toggles preserve scroll
-PASS no uncaught page errors

@@ -1,6 +1,0 @@
-PASS floating action creates a library tag without selecting a file
-PASS existing tag applies to multiple selected files
-PASS create-and-apply adds a new tag to all selected files
-PASS rename synchronizes files, active filter, sidebar and the open floating palette
-PASS duplicate-name error retains input, blank name is blocked, Escape cancels and undo restores all associations
-PASS light/dark/narrow layouts, collapsed sidebar, accessible floating action and no uncaught UI errors

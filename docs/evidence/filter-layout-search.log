@@ -1,6 +1,0 @@
-PASS default search is one icon next to the title; collapsed input is hidden and inert
-PASS search expands with intermediate animation frames, focuses input and leaves file grid geometry unchanged
-PASS search matches tags and filenames, respects IME composition; Escape preserves search, Ctrl+F selects text and clear restores results
-PASS filter, grid and list controls continue to work after removing the toolbar search field
-PASS picture overlay uses a lighter 40% maximum gradient with filename shadow in both themes
-PASS search fits a narrow window and honors reduced-motion preferences; no browser exceptions

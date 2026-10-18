@@ -1,3 +1,0 @@
-PASS running AI has lattice feedback; cancelling selected file leaves other job queued; late response is discarded; accepting suggestion removes badge, updates pool/palette and animates locally
-PASS failed AI visibly offers retry, retry completes, and batch selection shows actual per-state counts and pending labels
-PASS light/dark themes, reduced motion, narrow windows and fixed glass-action layering without uncaught UI errors

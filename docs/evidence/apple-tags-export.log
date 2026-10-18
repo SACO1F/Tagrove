@@ -1,5 +1,0 @@
-PASS glass styling, explicit add, nine-dot actions and rename synchronizes all linked files
-PASS UI export copies original content, keeps same-name files, preserves sources and reports missing files
-PASS main tag manager exposes the same folder-export action
-PASS unpin preserves annotations, existing tags can be added, delete has confirmation and undo restores associations
-PASS light/dark glass layouts, rename conflicts keep input, no uncaught UI exceptions

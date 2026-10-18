@@ -1,6 +1,0 @@
-PASS sidebar separates all folder and ordinary tags with distinct group labels
-PASS folder filtering and renaming preserve file associations and folder classification
-PASS folder labels are absent from candidates and rejected by both save API and typed-name creation
-PASS ordinary tags can still be added and persist across floating reload
-PASS compact lower-right add button fits normal, minimum and wider native windows without covering history
-PASS consistent light/dark grouped sidebar and floating action without uncaught UI errors

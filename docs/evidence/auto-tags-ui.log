@@ -1,5 +1,0 @@
-PASS folder / reused AI / generated AI badges and confirmation
-PASS folder toggle/backfill; explicit AI enable/save; masked key; connection UI; light/dark/narrow layouts
-PASS reanalysis queue and failure status
-PASS background updates preserve loaded pages and selection after item 100
-PASS no browser runtime errors (mock IPC only)

@@ -1,2 +1,0 @@
-PASS native release resolves the real Windows Explorer file and commits its tag via SQLite.
-Initiation is via IPC after placing the physical cursor; a full cross-window drag gesture is not simulated by this test.

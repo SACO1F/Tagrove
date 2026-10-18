@@ -18,7 +18,7 @@
 
 安装包：`Shiqian-v0.3.0-rc.2-Windows-x64-setup.exe`。升级前导出标注备份，保留原文件，退出旧版与浮窗，卸载时保留应用数据。
 
-[使用说明](user-manual-v0.3.zh-CN.md) · [升级说明](upgrade-v0.3.zh-CN.md) · [跨电脑交接](colleague-handoff-v0.3.zh-CN.md) · [验证记录](validation-v0.3-rc2.md) · [已知限制](known-issues-v0.3.md) · [正式验收](stable-release-acceptance.md)
+使用说明（历史资料，见 v0.6.12 源码快照） · 升级说明（历史资料，见 v0.6.12 源码快照） · 跨电脑交接（历史资料，见 v0.6.12 源码快照） · 验证记录（历史资料，见 v0.6.12 源码快照） · 已知限制（历史资料，见 v0.6.12 源码快照） · [正式验收](stable-release-acceptance.md)
 
 ## 交付范围
 

@@ -1,1 +1,0 @@
-PASS final release exports backup metadata version 0.2.0 and renders floating palette with persisted custom presets.
