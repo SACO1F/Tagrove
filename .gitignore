@@ -25,6 +25,8 @@ public/pdf-assets/
 *.sqtagbackup
 *.sqtagpack
 *.pem
+# Public store identity fixture only; private key files remain ignored.
+!scripts/fixtures/edge-store-public-key.pem
 *.key
 
 # Keep the historical, synthetic-data verification evidence
