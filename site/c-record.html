@@ -1,0 +1,563 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Tagrove · 拾签 — 给文件一个被找到的理由</title>
+<meta name="description" content="Tagrove · 拾签 是一款 Windows 本地资料工作台：文件留在原来的位置，用标签把图片、文档和网页参考串起来，需要时按名称、标签、备注和正文找回，交接时连原件一起打包。" />
+<meta name="color-scheme" content="light" />
+<link rel="icon" type="image/png" href="assets/logo.png" />
+<style>
+/* ============ C · 档案标签 / Accession Records ============ */
+:root{
+  --ultra:#315c9c; --ultra-deep:#21406f; --ultra-tint:#eaf0f8;
+  --ink:#1b2128; --muted:#586470; --faint:#5f6971;
+  --ground:#f5f6f7; --paper:#fff; --paper-2:#fafafb;
+  --line:rgba(27,33,40,.16); --line-2:rgba(27,33,40,.08);
+  --t-teal:#2c6654; --t-coral:#a8452f; --t-sand:#7c5b12; --t-plum:#5a3d80; --t-slate:#3c4650;
+  --r:4px; --r-sm:6px;
+  --sh-1:0 1px 0 rgba(27,33,40,.03);
+  --sh-2:0 1px 2px rgba(27,33,40,.05), 0 8px 22px rgba(27,33,40,.06);
+  --sans:Inter,"Segoe UI","Microsoft YaHei UI","Microsoft YaHei","PingFang SC",sans-serif;
+  --mono:"Cascadia Code",Consolas,"SF Mono",monospace;
+  --max:1180px;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+body{margin:0; font-family:var(--sans); color:var(--ink); background:var(--paper); font-size:16px; line-height:1.66;
+  -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility; font-variant-numeric:tabular-nums}
+::selection{background:var(--ultra); color:#fff}
+a{color:inherit; text-underline-offset:3px}
+a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(--ultra); outline-offset:2px}
+h1,h2,h3,h4{margin:0; line-height:1.2; letter-spacing:-.02em; font-weight:650; text-wrap:balance; word-break:keep-all; line-break:strict}
+p{margin:0} img{display:block; max-width:100%}
+.wrap{max-width:var(--max); margin:0 auto; padding:0 30px}
+.en{font-size:.78em; color:var(--faint); font-weight:400}
+.lab{font-family:var(--mono); font-size:11px; letter-spacing:.13em; text-transform:uppercase; color:var(--faint)}
+
+/* ---------- shared ---------- */
+.chip{display:inline-flex; align-items:center; height:24px; padding:0 9px; border-radius:var(--r); font-size:12.5px; font-weight:600;
+  background:var(--bg,#eef1f4); color:var(--fg,var(--slate)); border:1px solid var(--bd,var(--line-2)); white-space:nowrap}
+.chip[data-t="参考"]{--bg:#e9f2ed; --fg:var(--t-teal); --bd:#cfe2d8}
+.chip[data-t="外墙"]{--bg:var(--ultra-tint); --fg:var(--ultra-deep); --bd:#cfdded}
+.chip[data-t="待讨论"]{--bg:#f9ece8; --fg:var(--t-coral); --bd:#ecd5cd}
+.chip[data-t="材料"]{--bg:#f7f1e0; --fg:var(--t-sand); --bd:#e8dfc6}
+.chip[data-t="室内"]{--bg:#f0ecf7; --fg:var(--t-plum); --bd:#ddd4ea}
+.chip[data-t="图纸"]{--bg:#eceef1; --fg:var(--t-slate); --bd:#dbdfe4}
+.chip[data-t="成本"]{--bg:#f7f1e0; --fg:var(--t-sand); --bd:#e8dfc6}
+.chip[data-t="网页"]{--bg:#e7f0f2; --fg:#22646a; --bd:#cfe2e5}
+.btn{display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:12px 20px; border-radius:var(--r-sm);
+  border:1px solid transparent; font:inherit; font-size:15px; font-weight:600; cursor:pointer; text-decoration:none;
+  transition:background .15s, border-color .15s, color .15s}
+.btn-primary{background:var(--ultra); color:#fff}
+.btn-primary:hover{background:var(--ultra-deep)}
+.btn-ghost{border-color:var(--line); color:var(--ink); background:transparent}
+.btn-ghost:hover{border-color:var(--ink)}
+
+/* ---------- top ---------- */
+.top{position:sticky; top:0; z-index:60; background:rgba(255,255,255,.94); border-bottom:1px solid var(--line); backdrop-filter:blur(6px)}
+.top-in{max-width:var(--max); margin:0 auto; padding:13px 30px; display:flex; align-items:center; gap:24px}
+.brand{display:flex; align-items:center; gap:10px; text-decoration:none; font-weight:700; font-size:17px; letter-spacing:-.01em}
+.brand img{width:26px; height:26px}
+.brand .tagl{font-size:12px; color:var(--faint); font-weight:400; padding-left:14px; border-left:1px solid var(--line); letter-spacing:.04em}
+.nav{display:flex; gap:22px; margin-left:auto; font-size:14px; color:var(--muted)}
+.nav a{text-decoration:none; padding-bottom:2px; border-bottom:1px solid transparent; transition:.15s}
+.nav a:hover{color:var(--ultra-deep); border-color:var(--ultra)}
+.top .btn{padding:8px 14px; font-size:13.5px}
+
+/* ---------- HERO: the record ---------- */
+.sheet{padding:64px 0 74px; border-bottom:1px solid var(--line); background:var(--paper-2)}
+.sheet-in{display:grid; grid-template-columns:minmax(0,1.12fr) minmax(0,.88fr); gap:56px; align-items:start}
+.rec{background:var(--paper); border:1px solid var(--line); border-radius:var(--r); position:relative; box-shadow:var(--sh-2)}
+.rec::before{content:""; position:absolute; left:22px; top:-1px; width:13px; height:13px; border-radius:50%; background:var(--paper-2); border:1px solid var(--line); box-shadow:inset 0 1px 2px rgba(0,0,0,.12)}
+.rec::after{content:""; position:absolute; left:26px; top:-30px; width:2px; height:30px; background:linear-gradient(180deg,#c9b79a,#a8916e); transform:rotate(-9deg); transform-origin:bottom}
+.rec-head{display:flex; justify-content:space-between; align-items:baseline; gap:12px; flex-wrap:wrap; padding:18px 24px 14px; border-bottom:1px solid var(--line)}
+.rec-head .no{font-family:var(--mono); font-size:12px; color:var(--ultra-deep); letter-spacing:.06em}
+.rec-body{display:grid; grid-template-columns:auto 1fr}
+.rec-thumb{padding:24px; border-right:1px solid var(--line); display:grid; gap:12px; align-content:start; width:200px}
+.rec-thumb .glyph{width:100%; aspect-ratio:3/4; border-radius:var(--r); background:linear-gradient(160deg,#f05a3c,#c2361f); color:#fff; display:grid; place-items:center; font-weight:800; font-size:13px; letter-spacing:.06em}
+.rec-thumb .m{font-family:var(--mono); font-size:11px; color:var(--muted); line-height:1.7}
+.fields{padding:0}
+.field{display:grid; grid-template-columns:88px 1fr; gap:18px; padding:14px 24px; border-bottom:1px solid var(--line-2); align-items:start}
+.field:last-child{border-bottom:0}
+.field dt{font-size:13px; color:var(--faint); padding-top:1px}
+.field dd{margin:0; font-size:15px}
+.field .path{font-family:var(--mono); font-size:12.5px; color:var(--muted)}
+.field .chips{display:flex; gap:7px; flex-wrap:wrap}
+.field em{font-style:normal; color:var(--ultra-deep); font-weight:600}
+
+.hero-txt h1{font-size:clamp(34px,4.3vw,52px); letter-spacing:-.03em; line-height:1.1; font-weight:700}
+.hero-txt .enline{margin-top:10px; font-size:15px; color:var(--faint)}
+.hero-txt p{margin-top:22px; font-size:16.5px; color:#3d4854; max-width:44ch}
+.hero-txt .cta{margin-top:28px; display:flex; gap:11px; flex-wrap:wrap}
+.hero-facts{margin-top:30px; border-top:1px solid var(--line); padding-top:18px; display:grid; gap:9px; font-size:13.5px; color:var(--muted)}
+.hero-facts div{display:flex; gap:10px; align-items:baseline}
+.hero-facts span{font-family:var(--mono); font-size:11px; color:var(--ultra); flex:none; width:5.5ch}
+
+/* ---------- live search demo ---------- */
+.find{padding:70px 0; border-bottom:1px solid var(--line)}
+.find-head{display:flex; align-items:flex-end; justify-content:space-between; gap:30px; flex-wrap:wrap; margin-bottom:26px}
+.find-head h2{font-size:clamp(25px,2.9vw,34px); letter-spacing:-.026em}
+.find-head p{margin-top:10px; color:var(--muted); max-width:56ch; font-size:15.5px}
+.qbox{display:flex; align-items:center; gap:11px; padding:12px 15px; border:1px solid var(--line); border-radius:var(--r-sm); background:var(--paper); min-width:min(340px,100%)}
+.qbox:focus-within{border-color:var(--ultra); box-shadow:0 0 0 3px rgba(49,92,156,.12)}
+.qbox input{border:0; font:inherit; font-size:15px; width:100%; background:transparent; color:var(--ink)}
+.qbox input:focus{outline:none}
+.qbox input::placeholder{color:var(--faint)}
+.qbox kbd{font-family:var(--mono); font-size:11px; color:var(--muted); border:1px solid var(--line); border-radius:3px; padding:2px 6px}
+.qsug{display:flex; gap:7px; margin-bottom:18px; flex-wrap:wrap}
+.qsug button{font:inherit; font-size:13px; padding:5px 11px; border-radius:var(--r); border:1px solid var(--line); background:var(--paper); color:var(--muted); cursor:pointer; transition:.15s}
+.qsug button:hover, .qsug button[aria-pressed="true"]{border-color:var(--ultra); color:var(--ultra-deep); background:var(--ultra-tint)}
+.tbl{width:100%; border-collapse:collapse; font-size:14.5px; border-top:1px solid var(--line)}
+.tbl th{text-align:left; font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--faint); font-weight:600; padding:11px 14px 11px 0; border-bottom:1px solid var(--line); white-space:nowrap}
+.tbl td{padding:14px 14px 14px 0; border-bottom:1px solid var(--line-2); vertical-align:middle}
+.tbl tr{transition:background .18s ease, opacity .18s ease}
+.tbl tbody tr:hover{background:var(--paper-2)}
+.tbl .f{display:flex; align-items:center; gap:11px}
+.tbl .f .ic{width:26px; height:26px; border-radius:3px; display:grid; place-items:center; font-family:var(--mono); font-size:9px; font-weight:800; color:#fff; flex:none; background:var(--s,#7d8896)}
+.tbl .nm{font-weight:600}
+.tbl .chips{display:flex; gap:6px; flex-wrap:wrap}
+.tbl .why{font-family:var(--mono); font-size:11.5px; color:var(--ultra-deep)}
+.tbl tr.off{display:none}
+.tbl .none td{color:var(--muted); font-size:14px; padding:22px 0}
+mark{background:rgba(49,92,156,.16); color:var(--ultra-deep); padding:0 2px; border-radius:2px}
+.tbl-foot{display:flex; justify-content:space-between; gap:20px; flex-wrap:wrap; padding-top:14px; font-size:12.5px; color:var(--faint)}
+
+/* ---------- sections ---------- */
+.band{padding:74px 0; border-bottom:1px solid var(--line)}
+.band.alt{background:var(--paper-2)}
+.sec-head{max-width:70ch; margin-bottom:38px}
+.sec-head h2{font-size:clamp(26px,3vw,36px); letter-spacing:-.028em}
+.sec-head p{margin-top:13px; color:var(--muted); font-size:16px; max-width:60ch}
+
+.mech-row{display:grid; grid-template-columns:88px 1fr 1.1fr; gap:24px; padding:22px 0; border-bottom:1px solid var(--line-2); align-items:baseline}
+.mech-row:first-of-type{border-top:1px solid var(--line)}
+.mech-row .k{font-family:var(--mono); font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--faint)}
+.mech-row h3{font-size:20px}
+.mech-row p{color:#3d4854; font-size:15.5px}
+.mech-row .en{display:block; margin-top:4px; font-size:12.5px}
+
+.cap{display:grid; grid-template-columns:1fr 1fr; gap:48px; align-items:start; padding:34px 0; border-bottom:1px solid var(--line-2)}
+.cap:last-child{border-bottom:0}
+.cap:nth-child(even) .cap-txt{order:2}
+.cap-txt h3{font-size:22px; margin-top:12px; letter-spacing:-.022em}
+.cap-txt .en{display:block; margin-top:4px; font-size:12.5px}
+.cap-txt p{margin-top:12px; color:#3d4854; font-size:15.5px; max-width:50ch}
+.cap-txt ul{margin:14px 0 0; padding:0; list-style:none; display:grid; gap:6px}
+.cap-txt li{display:flex; gap:11px; font-size:14.5px; color:#3d4854}
+.cap-txt li::before{content:"—"; color:var(--faint); flex:none}
+.shot{border:1px solid var(--line); border-radius:var(--r); overflow:hidden; background:var(--paper); box-shadow:var(--sh-2)}
+.shot img{width:100%}
+
+.mock{border:1px solid var(--line); border-radius:var(--r); background:var(--paper); padding:16px}
+.mock-bar{display:flex; align-items:center; gap:8px; padding-bottom:11px; margin-bottom:12px; border-bottom:1px solid var(--line-2); font-size:12px; color:var(--faint)}
+.mock-bar b{font-size:13px; color:var(--ink); font-weight:650}
+.mock-bar .sp{margin-left:auto; font-family:var(--mono); font-size:11px}
+.masonry{display:grid; grid-template-columns:repeat(4,1fr); gap:7px}
+.masonry i{display:block; border-radius:3px; background:#e3e7eb}
+.masonry i:nth-child(1){aspect-ratio:3/4} .masonry i:nth-child(2){aspect-ratio:1} .masonry i:nth-child(3){aspect-ratio:4/5}
+.masonry i:nth-child(4){aspect-ratio:1} .masonry i:nth-child(5){aspect-ratio:1} .masonry i:nth-child(6){aspect-ratio:3/4}
+.masonry i:nth-child(7){aspect-ratio:4/3} .masonry i:nth-child(8){aspect-ratio:1}
+.rows{display:grid; gap:6px}
+.row{display:flex; align-items:center; gap:10px; padding:9px 11px; border-radius:var(--r); background:var(--paper-2); border:1px solid var(--line-2); font-size:13.5px}
+.row.on{border-color:var(--ultra); background:var(--ultra-tint)}
+.row .thumb{width:28px; height:28px; border-radius:3px; background:#e3e7eb; flex:none}
+.row .nm{font-weight:600}
+.row .why{margin-left:auto; font-family:var(--mono); font-size:11px; color:var(--ultra-deep)}
+.pill-row{display:flex; gap:6px; flex-wrap:wrap; margin-top:4px}
+.reader{display:grid; grid-template-columns:1fr 1.1fr; gap:11px}
+.reader .pg{background:var(--paper-2); border:1px solid var(--line-2); border-radius:3px; padding:11px; display:grid; gap:6px; align-content:start}
+.reader .pg s{display:block; height:5px; border-radius:2px; background:#dfe3e7; text-decoration:none}
+.reader .pg s:nth-child(3){width:82%} .reader .pg s:nth-child(5){width:68%}
+
+.steps{counter-reset:s; display:grid; grid-template-columns:repeat(4,1fr); border-top:1px solid var(--line); border-bottom:1px solid var(--line)}
+.step{padding:24px 26px 24px 0; border-right:1px solid var(--line-2)}
+.step:last-child{border-right:0}
+.step:nth-child(n+2){padding-left:26px}
+.step .n{font-family:var(--mono); font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--faint)}
+.step h4{margin-top:10px; font-size:16px}
+.step p{margin-top:8px; font-size:14px; color:var(--muted)}
+.deliver{width:100%; border-collapse:collapse; font-size:14.5px; margin-top:26px}
+.deliver th{text-align:left; font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--faint); font-weight:600; padding:0 14px 10px 0; border-bottom:1px solid var(--line)}
+.deliver td{padding:14px 14px 14px 0; border-bottom:1px solid var(--line-2); vertical-align:top; color:#3d4854}
+.deliver td:first-child{font-weight:650; color:var(--ink); white-space:nowrap}
+
+.themes{display:flex; gap:8px; flex-wrap:wrap; margin-top:18px}
+.sw{width:32px; height:32px; border-radius:50%; border:1px solid var(--line); position:relative}
+.sw.def::after{content:""; position:absolute; inset:-4px; border-radius:50%; border:1px solid var(--ultra)}
+.theme-lab{margin-top:14px; font-size:13px; color:var(--muted)}
+.limits{display:grid; grid-template-columns:1fr 1fr; gap:0 44px}
+.limits div{display:flex; gap:12px; padding:14px 0; border-bottom:1px solid var(--line-2); font-size:14.5px; color:#3d4854}
+.limits b{font-family:var(--mono); font-size:11px; color:var(--t-coral); flex:none; padding-top:3px}
+
+.dl{display:grid; grid-template-columns:1.3fr 1fr; gap:44px; align-items:start}
+.dl-list{display:grid; gap:0; border-top:1px solid var(--line)}
+.dl-item{display:flex; align-items:center; gap:16px; padding:17px 4px; border-bottom:1px solid var(--line-2); text-decoration:none; transition:background .15s}
+.dl-item:hover{background:var(--ultra-tint)}
+.dl-item .t{font-weight:650; font-size:15.5px} .dl-item .d{font-size:13px; color:var(--muted); margin-top:2px}
+.dl-item .go{margin-left:auto; font-size:13px; color:var(--ultra-deep); font-weight:600; white-space:nowrap}
+.dl-item.main .t{color:var(--ultra-deep)}
+.dl-side{border:1px solid var(--line); border-radius:var(--r); padding:24px; background:var(--paper)}
+.dl-side h4{font-size:15px}
+.dl-side ul{margin:12px 0 0; padding:0; list-style:none; display:grid; gap:10px; font-size:13.5px; color:#3d4854}
+.dl-side li{display:flex; gap:10px} .dl-side li::before{content:"—"; color:var(--ultra); flex:none}
+.dl-side .links{margin-top:18px; padding-top:16px; border-top:1px solid var(--line); display:grid; gap:8px; font-size:13.5px}
+
+footer{padding:40px 0; background:var(--paper-2); border-top:1px solid var(--line); font-size:13.5px; color:var(--muted)}
+footer .wrap{display:flex; gap:24px; align-items:center; flex-wrap:wrap}
+footer img{width:24px; height:24px} footer b{color:var(--ink); font-size:15px}
+footer .f-en{margin-left:auto; font-family:var(--mono); font-size:11px; letter-spacing:.06em; color:var(--faint)}
+footer a{color:var(--muted)}
+.synth{width:100%; font-size:12px; color:var(--faint); border-top:1px solid var(--line-2); padding-top:14px; margin-top:4px}
+
+.rv{transform:translateY(7px); transition:transform .45s ease}
+.rv.in{transform:none}
+@media (prefers-reduced-motion:reduce){.rv{transform:none; transition:none}}
+
+@media (max-width:1000px){
+  .sheet-in{grid-template-columns:1fr; gap:34px}
+  .cap{grid-template-columns:minmax(0,1fr); gap:24px} .cap:nth-child(even) .cap-txt{order:0}
+  .dl{grid-template-columns:minmax(0,1fr)} .steps{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  .step:nth-child(2){border-right:0} .step:nth-child(n+3){border-top:1px solid var(--line-2)}
+  .mech-row{grid-template-columns:1fr; gap:6px}
+  .limits{grid-template-columns:1fr}
+}
+@media (max-width:700px){
+  .nav{display:none} .brand .tagl{display:none}
+  .sheet{padding:38px 0 46px}
+  .rec-body{grid-template-columns:1fr} .rec-thumb{width:auto; border-right:0; border-bottom:1px solid var(--line); grid-auto-flow:column; align-items:center}
+  .rec-thumb .glyph{width:64px; aspect-ratio:3/4}
+  .field{grid-template-columns:1fr; gap:6px}
+  .steps{grid-template-columns:1fr} .step{border-right:0; padding-left:0; border-bottom:1px solid var(--line-2)}
+  .band{padding:52px 0} .reader{grid-template-columns:1fr}
+  .tbl .hide-s{display:none}
+  /* the record table becomes a stack of cards: no horizontal overflow */
+  .tbl, .tbl tbody, .tbl tr, .tbl td{display:block; width:auto}
+  .tbl thead{display:none}
+  .tbl tr{border:1px solid var(--line); border-radius:var(--r); padding:13px 14px; margin-bottom:10px; background:var(--paper)}
+  .tbl tr.off{display:none}
+  .tbl td{padding:5px 0; border:0}
+  .tbl td:nth-child(2){padding-top:9px}
+  .tbl td:nth-child(5)::before{content:"命中依据 · "; font-family:var(--mono); font-size:10.5px; letter-spacing:.06em; color:var(--faint)}
+  .tbl .nm{overflow-wrap:anywhere}
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-in">
+    <a class="brand" href="#top"><img src="assets/logo.png" alt="" />Tagrove · 拾签<span class="tagl">有迹可循</span></a>
+    <nav class="nav" aria-label="页面导航"><a href="#find">检索</a><a href="#caps">能力</a><a href="#hand">交接</a><a href="#limits">边界</a><a href="#dl">下载</a></nav>
+    <a class="btn btn-primary" href="https://github.com/SACO1F/Tagrove/releases/download/v0.6.12/Shiqian-v0.6.12-Windows-x64-setup.exe">下载 v0.6.12</a>
+  </div>
+</header>
+
+<main id="top">
+
+<!-- ================= RECORD ================= -->
+<section class="sheet" aria-labelledby="h1">
+  <div class="wrap sheet-in">
+    <div class="rec">
+      <div class="rec-head">
+        <span class="lab">Tagrove file record</span>
+        <span class="no">No. TG0008427</span>
+      </div>
+      <div class="rec-body">
+        <div class="rec-thumb">
+          <span class="glyph">PDF</span>
+          <span class="m">24.8 MB<br />38 页 · 有文字层<br />2024.06.11 收录</span>
+        </div>
+        <dl class="fields">
+          <div class="field"><dt>名称</dt><dd>立面-节点大样.pdf</dd></div>
+          <div class="field"><dt>标签</dt><dd><span class="chips"><span class="chip" data-t="外墙">建筑外墙</span><span class="chip" data-t="图纸">节点图纸</span><span class="chip" data-t="待讨论">待讨论</span></span></dd></div>
+          <div class="field"><dt>来源</dt><dd>网页采集 · <em>原件未移动</em></dd></div>
+          <div class="field"><dt>路径</dt><dd class="path">D:\项目\江畔塔楼\参考\立面-节点大样.pdf</dd></div>
+          <div class="field"><dt>状态</dt><dd>正文已索引 · 可预览</dd></div>
+          <div class="field"><dt>可搜索</dt><dd>名称 · 标签 · 别名 · 备注 · 正文</dd></div>
+          <div class="field"><dt>备注</dt><dd>立面分缝与窗套做法，方案汇报第 14 页引用过。</dd></div>
+        </dl>
+      </div>
+    </div>
+
+    <div class="hero-txt">
+      <h1 id="h1">给文件一个<br />被找到的理由。</h1>
+      <p class="enline">Every file keeps a reason to be found.</p>
+      <p>拾签为本地文件、图片与网页参考贴上标签：原件留在原来的位置，散在几处的资料用标签串成一组，需要时看得见它为什么被找到、从哪里来。</p>
+      <div class="cta">
+        <a class="btn btn-primary" href="https://github.com/SACO1F/Tagrove/releases/download/v0.6.12/Shiqian-v0.6.12-Windows-x64-setup.exe">下载 Windows 安装包</a>
+        <a class="btn btn-ghost" href="#find">试一次检索</a>
+      </div>
+      <div class="hero-facts">
+        <div><span>原位</span>不复制、不搬走，继续在原来的工具里编辑</div>
+        <div><span>多标签</span>一份资料同时属于几个用途</div>
+        <div><span>环境</span>已验证 Windows 11 x64 · 本地资料库</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= LIVE SEARCH ================= -->
+<section class="find" id="find">
+  <div class="wrap">
+    <div class="find-head">
+      <div>
+        <h2>找回一次，看它凭什么被找到。</h2>
+        <p>输入一个词，或点一个标签。结果会说明命中在名称、标签、备注还是正文 —— 这是拾签检索的真实形态（下面是一组示意资料）。</p>
+      </div>
+      <label class="qbox">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="7" cy="7" r="4.6" /><path d="M10.5 10.5L14 14" /></svg>
+        <input id="q" type="search" placeholder="搜索名称、标签、备注…" aria-label="搜索示意资料" autocomplete="off" />
+        <kbd>Ctrl F</kbd>
+      </label>
+    </div>
+    <div class="qsug" id="qsug" role="group" aria-label="快捷筛选">
+      <button data-s="外墙" aria-pressed="false">建筑外墙</button>
+      <button data-s="材料" aria-pressed="false">材料做法</button>
+      <button data-s="待讨论" aria-pressed="false">待讨论</button>
+      <button data-s="网页" aria-pressed="false">网页收藏</button>
+      <button data-s="成本" aria-pressed="false">造价参考</button>
+    </div>
+    <table class="tbl">
+      <thead><tr><th style="width:31%">文件</th><th>标签</th><th class="hide-s">来源</th><th class="hide-s">状态</th><th style="width:20%">命中依据</th></tr></thead>
+      <tbody id="rows">
+        <tr data-n="立面细部-混凝土.jpg" data-t="外墙 材料" data-s="本地文件" data-i="正文未索引 · 图片" data-w="标签「建筑外墙」「材料做法」">
+          <td><span class="f"><span class="ic" style="--s:#2c6654">IMG</span><span class="nm">立面细部-混凝土.jpg</span></span></td>
+          <td><span class="chips"><span class="chip" data-t="外墙">建筑外墙</span><span class="chip" data-t="材料">材料做法</span></span></td>
+          <td class="hide-s">本地文件</td><td class="hide-s">可预览</td><td class="why"></td></tr>
+        <tr data-n="方案文本-初稿.pdf" data-t="外墙 待讨论" data-s="网页采集" data-i="正文已索引 · 38 页" data-w="正文 · 第 14 页">
+          <td><span class="f"><span class="ic" style="--s:#c2361f">PDF</span><span class="nm">方案文本-初稿.pdf</span></span></td>
+          <td><span class="chips"><span class="chip" data-t="外墙">建筑外墙</span><span class="chip" data-t="待讨论">待讨论</span></span></td>
+          <td class="hide-s">网页采集</td><td class="hide-s">正文已索引</td><td class="why"></td></tr>
+        <tr data-n="幕墙分缝做法讨论" data-t="材料 待讨论" data-s="本地文件" data-i="备注命中" data-w="备注含「建筑外墙」">
+          <td><span class="f"><span class="ic" style="--s:#4e5965">MD</span><span class="nm">幕墙分缝做法讨论</span></span></td>
+          <td><span class="chips"><span class="chip" data-t="材料">材料做法</span><span class="chip" data-t="待讨论">待讨论</span></span></td>
+          <td class="hide-s">本地文件</td><td class="hide-s">备注命中</td><td class="why"></td></tr>
+        <tr data-n="塔楼立面如何回应城市界面" data-t="外墙 网页" data-s="网页采集 · 阅读副本" data-i="摘录命中" data-w="标题 · 摘录">
+          <td><span class="f"><span class="ic" style="--s:#286f73">WEB</span><span class="nm">塔楼立面如何回应城市界面</span></span></td>
+          <td><span class="chips"><span class="chip" data-t="外墙">建筑外墙</span><span class="chip" data-t="网页">网页收藏</span></span></td>
+          <td class="hide-s">网页采集</td><td class="hide-s">阅读副本</td><td class="why"></td></tr>
+        <tr data-n="墙身节点-1比20.jpg" data-t="图纸 外墙" data-s="本地文件" data-i="名称命中" data-w="名称含「墙身」">
+          <td><span class="f"><span class="ic" style="--s:#7d8896">IMG</span><span class="nm">墙身节点-1比20.jpg</span></span></td>
+          <td><span class="chips"><span class="chip" data-t="图纸">节点图纸</span><span class="chip" data-t="外墙">建筑外墙</span></span></td>
+          <td class="hide-s">本地文件</td><td class="hide-s">可预览</td><td class="why"></td></tr>
+        <tr data-n="成本估算表-外立面.xlsx" data-t="成本 材料" data-s="本地文件" data-i="正文已索引" data-w="名称 · 标签「造价参考」">
+          <td><span class="f"><span class="ic" style="--s:#3f7f57">XLSX</span><span class="nm">成本估算表-外立面.xlsx</span></span></td>
+          <td><span class="chips"><span class="chip" data-t="成本">造价参考</span><span class="chip" data-t="材料">材料做法</span></span></td>
+          <td class="hide-s">本地文件</td><td class="hide-s">正文已索引</td><td class="why"></td></tr>
+        <tr data-n="室内 daylight 大堂参考.jpg" data-t="室内 参考" data-s="本地文件" data-i="名称命中" data-w="标签「室内灵感」">
+          <td><span class="f"><span class="ic" style="--s:#5a3d80">IMG</span><span class="nm">大堂采光-室内参考.jpg</span></span></td>
+          <td><span class="chips"><span class="chip" data-t="室内">室内灵感</span><span class="chip" data-t="参考">项目参考</span></span></td>
+          <td class="hide-s">本地文件</td><td class="hide-s">可预览</td><td class="why"></td></tr>
+        <tr data-n="江畔塔楼-黄昏-01.jpg" data-t="参考 待讨论" data-s="网页采集" data-i="名称命中" data-w="标签「项目参考」">
+          <td><span class="f"><span class="ic" style="--s:#315c9c">IMG</span><span class="nm">江畔塔楼-黄昏-01.jpg</span></span></td>
+          <td><span class="chips"><span class="chip" data-t="参考">项目参考</span><span class="chip" data-t="待讨论">待讨论</span></span></td>
+          <td class="hide-s">网页采集</td><td class="hide-s">可预览</td><td class="why"></td></tr>
+      </tbody>
+    </table>
+    <div class="tbl-foot"><span id="count"></span><span>示意资料 · 实际结果取决于你自己的资料库与索引状态</span></div>
+  </div>
+</section>
+
+<!-- ================= MECHANISM ================= -->
+<section class="band alt" id="mech">
+  <div class="wrap">
+    <div class="sec-head rv"><h2>文件不搬家，标签把它们重新联系起来。</h2><p>同一张效果图可以同时属于「项目参考」「建筑外墙」和「待讨论」；一份 PDF 可以与网页摘录、图片放在同一组搜索结果中。整理与找回围绕用途展开，不必为了分类反复复制文件。</p></div>
+    <div class="rv">
+      <div class="mech-row"><span class="k">In place</span><h3>原位引用</h3><p>加入资料库时，原件通常留在原来的路径。你在原来的工具里继续编辑它，拾签只负责贴上标签、记录来源；原件被移动后重新关联即可。</p></div>
+      <div class="mech-row"><span class="k">Many tags</span><h3>一个文件，多个标签</h3><p>普通标签与文件夹自动标签分开管理；标签支持别名、颜色、合并与重命名同步，Ctrl＋点击多选后可批量标注。分类不再靠复制文件实现。</p></div>
+      <div class="mech-row"><span class="k">Evidence</span><h3>找回时看得见依据</h3><p>搜索名称、标签、别名、备注和已索引正文，结果显示命中在哪里，而不是只给一个文件名。</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= CAPABILITIES ================= -->
+<section class="band" id="caps">
+  <div class="wrap">
+    <div class="sec-head rv"><h2>六件日常要做的事，一条路走完。</h2><p>从导入到阅读，从网页采集到交给同事，拾签把散在文件夹、硬盘和浏览器标签页里的东西接成一套。</p></div>
+    <div class="rv">
+      <article class="cap">
+        <div class="cap-txt"><span class="chip" data-t="参考">资料工作台</span><h3>大图瀑布流，一眼看到内容<span class="en">Workspace</span></h3>
+          <p>图片、PDF、网页资料混排在同一面墙上。列数、列宽、侧栏与详情宽度都能调整，收藏、备注和来源信息就在手边。</p>
+          <ul><li>瀑布流与列表两种布局，Ctrl＋滚轮调整列数</li><li>点击文件展开右侧详情，再次点击收拢</li><li>待整理、我的收藏、最近加入、需要关注分组入口</li></ul></div>
+        <div class="shot"><img src="assets/workspace-light.png" alt="Tagrove v0.6.12 群青主题工作台界面" loading="lazy" /></div>
+      </article>
+      <article class="cap">
+        <div class="cap-txt"><span class="chip" data-t="外墙">标签与浮窗</span><h3>标签浮窗置顶，拖一下就整理好<span class="en">Tags & floating palette</span></h3>
+          <p>桌面浮窗默认显示全部普通标签，可分类展开、搜索、用九宫格手柄排序或跨分类整理。把标签拖到文件上，或把一批文件拖进标签，动作在同一个手势里完成。</p>
+          <ul><li>普通标签、文件夹标签、AI 候选三者互不混淆</li><li>顶部收起为标题栏，置顶按钮控制层级</li><li>底部保留最近三步操作，Ctrl＋Z 撤销支持的上一步</li></ul></div>
+        <div class="mock"><div class="mock-bar"><b>标签浮窗</b><span class="sp">拖拽中</span></div>
+          <div class="pill-row"><span class="chip" data-t="外墙">建筑外墙</span><span class="chip" data-t="参考">项目参考</span><span class="chip" data-t="待讨论">待讨论</span><span class="chip" data-t="材料">材料做法</span><span class="chip" data-t="室内">室内灵感</span></div>
+          <div class="rows" style="margin-top:13px"><div class="row on"><span class="thumb"></span><span class="nm">立面细部-混凝土.jpg</span><span class="why">已贴上</span></div><div class="row"><span class="thumb"></span><span class="nm">墙身节点-1比20.jpg</span></div></div></div>
+      </article>
+      <article class="cap">
+        <div class="cap-txt"><span class="chip" data-t="网页">统一检索</span><h3>记得多少，就搜多少<span class="en">Unified search</span></h3>
+          <p>想不起文件名也没关系。名称、标签、别名、备注和已索引正文一起参与检索，可选的语义补充排在后面；每条结果说明它为什么被找到。</p>
+          <ul><li>Ctrl＋F 打开搜索，命中片段标出位置</li><li>类型、状态、包含／排除标签、目录、日期可组合保存为集合</li><li>不支持、损坏、加密或超限的文件有明确状态；扫描件暂不自动 OCR</li></ul></div>
+        <div class="mock"><div class="mock-bar"><b>检索结果</b><span class="sp">命中依据</span></div>
+          <div class="rows"><div class="row on"><span class="thumb"></span><span class="nm">立面细部-混凝土.jpg</span><span class="why">标签</span></div><div class="row"><span class="thumb"></span><span class="nm">方案文本-初稿.pdf</span><span class="why">正文 · 第 14 页</span></div><div class="row"><span class="thumb"></span><span class="nm">幕墙分缝做法讨论</span><span class="why">备注含「建筑<mark>外墙</mark>」</span></div></div></div>
+      </article>
+      <article class="cap">
+        <div class="cap-txt"><span class="chip" data-t="参考">网页资料</span><h3>浏览器里看到好的，顺手收进来<span class="en">Web references</span></h3>
+          <p>Chrome 与 Edge 扩展保存当前网页、选中文字或图片，先预览、再挑标签、后入库。在线阅读或保留采集副本，来源地址始终可追溯。</p>
+          <ul><li>工具栏保存整页，右键保存链接／摘录／图片</li><li>桌面离线时任务留在采集队列，已暂存不等于已入库</li><li>失败可查看环节、错误码与脱敏诊断，不读取浏览器 Cookie</li></ul></div>
+        <div class="mock"><div class="mock-bar"><b>采集预览</b><span class="sp">Chrome · Edge</span></div>
+          <div class="reader" style="grid-template-columns:1fr"><div class="pg"><p class="lab">标题</p><p style="font-size:14.5px; font-weight:650">塔楼立面如何回应城市界面</p><p class="lab" style="margin-top:6px">来源 · example.com/tower-facade</p><s></s><s></s>
+            <div class="pill-row"><span class="chip" data-t="参考">项目参考</span><span class="chip" data-t="网页">网页收藏</span></div>
+            <div class="pill-row" style="margin-top:10px"><span class="chip" style="--bg:var(--ultra); --fg:#fff; --bd:var(--ultra)">保存到资料库</span><span class="chip">在线阅读</span><span class="chip">采集副本</span></div></div></div></div>
+      </article>
+      <article class="cap">
+        <div class="cap-txt"><span class="chip" data-t="图纸">详情阅读</span><h3>不用换软件，先看清它<span class="en">Inspector & readers</span></h3>
+          <p>图片以鼠标为中心缩放；PDF 连续阅读并支持文字层选取；Markdown 可读写回原文件；本地 HTML 提供静态与源码两种视图。Office 文档可调用本机 Microsoft Office 或 WPS 生成原排版。</p>
+          <ul><li>内容、标注、信息三个页签，详情宽度可拖动</li><li>DOCX、XLSX、CSV 等内容阅读，必要时切换内容预览</li><li>扫描件没有文字层就不等于已识别文字，界面会说明</li></ul></div>
+        <div class="mock"><div class="mock-bar"><b>方案文本-初稿.pdf</b><span class="sp">14 / 38</span></div>
+          <div class="reader"><div class="pg"><s></s><s></s><s></s><s></s><s></s><s></s></div><div class="pg"><s></s><s></s><s></s><s style="background:#c9dcf2"></s><s></s><s></s></div></div>
+          <div class="pill-row" style="margin-top:11px"><span class="chip">适合页面</span><span class="chip">适合宽度</span><span class="chip" style="--bg:var(--ultra); --fg:#fff; --bd:var(--ultra)">120%</span></div></div>
+      </article>
+      <article class="cap">
+        <div class="cap-txt"><span class="chip" data-t="成本">AI 与语义，可选</span><h3>不配 AI，本地整理照样完整<span class="en">Optional AI</span></h3>
+          <p>AI 标注与语义检索是两个独立的可选服务。AI 建议要先经你审核，确认后才进入普通标签池；语义检索需要支持 Embeddings 的模型。开启前请核对服务地址、模型、密钥与发送范围，分析内容会发送到你所配置的服务，可能计费。</p>
+          <ul><li>带手动标签的采集内容不再自动提交 AI 标注</li><li>新导入文件的语义生成仍需确认，导入不等于已上传</li><li>操作记录与识别任务分开查看</li></ul></div>
+        <div class="mock"><div class="mock-bar"><b>AI 建议审核</b><span class="sp">确认后才成为标签</span></div>
+          <div class="rows"><div class="row"><span class="thumb"></span><span class="nm">清水混凝土</span><span class="why">采纳</span></div><div class="row"><span class="thumb"></span><span class="nm">竖向遮阳</span><span class="why">采纳</span></div><div class="row"><span class="thumb"></span><span class="nm">夜景</span><span class="why" style="color:var(--t-coral)">拒绝</span></div></div></div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ================= HANDOVER ================= -->
+<section class="band alt" id="hand">
+  <div class="wrap">
+    <div class="sec-head rv"><h2>交给同事，说得清出处。</h2><p>项目要换人接手时，最麻烦的不是文件本身，而是标签、备注和来源能不能一起过去。含原件的资料包让另一台电脑导入后，仍能看到原来的分组。</p></div>
+    <div class="steps rv">
+      <div class="step"><span class="n">A 机</span><h4>选中文件，导出资料包</h4><p>核对范围与数量，决定是否需要连原件一起打包。</p></div>
+      <div class="step"><span class="n">发送</span><h4>资料包发给同事</h4><p>压缩包可以走任何一条你已经在用的传输渠道。</p></div>
+      <div class="step"><span class="n">B 机</span><h4>安装后导入</h4><p>同名冲突会提示处理，不会静默覆盖已有资料。</p></div>
+      <div class="step"><span class="n">核对</span><h4>检查分组与可读性</h4><p>文件夹、数量、标签与原件能否打开，逐项确认后再收尾。</p></div>
+    </div>
+    <table class="deliver rv">
+      <thead><tr><th>交付内容</th><th>里面有什么</th></tr></thead>
+      <tbody>
+        <tr><td>程序或安装包</td><td>装上软件，不包含你的文件或标签。 / Installs the app; does not carry your library.</td></tr>
+        <tr><td>标注备份</td><td>恢复资料库信息；普通原文件不在其中。 / Restores library metadata, not the originals.</td></tr>
+        <tr><td>含原件资料包</td><td>跨电脑交接文件、标签、备注等资料，导入时按原来的父文件夹落地。 / Transfers files and annotations between computers.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ================= APPEARANCE + LIMITS ================= -->
+<section class="band" id="limits">
+  <div class="wrap">
+    <div class="sec-head rv" style="margin-bottom:22px"><h2>12 种主题色，中英双语，浅色深色。</h2><p>默认群青。个人标签配色独立保留，换主题不会把已经染好的标签一起改掉；字号也可整体调整。</p></div>
+    <div class="themes rv" role="img" aria-label="12 种可选主题色，默认群青">
+      <span class="sw def" style="background:#315c9c"></span><span class="sw" style="background:#2c6654"></span><span class="sw" style="background:#6c4898"></span>
+      <span class="sw" style="background:#984661"></span><span class="sw" style="background:#805716"></span><span class="sw" style="background:#4e5965"></span>
+      <span class="sw" style="background:#286f73"></span><span class="sw" style="background:#94523a"></span><span class="sw" style="background:#475781"></span>
+      <span class="sw" style="background:#ac352b"></span><span class="sw" style="background:#626d20"></span><span class="sw" style="background:#715044"></span>
+    </div>
+    <p class="theme-lab">中文／English · 浅色／深色 · 字号调整 · 默认主题色为群青</p>
+
+    <div class="sec-head rv" style="margin:66px 0 20px"><h2>先把边界说清楚。</h2><p>这些不是免责声明，而是当前版本的真实状态；如果你要在同事电脑上安装，请先看完这一屏。</p></div>
+    <div class="limits rv">
+      <div><b>01</b><span>已验证环境为 Windows 11 x64；Windows 10 尚未完成同等实机验证，不提供 macOS／Linux 安装包。</span></div>
+      <div><b>02</b><span>本版未做商业代码签名，Windows 可能显示未知发布者提示。WebView2 是运行要求，安装过程可能需要联网准备。</span></div>
+      <div><b>03</b><span>未实现实时云同步。不要把活跃的 SQLite／WAL 资料库放进网盘并发使用。</span></div>
+      <div><b>04</b><span>独立 EXE 的含义是可直接运行，不是把资料存到 EXE 旁边的便携资料库。</span></div>
+      <div><b>05</b><span>浏览器扩展当前通过开发者模式手动加载，界面为中文，需要桌面程序同时在运行。</span></div>
+      <div><b>06</b><span>扫描件暂不自动 OCR，PPTX 与图片文字不在正文索引格式内；升级前请导出标注备份。</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= DOWNLOAD ================= -->
+<section class="band alt" id="dl">
+  <div class="wrap">
+    <div class="sec-head rv"><h2>下载 v0.6.12。</h2><p>公开下载，附校验文件。升级前导出标注备份，重要原件另行备份；完全退出旧版后再安装。</p></div>
+    <div class="dl">
+      <div class="dl-list rv">
+        <a class="dl-item main" href="https://github.com/SACO1F/Tagrove/releases/download/v0.6.12/Shiqian-v0.6.12-Windows-x64-setup.exe"><span><span class="t">Windows 安装包</span><span class="d">日常使用与同事安装 · Setup</span></span><span class="go">下载 →</span></a>
+        <a class="dl-item" href="https://github.com/SACO1F/Tagrove/releases/download/v0.6.12/Shiqian-v0.6.12-Windows-x64.exe"><span><span class="t">直接运行 EXE</span><span class="d">免安装步骤 · 仍需 WebView2 · 沿用当前用户资料库</span></span><span class="go">下载 →</span></a>
+        <a class="dl-item" href="https://github.com/SACO1F/Tagrove/releases/download/v0.6.12/Shiqian-v0.6.12-Chrome-extension.zip"><span><span class="t">Chrome 插件 ZIP</span><span class="d">解压后以开发者模式加载 · Edge 版另见发布页</span></span><span class="go">下载 →</span></a>
+        <a class="dl-item" href="https://github.com/SACO1F/Tagrove/releases/download/v0.6.12/SHA256SUMS.txt"><span><span class="t">SHA256 校验</span><span class="d">核对下载完整性 · Checksums</span></span><span class="go">查看 →</span></a>
+        <a class="dl-item" href="https://github.com/SACO1F/Tagrove/releases/tag/v0.6.12"><span><span class="t">发布说明与源码</span><span class="d">Release notes · Source ZIP</span></span><span class="go">打开 →</span></a>
+      </div>
+      <aside class="dl-side rv">
+        <h4>装好之后，先做这一件事</h4>
+        <ul><li>拖一个小文件夹进来，给其中几份贴上同一个标签</li><li>按 Ctrl＋F 搜这个标签，看结果里的命中依据</li><li>五分钟里完成一次「贴上 → 找回」，比读说明书更快判断它适不适合你</li></ul>
+        <div class="links">
+          <a href="https://github.com/SACO1F/Tagrove/blob/main/docs/user-manual-v0.6.12.zh-CN.md">中文使用说明 →</a>
+          <a href="https://github.com/SACO1F/Tagrove/blob/main/docs/user-manual-v0.6.12.en.md">English guide →</a>
+          <a href="https://github.com/SACO1F/Tagrove/blob/main/browser-extension/README.md">插件安装与连接 →</a>
+          <a href="https://github.com/SACO1F/Tagrove/blob/main/docs/privacy-policy.md">网页采集隐私政策 →</a>
+          <a href="https://github.com/SACO1F/Tagrove">GitHub · SACO1F/Tagrove →</a>
+        </div>
+      </aside>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <img src="assets/logo.png" alt="" /><b>Tagrove · 拾签</b><span>把图片、文档和灵感留在原来的位置，用标签串起它们的用途。</span>
+    <span class="f-en">LOCAL-FIRST</span>
+    <p class="synth">页面中的项目、图片、文件名与检索结果均为示意资料（synthetic sample material），用于演示界面，不代表真实用户数据。版本 v0.6.12 · 界面截图取自 v0.6.12 群青主题工作台。</p>
+  </div>
+</footer>
+</main>
+
+<script>
+(function(){
+  var reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var q = document.getElementById("q");
+  var rows = [].slice.call(document.querySelectorAll("#rows tr"));
+  var count = document.getElementById("count");
+  var sug = [].slice.call(document.querySelectorAll("#qsug button"));
+  var TAG = {"外墙":"建筑外墙","材料":"材料做法","待讨论":"待讨论","网页":"网页收藏","成本":"造价参考","室内":"室内灵感","图纸":"节点图纸","参考":"项目参考"};
+  var tagMode = null;
+
+  function hi(text, needle){
+    if (!needle) return text;
+    var i = text.toLowerCase().indexOf(needle.toLowerCase());
+    if (i < 0) return text;
+    return text.slice(0, i) + "<mark>" + text.slice(i, i + needle.length) + "</mark>" + text.slice(i + needle.length);
+  }
+  function run(){
+    var needle = q.value.trim();
+    var shown = 0;
+    rows.forEach(function(r){
+      var name = r.dataset.n, tags = r.dataset.t, src = r.dataset.s, idx = r.dataset.i, why = r.dataset.w;
+      var okTag = !tagMode || tags.split(" ").indexOf(tagMode) > -1;
+      var okText = !needle || (name + " " + tags + " " + src + " " + idx + " " + why).toLowerCase().indexOf(needle.toLowerCase()) > -1;
+      var on = okTag && okText;
+      r.classList.toggle("off", !on);
+      var cell = r.querySelector(".why");
+      if (on){ shown++; cell.innerHTML = needle && name.toLowerCase().indexOf(needle.toLowerCase()) > -1 ? hi(name, needle) + " · 名称" : (needle ? hi(why, needle) || why : why); }
+      if (needle && !okText && cell) cell.textContent = "";
+    });
+    count.innerHTML = needle || tagMode
+      ? "命中 <b>" + shown + "</b> / " + rows.length + " 条" + (tagMode ? " · 标签「" + TAG[tagMode] + "」" : "") + (needle ? " · 关键词「" + needle + "」" : "")
+      : "共 " + rows.length + " 条示意资料 · 未筛选";
+  }
+  q.addEventListener("input", run);
+  sug.forEach(function(b){
+    b.addEventListener("click", function(){
+      tagMode = (tagMode === b.dataset.s) ? null : b.dataset.s;
+      sug.forEach(function(x){ x.setAttribute("aria-pressed", String(x.dataset.s === tagMode)); });
+      run();
+    });
+  });
+  document.addEventListener("keydown", function(e){
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "f"){ e.preventDefault(); q.focus(); q.select(); }
+  });
+  run();
+
+  if ("IntersectionObserver" in window && !reduce){
+    var io = new IntersectionObserver(function(es){ es.forEach(function(e){ if (e.isIntersecting){ e.target.classList.add("in"); io.unobserve(e.target); } }); }, { rootMargin: "0px 0px -10% 0px" });
+    document.querySelectorAll(".rv").forEach(function(el){ io.observe(el); });
+  } else { document.querySelectorAll(".rv").forEach(function(el){ el.classList.add("in"); }); }
+})();
+</script>
+</body>
+</html>

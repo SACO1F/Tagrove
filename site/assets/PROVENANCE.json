@@ -1,0 +1,48 @@
+{
+  "purpose": "Raster provenance for the Tagrove introduction pages under site/. The Impeccable engine could not run this session (its binary download is blocked on this host), so `impeccable embed-prompt` wrote nothing into these files; this manifest is the provenance record instead.",
+  "generatedAt": "2026-10-19",
+  "generator": "Qoder Desktop harness ImageGen, then Pillow resize/re-encode to JPEG q84 progressive",
+  "syntheticDisclosure": "tower-dusk, facade-detail, interior-daylight, node-drawing and material-board are AI-generated stand-ins for a visitor's own reference material. They are not Tagrove users' files and not real project records. Every page that shows them labels the set as 示意资料 / sample material.",
+  "assets": {
+    "tower-dusk.jpg": {
+      "kind": "produced raster",
+      "role": "sample reference image on the pin-up wall, fan-deck file card and capability plates",
+      "prompt": "Architectural visualisation photograph of a slender glass office tower at blue-hour dusk, seen from across a river in a dense Chinese city, warm interior lights glowing in a regular grid, low cloud, calm water reflection, sober documentary composition, no people, no text, no watermark, no logos. Neutral realistic colour grading, slight film grain, 35mm lens, professional architecture photography."
+    },
+    "facade-detail.jpg": {
+      "kind": "produced raster",
+      "role": "sample facade material study",
+      "prompt": "Close-up architectural detail photograph of a board-formed concrete facade with deep recessed window reveals and a bronze anodised window frame, hard afternoon side light casting a strong diagonal shadow across the texture, honest material study, no people, no text, no watermark. Muted grey and warm bronze tones, fine concrete grain visible, 50mm lens, professional architecture photography."
+    },
+    "interior-daylight.jpg": {
+      "kind": "produced raster",
+      "role": "sample interior reference",
+      "prompt": "Interior photograph of a quiet, unfurnished modern gallery-like room with pale plaster walls and a tall window on the left throwing soft daylight and a long shadow across a polished screed floor, minimal warm-neutral palette, one slim structural column. Architectural interior documentation, no people, no furniture, no text, no watermark, no signage. Natural light, subtle film grain, 24mm lens with straight verticals."
+    },
+    "node-drawing.jpg": {
+      "kind": "produced raster",
+      "role": "sample construction detail drawing on tracing paper",
+      "prompt": "Top-down scan of a single sheet of technical construction detail drawing on translucent tracing paper: precise black line weights showing a wall-to-window junction with layers, hatching, dimension lines with arrows and leader lines. Abstract unreadable micro-labels only, no legible words, no text, no watermark. Very light warm grey paper with faint graphite smudges, flat even scan lighting, high detail line quality, architectural working drawing aesthetic."
+    },
+    "material-board.jpg": {
+      "kind": "produced raster",
+      "role": "sample material sample board",
+      "prompt": "Overhead photograph of a small material sample board arranged on a neutral grey surface: rectangular chips of raw concrete, oak, grey terrazzo, bronze mesh and a swatch of felt, aligned with intentional gaps, soft daylight from one side with gentle shadows. Clean restrained palette of grey, warm wood and bronze, no hands, no people, no text, no watermark, no labels. Fine matte texture, professional studio documentation style."
+    },
+    "plaster.jpg": {
+      "kind": "produced raster, tiled texture",
+      "role": "wall ground for the pin-up page; mirror-tiled by CSS background-repeat",
+      "prompt": "Seamless flat material texture of a smooth pale warm-white lime plaster wall, evenly lit straight on with no shadows, no objects, no gradients, no vignette, no text. Very fine irregular plaster grain and faint trowel marks, subtle warm off-white tone around pale bone and light grey, photographed flat and filling the entire frame edge to edge, high resolution scan quality."
+    },
+    "logo.png": {
+      "kind": "pre-existing project asset",
+      "origin": "public/icon.png, the transparent logo source named in README and docs/brand-update-2026-10-19.zh-CN.md; resized 2048 -> 512 for web",
+      "role": "wordmark glyph, favicon"
+    },
+    "workspace-light.png": {
+      "kind": "pre-existing project asset",
+      "origin": "docs/images/tagrove-v0.6.12-workspace.png, the v0.6.12 ultramarine workspace screenshot retained in the repo",
+      "role": "real product interface evidence; shown unmodified except crop"
+    }
+  }
+}

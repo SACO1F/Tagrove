@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Tagrove 介绍页 · 四个方案对比</title>
+<meta name="robots" content="noindex" />
+<link rel="icon" type="image/png" href="assets/logo.png" />
+<style>
+  :root{--ultra:#315c9c; --ink:#1f2630; --muted:#5b6673; --line:rgba(31,38,48,.12); --ground:#f4f5f7}
+  *{box-sizing:border-box}
+  body{margin:0; font-family:Inter,"Segoe UI","Microsoft YaHei UI","Microsoft YaHei",sans-serif; color:var(--ink);
+    background:var(--ground); font-size:16px; line-height:1.6; -webkit-font-smoothing:antialiased}
+  .wrap{max-width:1120px; margin:0 auto; padding:56px 26px 70px}
+  h1{font-size:30px; letter-spacing:-.026em; margin:0 0 10px}
+  .lead{color:var(--muted); max-width:66ch; margin:0 0 8px}
+  .note{margin:22px 0 34px; padding:14px 16px; background:#fff; border:1px solid var(--line); border-radius:10px; font-size:14px; color:var(--muted)}
+  .note b{color:var(--ultra)}
+  .grid{display:grid; grid-template-columns:1fr 1fr; gap:20px}
+  a.card{display:block; background:#fff; border:1px solid var(--line); border-radius:14px; overflow:hidden; text-decoration:none; color:inherit;
+    box-shadow:0 1px 2px rgba(31,45,66,.05); transition:box-shadow .18s, transform .18s, border-color .18s}
+  a.card:hover{box-shadow:0 14px 40px rgba(31,45,66,.13); transform:translateY(-2px); border-color:var(--ultra)}
+  .thumb{height:230px; background-size:cover; background-position:center top; border-bottom:1px solid var(--line)}
+  .t-a{background:linear-gradient(160deg,#efe9df,#ded5c7)}
+  .t-b{background:linear-gradient(160deg,#315c9c 0 46%, #eceef1 46%)}
+  .t-c{background:linear-gradient(160deg,#fff 0 62%, #f5f6f7 62%)}
+  .t-d{background:linear-gradient(160deg,#eaf0f8,#fff)}
+  .body{padding:20px 22px 24px}
+  .k{font-size:11px; letter-spacing:.13em; text-transform:uppercase; color:var(--ultra); font-weight:700}
+  h2{font-size:20px; letter-spacing:-.02em; margin:8px 0 6px}
+  p{margin:0; color:var(--muted); font-size:14.5px}
+  .risk{margin-top:12px; font-size:13px; color:#7a4a3f}
+  .risk b{color:#94392a}
+  @media (max-width:760px){.grid{grid-template-columns:1fr} .thumb{height:180px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Tagrove · 拾签 — 介绍页四个方案</h1>
+  <p class="lead">同一套内容、同一个下载区块，四种开场与视觉调性。点进去对比选型；每页都是自包含静态文件，可直接部署。</p>
+  <div class="note">内容四页一致：机制（原位引用／多标签／命中依据）、六项能力、网页采集、详情阅读、可选 AI、交接资料包、12 种主题色、边界说明、v0.6.12 下载区。页面中的项目图片与文件名均为<b>示意资料</b>，页脚已标注。</div>
+  <div class="grid">
+    <a class="card" href="a-wall.html">
+      <div class="thumb t-a"></div>
+      <div class="body"><span class="k">A · 我的首选</span><h2>参考墙 / 方案挂墙</h2>
+        <p>首屏就是评图墙：效果图、立面照片、PDF、节点图错落钉在一起，每张已贴标签。把浮窗里的标签拖到卡片上，或按标签重新分组 —— 卡片位置一格没动。</p>
+        <p class="risk"><b>代价：</b>元素最多，最依赖资料图与动效。</p></div>
+    </a>
+    <a class="card" href="b-fan.html">
+      <div class="thumb t-b"></div>
+      <div class="body"><span class="k">B · 最贴品牌</span><h2>色卡扇 / 标签扇</h2>
+        <p>Logo 变成页面本身：六张打孔吊牌扇形展开，标题与下载印在最前的群青牌上。点一张标签把它转到最前，扇面背后是这项能力。</p>
+        <p class="risk"><b>代价：</b>记忆点强，往下滚要守住别掉回模板。</p></div>
+    </a>
+    <a class="card" href="c-record.html">
+      <div class="thumb t-c"></div>
+      <div class="body"><span class="k">C · 最可信</span><h2>档案标签 / 著录卡</h2>
+        <p>整页是一张放大到首屏的著录卡：名称／标签／来源／状态／可搜索，等宽编号，孔眼穿绳。往下是一栏栏记录，可直接输入关键词试一次真实检索。</p>
+        <p class="risk"><b>代价：</b>最安静，把拖拽的快感让位给了信任。</p></div>
+    </a>
+    <a class="card" href="d-standard.html">
+      <div class="thumb t-d"></div>
+      <div class="body"><span class="k">D · 行业标准</span><h2>居中标题 + 截图 + 卡片 + FAQ</h2>
+        <p>同类产品默认长相，按最高工艺认真做一遍：居中标题与两个按钮、大界面截图、六张能力卡、三步流程、FAQ 折叠、群青下载带。</p>
+        <p class="risk"><b>代价：</b>最稳，也最不像只有 Tagrove 能做。</p></div>
+    </a>
+  </div>
+</div>
+</body>
+</html>
