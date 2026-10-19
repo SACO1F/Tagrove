@@ -7,6 +7,8 @@
 *.json text eol=lf
 *.toml text eol=lf
 *.lock text eol=lf
+# src/reader-zoom-bridge.js is hashed into a CSP hash, so its bytes must not be normalized to CRLF.
+*.js text eol=lf
 *.cjs text eol=lf
 *.mjs text eol=lf
 *.py text eol=lf
