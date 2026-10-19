@@ -5,6 +5,45 @@ use std::path::Path;
 
 pub const DEVELOPMENT_EXTENSION_ID: &str = include_str!("../../browser-extension/extension-id.txt");
 pub const EDGE_STORE_EXTENSION_ID: &str = "oeeppgdhbgppkjgmjdaebffdhcfgeidi";
+pub const EDGE_STORE_URL: &str =
+    "https://microsoftedge.microsoft.com/addons/detail/oeeppgdhbgppkjgmjdaebffdhcfgeidi";
+
+pub fn connection_receipt(config: &Value, browser: Browser) -> (i64, i64) {
+    if !owned_id_config(config) {
+        return (0, 0);
+    }
+    let time = |id: &str| {
+        config["lastSeen"][id]
+            .as_i64()
+            .filter(|n| *n > 0)
+            .unwrap_or(0)
+    };
+    (
+        if browser == Browser::Edge {
+            time(EDGE_STORE_EXTENSION_ID)
+        } else {
+            0
+        },
+        time(DEVELOPMENT_EXTENSION_ID.trim()),
+    )
+}
+pub fn remember_origin(config: &mut Value, origin: &str, time: i64) -> bool {
+    if time <= 0 || !authorized_origin(config, origin) {
+        return false;
+    }
+    let id = origin
+        .trim_start_matches("chrome-extension://")
+        .trim_end_matches('/');
+    let previous = config["lastSeen"][id].as_i64().unwrap_or(0);
+    if previous > 0 && time.saturating_sub(previous) < 60_000 {
+        return false;
+    }
+    if !config["lastSeen"].is_object() {
+        config["lastSeen"] = serde_json::json!({});
+    }
+    config["lastSeen"][id] = serde_json::json!(time);
+    true
+}
 
 pub fn extension_ids() -> Value {
     serde_json::json!([DEVELOPMENT_EXTENSION_ID.trim(), EDGE_STORE_EXTENSION_ID])
@@ -95,6 +134,27 @@ pub fn registration_state(
 mod tests {
     use super::*;
     use serde_json::json;
+    #[test]
+    fn registration_is_not_an_extension_receipt() {
+        let config = json!({"extensionId":DEVELOPMENT_EXTENSION_ID.trim(),"extensionIds":extension_ids(),"protocol":1});
+        assert_eq!(connection_receipt(&config, Browser::Edge), (0, 0));
+    }
+    #[test]
+    fn receipt_is_scoped_and_only_records_authorized_origins() {
+        let mut config = json!({"extensionId":DEVELOPMENT_EXTENSION_ID.trim(),"extensionIds":extension_ids(),"protocol":1});
+        assert!(!remember_origin(
+            &mut config,
+            "chrome-extension://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/",
+            100_000
+        ));
+        let origin = format!("chrome-extension://{EDGE_STORE_EXTENSION_ID}/");
+        assert!(remember_origin(&mut config, &origin, 100_000));
+        assert_eq!(connection_receipt(&config, Browser::Edge), (100_000, 0));
+        assert_eq!(connection_receipt(&config, Browser::Chrome), (0, 0));
+        assert!(!remember_origin(&mut config, &origin, 120_000));
+        assert!(remember_origin(&mut config, &origin, 170_000));
+        assert!(!remember_origin(&mut config, &origin, 0));
+    }
     #[test]
     fn legacy_config_can_migrate_but_does_not_implicitly_authorize_store() {
         let config = json!({"extensionId":DEVELOPMENT_EXTENSION_ID.trim(),"protocol":1});

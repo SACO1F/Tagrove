@@ -1715,7 +1715,7 @@ export function SettingsPanel({
           </button>
         </div>
       </SettingsSection>
-      <BrowserCaptureSettings refreshKey={boot} />
+      <BrowserCaptureSettings refreshKey={boot} library={boot.dataPath} />
       <SettingsSection title={ui("备份与恢复")}>
         <p className="muted">
           {ui("备份包含标签、备注和文件位置。原文件需另行备份。")}

@@ -1,4 +1,8 @@
 import { SettingsSection } from "./SettingsSection";
+import {
+  BrowserExtensionGuide,
+  type BridgeStatus,
+} from "./BrowserExtensionGuide";
 import { useReadingScroll } from "./ReadingState";
 import { useEffect, useRef, useState } from "react";
 import { Globe, ExternalLink, Save, Eye, Edit3, RotateCcw } from "lucide-react";
@@ -10,18 +14,13 @@ import { t as ui, tf, currentLanguage } from "./i18n";
 import "./web-capture.css";
 export function BrowserCaptureSettings({
   refreshKey,
+  library,
 }: {
   refreshKey: unknown;
+  library: string;
 }) {
   const [browser, setBrowser] = useState("edge");
-  const [status, setStatus] = useState<{
-      enabled: boolean;
-      registrationError?: string;
-      extensionId: string;
-      registered: boolean;
-      removable: boolean;
-      registrationState: string;
-    }>(),
+  const [status, setStatus] = useState<BridgeStatus>(),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
   useEffect(() => {
@@ -39,6 +38,22 @@ export function BrowserCaptureSettings({
       live = false;
     };
   }, [refreshKey, browser]);
+  useEffect(() => {
+    let live = true;
+    const timer = window.setInterval(() => {
+      const choice = document.querySelector(".capture-browser-choice");
+      if (document.hidden || !choice || choice.closest("[inert]")) return;
+      void api<BridgeStatus>("capture.bridge.status", { browser })
+        .then((value) => {
+          if (live) setStatus(value);
+        })
+        .catch(() => {});
+    }, 3000);
+    return () => {
+      live = false;
+      clearInterval(timer);
+    };
+  }, [browser]);
   async function change(action: string) {
     setBusy(true);
     setError("");
@@ -48,7 +63,9 @@ export function BrowserCaptureSettings({
     } catch (e) {
       setError(message(e));
       setStatus(
-        await api<typeof status>("capture.bridge.status", { browser }).catch(() => undefined),
+        await api<typeof status>("capture.bridge.status", { browser }).catch(
+          () => undefined,
+        ),
       );
     } finally {
       setBusy(false);
@@ -69,6 +86,9 @@ export function BrowserCaptureSettings({
           ]}
         />
       </div>
+      {browser === "edge" && (
+        <BrowserExtensionGuide library={library} status={status} />
+      )}
       <div className="setting-row">
         <div>
           <strong>
@@ -100,15 +120,20 @@ export function BrowserCaptureSettings({
       <p className="subtle" role="status">
         {status?.enabled
           ? ui(
-              "采集已启用；请在所选浏览器加载配套扩展。是否进行 AI 标注由标签选择和 AI 设置决定。",
+              "采集已启用。请打开扩展检查连接；AI 标注由标签选择和 AI 设置决定。",
             )
-          : ui("尚未启用；扩展安装步骤见本版本使用说明。")}
+          : ui("尚未启用。安装扩展后，点击连接以完成本机配置。")}
       </p>
       <p className="subtle">
         {ui(
           "Chrome 与 Edge 分别连接；移除仅影响所选浏览器，暂停会同时影响两者。",
         )}
       </p>
+      {browser === "chrome" && (
+        <p className="subtle">
+          {ui("Chrome 商店版暂未发布；已有开发版可继续连接。")}
+        </p>
+      )}
       {status && (
         <div className="capture-connection-tools">
           <p className="subtle" role="status">

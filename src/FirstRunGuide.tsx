@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Files, Tags, Search, PackageOpen, Sparkles } from "lucide-react";
 import { Modal } from "./components";
 import { AutoTagSettings } from "./AutoTagSettings";
+import { BrowserExtensionGuide } from "./BrowserExtensionGuide";
 import {
   readOnboarding,
   saveOnboarding,
@@ -95,6 +96,7 @@ export function FirstRunGuide({
               </li>
             ))}
           </ol>
+          <BrowserExtensionGuide library={library} compact />
           <p className="subtle">
             {ui("AI 可以稍后在偏好设置中配置；AI 建议标签需要你确认。")}
           </p>

@@ -161,3 +161,49 @@
   gap: 12px;
   margin-bottom: 16px;
 }
+
+.browser-install-guide {
+  margin: 0 0 20px;
+  min-width: 0;
+}
+.browser-guide-toggle {
+  padding-inline: 0;
+}
+.browser-guide-content {
+  margin-top: 10px;
+  padding: 16px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--accent) 7%, var(--panel));
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.browser-guide-content p,
+.browser-guide-content li {
+  line-height: 1.65;
+  font-size: calc(13px * var(--ui-font-scale, 1));
+}
+.browser-guide-content p {
+  margin: 8px 0;
+}
+.browser-guide-content ol {
+  padding-left: 22px;
+  margin: 12px 0;
+}
+.browser-guide-content small {
+  display: block;
+  color: var(--muted);
+  line-height: 1.6;
+}
+.browser-guide-content .capture-actions {
+  gap: 8px;
+  margin: 16px 0 12px;
+}
+.browser-guide-content .button {
+  white-space: normal;
+}
+.browser-install-guide.is-compact {
+  margin-bottom: 0;
+}
+.is-compact .browser-guide-content {
+  margin-top: 0;
+}

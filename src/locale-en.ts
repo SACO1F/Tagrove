@@ -1438,7 +1438,48 @@ Object.assign(english, {
   "{0} 扩展连接": "{0} extension connection",
   "连接 {0} 扩展": "Connect {0} extension",
   暂停全部浏览器采集: "Pause capture in all browsers",
-  "采集已启用；请在所选浏览器加载配套扩展。是否进行 AI 标注由标签选择和 AI 设置决定。": "Capture is enabled. Load the extension in the selected browser. AI tagging depends on your selected tags and AI settings.",
-  "Chrome 与 Edge 分别连接；移除仅影响所选浏览器，暂停会同时影响两者。": "Chrome and Edge connect separately. Remove affects the selected browser; Pause affects both.",
-  无法读取所选浏览器连接状态: "Cannot read the selected browser connection status",
+  "采集已启用；请在所选浏览器加载配套扩展。是否进行 AI 标注由标签选择和 AI 设置决定。":
+    "Capture is enabled. Load the extension in the selected browser. AI tagging depends on your selected tags and AI settings.",
+  "Chrome 与 Edge 分别连接；移除仅影响所选浏览器，暂停会同时影响两者。":
+    "Chrome and Edge connect separately. Remove affects the selected browser; Pause affects both.",
+  无法读取所选浏览器连接状态:
+    "Cannot read the selected browser connection status",
+});
+
+Object.assign(english, {
+  "引导状态未能保存，下次可能再次显示；资料不受影响。":
+    "Could not save guide preferences. The guide may appear again; your library is unaffected.",
+  "已验证扩展通信。暂时不可用时，可检查或修复本机连接。":
+    "Extension communication has been verified. Check or repair the local connection if it becomes unavailable.",
+  "本机连接已就绪。请在 Edge 扩展中点击“检查连接”，完成通信验证。":
+    "The local connection is ready. Click Check connection in the Edge extension to verify communication.",
+  "请先在下方连接或修复 Edge，再打开扩展检查连接。":
+    "Connect or repair Edge below, then open the extension to check the connection.",
+  已验证扩展通信: "Extension communication verified",
+  安装与连接指南: "Installation and connection guide",
+  将网页保存到拾签: "Save web references to Tagrove",
+  "安装 Edge 扩展，即可保存网页、文字和图片，并在保存前选择标签。":
+    "Install the Edge extension to save web pages, text and images, choosing tags before saving.",
+  "前往 Edge 商店，由你确认安装扩展。":
+    "Visit Edge Add-ons and confirm the extension installation.",
+  "在下方启用或修复 Edge 本机连接。":
+    "Enable or repair the local Edge connection below.",
+  "点击浏览器工具栏中的拾签扩展，再点击“检查连接”。":
+    "Open Tagrove in the browser toolbar, then click Check connection.",
+  "安装 Edge 扩展": "Install Edge extension",
+  检查连接: "Check connection",
+  稍后: "Later",
+  不再提醒: "Do not remind me again",
+  "安装后，可在偏好设置的“浏览器采集”中完成连接；稍后设置也不影响本地整理。":
+    "After installation, connect in Preferences → Browser capture. You can keep organizing local files and set this up later.",
+  "尚未验证通信，不代表未安装。商店页面将在审核通过并上架后开放。":
+    "Communication has not been verified; the extension may already be installed. The store page opens after approval and publication.",
+  "采集已启用。请打开扩展检查连接；AI 标注由标签选择和 AI 设置决定。":
+    "Capture is enabled. Open the extension to check the connection; AI tagging depends on your tags and AI settings.",
+  "尚未启用。安装扩展后，点击连接以完成本机配置。":
+    "Not enabled yet. After installing the extension, connect it to complete local setup.",
+  "Chrome 商店版暂未发布；已有开发版可继续连接。":
+    "The Chrome store edition is not available yet. Existing development builds can still connect.",
+  "Chrome 商店版暂未发布，请使用本版本的开发者安装说明":
+    "The Chrome store edition is not available yet. Follow this version's developer installation guide.",
 });

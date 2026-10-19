@@ -2,9 +2,9 @@
 //! No arbitrary commands, paths or database queries are exposed to the extension.
 use crate::{
     capture_browser::{
-        allowed_origins, authorized_origin, current_id_config, extension_ids, owned_id_config,
-        owned_origins, registration_state, Browser, DEVELOPMENT_EXTENSION_ID,
-        EDGE_STORE_EXTENSION_ID,
+        allowed_origins, authorized_origin, connection_receipt, current_id_config, extension_ids,
+        owned_id_config, owned_origins, registration_state, remember_origin, Browser,
+        DEVELOPMENT_EXTENSION_ID, EDGE_STORE_EXTENSION_ID,
     },
     db::Store,
     model::*,
@@ -87,6 +87,23 @@ fn owned_manifest(value: &Value) -> bool {
     value["name"].as_str() == Some(HOST)
         && value["type"].as_str() == Some("stdio")
         && owned_origins(&value["allowed_origins"])
+}
+fn record_connection(s: &Store, origin: &str) -> Result<()> {
+    let path = config_path();
+    let Some(mut config) = read_json(&path).filter(|v| owned_config(s, v)) else {
+        return Ok(());
+    };
+    if !remember_origin(&mut config, origin, now()) {
+        return Ok(());
+    }
+    let parent = path
+        .parent()
+        .ok_or_else(|| err("BRIDGE_CONFIG", "本机配置无效"))?;
+    let mut temp = tempfile::NamedTempFile::new_in(parent).map_err(|e| err("BRIDGE_CONFIG", e))?;
+    temp.write_all(config.to_string().as_bytes())
+        .map_err(|e| err("BRIDGE_CONFIG", e))?;
+    temp.persist(path).map_err(|e| err("BRIDGE_CONFIG", e))?;
+    Ok(())
 }
 #[cfg(windows)]
 mod registry {
@@ -255,8 +272,17 @@ pub fn status(s: &Store, browser: Browser) -> Result<Value> {
         browsers.push(json!({"id":candidate.id(),"name":candidate.name(),"registrationState":state,"registered":state=="ready","removable":owns_config && owns_host && registration.as_deref()==Some(manifest.as_path())}));
     }
     let selected = browsers.iter().find(|v| v["id"] == browser.id()).unwrap();
+    let (store_seen, development_seen) = if owns_config {
+        config
+            .as_ref()
+            .map(|c| connection_receipt(c, browser))
+            .unwrap_or_default()
+    } else {
+        (0, 0)
+    };
     Ok(
         json!({"enabled":enabled(s),"extensionId":if browser == Browser::Edge {EDGE_STORE_EXTENSION_ID} else {EXTENSION_ID.trim()},"extensionIds":extension_ids(),"protocol":1,"browser":browser.name(),
+        "storeLastSeen":store_seen,"developmentLastSeen":development_seen,
         "registrationState":selected["registrationState"],"registered":selected["registered"],"removable":selected["removable"],"registrationError":selected["error"],"browsers":browsers}),
     )
 }
@@ -268,6 +294,10 @@ pub fn register(s: &Store, browser: Browser) -> Result<Value> {
     fs::create_dir_all(parent).map_err(|e| err("BRIDGE_REGISTER", e))?;
     let manifest = manifest_path()?;
     let exe = std::env::current_exe().map_err(|e| err("BRIDGE_REGISTER", e))?;
+    let receipts = read_json(&config)
+        .filter(|v| owned_config(s, v))
+        .map(|v| v["lastSeen"].clone())
+        .unwrap_or(json!({}));
     // Replace each JSON atomically before switching the registry pointer.
     for (path, value) in [
         (
@@ -276,7 +306,7 @@ pub fn register(s: &Store, browser: Browser) -> Result<Value> {
         ),
         (
             &config,
-            json!({"root":s.root,"extensionId":EXTENSION_ID.trim(),"extensionIds":extension_ids(),"protocol":1}),
+            json!({"root":s.root,"extensionId":EXTENSION_ID.trim(),"extensionIds":extension_ids(),"protocol":1,"lastSeen":receipts}),
         ),
     ] {
         let mut temp =
@@ -368,11 +398,13 @@ pub fn start(
             }
             let _ = socket.set_read_timeout(Some(Duration::from_secs(2)));
             let _ = socket.set_write_timeout(Some(Duration::from_secs(2)));
+            let mut verified_origin = None;
             let result = (|| -> Result<Value> {
                 let envelope = read_frame(&mut socket)?;
                 if envelope["token"].as_str() != Some(&token) {
                     return Err(err("BRIDGE_AUTH", "连接身份无效"));
                 }
+                verified_origin = envelope["origin"].as_str().map(str::to_owned);
                 let m = &envelope["message"];
                 if m["protocol"].as_u64() != Some(1) {
                     return Err(err("BRIDGE_PROTOCOL", "请更新拾签和扩展"));
@@ -523,6 +555,11 @@ pub fn start(
                     _ => Err(err("BRIDGE_PROTOCOL", "不支持的采集操作")),
                 }
             })();
+            if result.is_ok() {
+                if let (Some(origin), Ok(s)) = (verified_origin.as_deref(), store.lock()) {
+                    let _ = record_connection(&s, origin);
+                }
+            }
             let response = match result {
                 Ok(v) => json!({"ok":true,"result":v}),
                 Err(e) => json!({"ok":false,"error":e}),
@@ -577,7 +614,7 @@ fn forward(message: &Value, origin: &str) -> Result<Value> {
     let _ = socket.set_write_timeout(Some(Duration::from_secs(3)));
     write_frame(
         &mut socket,
-        &json!({"token":session["token"],"message":message}),
+        &json!({"token":session["token"],"message":message,"origin":origin}),
     )?;
     read_frame(&mut socket)
 }

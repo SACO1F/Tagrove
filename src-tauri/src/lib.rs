@@ -888,6 +888,17 @@ fn dispatch(state: &AppState, app: &tauri::AppHandle, action: &str, v: &Value) -
                 json!({"transfer":state.transfer.status(),"import":import,"ai":ai,"watch":watch,"index":index}),
             )
         }
+        "capture.extension.open" => {
+            if capture_browser::Browser::parse(&v["browser"])? != capture_browser::Browser::Edge {
+                return Err(err("INVALID_INPUT", "Chrome 商店版暂未发布，请使用本版本的开发者安装说明"));
+            }
+            if std::env::var_os("SHIQIAN_QA_BRIDGE_NO_REGISTRY").is_some() {
+                std::fs::write(state.store()?.root.join("qa-store-open.json"), json!({"url":capture_browser::EDGE_STORE_URL}).to_string()).map_err(|e|err("OPEN_FAILED",e))?;
+            } else {
+                open::that(capture_browser::EDGE_STORE_URL).map_err(|e| err("OPEN_FAILED",e))?;
+            }
+            Ok(json!({"url":capture_browser::EDGE_STORE_URL}))
+        }
         "capture.bridge.status" => capture_bridge::status(&*state.store()?, capture_browser::Browser::parse(&v["browser"])?),
         "capture.bridge.register" => capture_bridge::register(&*state.store()?, capture_browser::Browser::parse(&v["browser"])?),
         "capture.bridge.unregister" => capture_bridge::unregister(&*state.store()?, capture_browser::Browser::parse(&v["browser"])?),
