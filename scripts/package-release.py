@@ -57,6 +57,11 @@ def main():
     if version == "0.3.0":
         subprocess.run([sys.executable, str(root / "scripts/stable-release-gate.py")], check=True)
     validate_versions(root, version)
+    if version == "0.6.13":
+        if args.directory_name and args.directory_name != "v0.6.13":
+            raise ValueError("The Edge development delivery uses the fixed v0.6.13 directory")
+        subprocess.run([sys.executable, str(root / "scripts/edge-delivery.py")], check=True)
+        return
     if version == "0.6.12":
         if args.directory_name and args.directory_name != "v0.6.12":
             raise ValueError("The 0.6.12 formal release uses the fixed v0.6.12 directory")

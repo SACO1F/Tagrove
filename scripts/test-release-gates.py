@@ -42,6 +42,12 @@ class ReleaseGates(unittest.TestCase):
                 release.main()
             runner.assert_not_called()
 
+    def test_edge_delivery_uses_current_builder(self):
+        with patch.object(release.sys, "argv", ["package-release.py", "--version", "0.6.13"]), patch.object(release, "validate_versions"), patch.object(release.subprocess, "run") as runner:
+            release.main()
+            runner.assert_called_once()
+            self.assertTrue(str(runner.call_args.args[0][1]).endswith("edge-delivery.py"))
+
     def test_root_lock_mismatch_is_rejected(self):
         with tempfile.TemporaryDirectory() as name:
             root = Path(name)

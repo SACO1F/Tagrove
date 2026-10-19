@@ -19,6 +19,8 @@
 
 ---
 
+> **开发中 / In development: v0.6.13 Edge 支持。** 本地新增 Microsoft Edge 插件包和独立浏览器连接入口。当前公开正式版下载仍为下方 **v0.6.12**；Edge 安装步骤见[插件说明](browser-extension/README.md)。 / Local 0.6.13 development adds an Edge package and separate browser connections. The public stable downloads below remain 0.6.12.
+
 **文件留在熟悉的位置，标签把它们重新联系起来。** 同一张效果图可以同时属于“项目参考”“建筑外墙”和“待讨论”；一份 PDF 可以与网页摘录、图片放在同一组搜索结果中。Tagrove 让整理与找回围绕用途展开，减少为了分类反复复制文件。
 
 **Keep files where they belong; connect them with tags.** An image can belong to a project, a topic and a task at once. Find a PDF alongside related images and web excerpts, using the way you remember the material rather than a single folder hierarchy.

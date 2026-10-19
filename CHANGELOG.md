@@ -2,6 +2,8 @@
 
 当前正式版 / Current stable release: [v0.6.12](docs/release-v0.6.12.md).
 
+本地开发 / Local development: [v0.6.13 · Edge 支持](docs/release-v0.6.13.md).
+
 完整变更按版本保留；测试日志、旧截图及阶段性说明已精简。发布附件与 Git 标签保留原样。
 Full release notes are retained by version. Obsolete test logs, screenshots and interim guides have been pruned. Published assets and Git tags remain unchanged.
 

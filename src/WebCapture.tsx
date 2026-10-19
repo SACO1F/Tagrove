@@ -6,15 +6,17 @@ import { webDirty, webDrafts, webSaving, type WebDraft } from "./WebDrafts";
 import { GlideSelect } from "./GlideSelect";
 import type { Query } from "./api";
 import { api, message, type LocalFile } from "./api";
-import { t as ui, currentLanguage } from "./i18n";
+import { t as ui, tf, currentLanguage } from "./i18n";
 import "./web-capture.css";
 export function BrowserCaptureSettings({
   refreshKey,
 }: {
   refreshKey: unknown;
 }) {
+  const [browser, setBrowser] = useState("edge");
   const [status, setStatus] = useState<{
       enabled: boolean;
+      registrationError?: string;
       extensionId: string;
       registered: boolean;
       removable: boolean;
@@ -24,7 +26,9 @@ export function BrowserCaptureSettings({
     [busy, setBusy] = useState(false);
   useEffect(() => {
     let live = true;
-    api<typeof status>("capture.bridge.status")
+    setStatus(undefined);
+    setError("");
+    api<typeof status>("capture.bridge.status", { browser })
       .then((s) => {
         if (live) setStatus(s);
       })
@@ -34,24 +38,42 @@ export function BrowserCaptureSettings({
     return () => {
       live = false;
     };
-  }, [refreshKey]);
+  }, [refreshKey, browser]);
   async function change(action: string) {
     setBusy(true);
     setError("");
     try {
-      await api(action);
-      setStatus(await api("capture.bridge.status"));
+      await api(action, { browser });
+      setStatus(await api("capture.bridge.status", { browser }));
     } catch (e) {
       setError(message(e));
+      setStatus(
+        await api<typeof status>("capture.bridge.status", { browser }).catch(() => undefined),
+      );
     } finally {
       setBusy(false);
     }
   }
   return (
     <SettingsSection title={ui("浏览器采集")}>
+      <div className="capture-browser-choice">
+        <span>{ui("浏览器")}</span>
+        <GlideSelect
+          value={browser}
+          onChange={setBrowser}
+          disabled={busy}
+          ariaLabel={ui("选择采集浏览器")}
+          options={[
+            { value: "edge", label: "Microsoft Edge" },
+            { value: "chrome", label: "Google Chrome" },
+          ]}
+        />
+      </div>
       <div className="setting-row">
         <div>
-          <strong>{ui("Chrome 扩展连接")}</strong>
+          <strong>
+            {tf("{0} 扩展连接", browser === "edge" ? "Edge" : "Chrome")}
+          </strong>
           <p>
             {ui("保存网页链接、摘录或所选图片；桌面未运行时留在浏览器队列。")}
           </p>
@@ -61,7 +83,7 @@ export function BrowserCaptureSettings({
           disabled={busy || !status}
           onClick={() =>
             void change(
-              status?.enabled
+              status?.enabled && status.registered
                 ? "capture.bridge.disable"
                 : "capture.bridge.register",
             )
@@ -70,17 +92,22 @@ export function BrowserCaptureSettings({
           <Globe size={16} />
           {busy
             ? ui("处理中…")
-            : status?.enabled
-              ? ui("断开连接")
-              : ui("连接 Chrome 扩展")}
+            : status?.enabled && status.registered
+              ? ui("暂停全部浏览器采集")
+              : tf("连接 {0} 扩展", browser === "edge" ? "Edge" : "Chrome")}
         </button>
       </div>
       <p className="subtle" role="status">
         {status?.enabled
           ? ui(
-              "已允许本机扩展采集，不会自动发送给 AI。启动 Chrome 并加载配套扩展后即可使用。",
+              "采集已启用；请在所选浏览器加载配套扩展。是否进行 AI 标注由标签选择和 AI 设置决定。",
             )
           : ui("尚未启用；扩展安装步骤见本版本使用说明。")}
+      </p>
+      <p className="subtle">
+        {ui(
+          "Chrome 与 Edge 分别连接；移除仅影响所选浏览器，暂停会同时影响两者。",
+        )}
       </p>
       {status && (
         <div className="capture-connection-tools">
@@ -91,7 +118,9 @@ export function BrowserCaptureSettings({
                 ? ui("本机连接指向其他位置，可修复为当前程序")
                 : status.registrationState === "stale"
                   ? ui("程序或资料库位置已变化，请修复连接")
-                  : ui("尚未注册本机连接")}
+                  : status.registrationState === "error"
+                    ? ui("无法读取所选浏览器连接状态")
+                    : ui("尚未注册本机连接")}
           </p>
           <div className="capture-actions">
             <button
@@ -121,9 +150,9 @@ export function BrowserCaptureSettings({
           {ui("扩展 ID")} · {status.extensionId}
         </small>
       )}
-      {error && (
+      {(error || status?.registrationError) && (
         <p role="alert" className="tag-form-error">
-          {error}
+          {error || message(status?.registrationError)}
         </p>
       )}
     </SettingsSection>

@@ -1,6 +1,11 @@
-//! Chrome Native Messaging -> authenticated loopback transport -> one Store owner.
+//! Chromium browser Native Messaging -> authenticated loopback transport -> one Store owner.
 //! No arbitrary commands, paths or database queries are exposed to the extension.
-use crate::{db::Store, model::*, transfer, watch};
+use crate::{
+    capture_browser::{registration_state, Browser},
+    db::Store,
+    model::*,
+    transfer, watch,
+};
 use serde_json::{json, Value};
 use std::{
     fs,
@@ -87,17 +92,15 @@ mod registry {
     fn wide(text: &str) -> Vec<u16> {
         text.encode_utf16().chain(Some(0)).collect()
     }
-    fn key() -> Vec<u16> {
-        wide(&format!(
-            "Software\\Google\\Chrome\\NativeMessagingHosts\\{HOST}"
-        ))
+    fn key(browser: Browser) -> Vec<u16> {
+        wide(browser.registry_key())
     }
-    pub fn get() -> Result<Option<PathBuf>> {
+    pub fn get(browser: Browser) -> Result<Option<PathBuf>> {
         let mut size = 0;
         let code = unsafe {
             RegGetValueW(
                 HKEY_CURRENT_USER,
-                key().as_ptr(),
+                key(browser).as_ptr(),
                 std::ptr::null(),
                 RRF_RT_REG_SZ,
                 std::ptr::null_mut(),
@@ -109,13 +112,13 @@ mod registry {
             return Ok(None);
         }
         if code != 0 || size > 65536 {
-            return Err(err("BRIDGE_REGISTER", "无法读取 Chrome 本机连接注册"));
+            return Err(err("BRIDGE_REGISTER", "无法读取浏览器本机连接注册"));
         }
         let mut data = vec![0u16; (size as usize / 2) + 1];
         let code = unsafe {
             RegGetValueW(
                 HKEY_CURRENT_USER,
-                key().as_ptr(),
+                key(browser).as_ptr(),
                 std::ptr::null(),
                 RRF_RT_REG_SZ,
                 std::ptr::null_mut(),
@@ -124,7 +127,7 @@ mod registry {
             )
         };
         if code != 0 {
-            return Err(err("BRIDGE_REGISTER", "无法读取 Chrome 本机连接注册"));
+            return Err(err("BRIDGE_REGISTER", "无法读取浏览器本机连接注册"));
         }
         let end = data.iter().position(|c| *c == 0).unwrap_or(data.len());
         use std::os::windows::ffi::OsStringExt;
@@ -132,12 +135,12 @@ mod registry {
             &data[..end],
         ))))
     }
-    pub fn set(path: &std::path::Path) -> Result<()> {
+    pub fn set(browser: Browser, path: &std::path::Path) -> Result<()> {
         use std::os::windows::ffi::OsStrExt;
         let data: Vec<u16> = path.as_os_str().encode_wide().chain(Some(0)).collect();
         let mut handle = std::ptr::null_mut();
-        if unsafe { RegCreateKeyW(HKEY_CURRENT_USER, key().as_ptr(), &mut handle) } != 0 {
-            return Err(err("BRIDGE_REGISTER", "无法注册 Chrome 本机连接"));
+        if unsafe { RegCreateKeyW(HKEY_CURRENT_USER, key(browser).as_ptr(), &mut handle) } != 0 {
+            return Err(err("BRIDGE_REGISTER", "无法注册浏览器本机连接"));
         }
         let code = unsafe {
             RegSetValueExW(
@@ -155,42 +158,71 @@ mod registry {
         if code != 0 {
             return Err(err(
                 "BRIDGE_REGISTER",
-                "Chrome 本机连接注册失败，请检查当前用户权限",
+                "浏览器本机连接注册失败，请检查当前用户权限",
             ));
         }
         Ok(())
     }
-    pub fn remove(expected: &std::path::Path) -> Result<()> {
-        if let Some(current) = get()? {
+    pub fn remove(browser: Browser, expected: &std::path::Path) -> Result<()> {
+        if let Some(current) = get(browser)? {
             if current != expected {
                 return Err(err("BRIDGE_REGISTER", "连接由其他位置管理，未移除其注册"));
             }
             // Delete this one key only. Unexpected subkeys cause failure instead of recursive deletion.
-            if unsafe { RegDeleteKeyW(HKEY_CURRENT_USER, key().as_ptr()) } != 0 {
-                return Err(err("BRIDGE_REGISTER", "无法移除 Chrome 本机连接注册"));
+            if unsafe { RegDeleteKeyW(HKEY_CURRENT_USER, key(browser).as_ptr()) } != 0 {
+                return Err(err("BRIDGE_REGISTER", "无法移除浏览器本机连接注册"));
             }
         }
         Ok(())
     }
 }
-fn registered_path() -> Result<Option<PathBuf>> {
+fn qa_registry_path(browser: Browser) -> Result<PathBuf> {
+    Ok(manifest_path()?.with_file_name(format!("qa-registry-{}.json", browser.id())))
+}
+fn registered_path(browser: Browser) -> Result<Option<PathBuf>> {
     if std::env::var_os("SHIQIAN_QA_BRIDGE_NO_REGISTRY").is_some() {
-        return Ok(Some(manifest_path()?));
+        return Ok(
+            read_json(&qa_registry_path(browser)?).and_then(|v| v.as_str().map(PathBuf::from))
+        );
     }
     #[cfg(windows)]
     {
-        registry::get()
+        registry::get(browser)
     }
     #[cfg(not(windows))]
     {
+        let _ = browser;
         Ok(None)
     }
 }
-pub fn status(s: &Store) -> Result<Value> {
+fn register_path(browser: Browser, manifest: &std::path::Path) -> Result<()> {
+    if std::env::var_os("SHIQIAN_QA_BRIDGE_NO_REGISTRY").is_some() {
+        return fs::write(qa_registry_path(browser)?, json!(manifest).to_string())
+            .map_err(|e| err("BRIDGE_REGISTER", e));
+    }
+    #[cfg(windows)]
+    {
+        registry::set(browser, manifest)?;
+    }
+    Ok(())
+}
+fn remove_path(browser: Browser, manifest: &std::path::Path) -> Result<()> {
+    if std::env::var_os("SHIQIAN_QA_BRIDGE_NO_REGISTRY").is_some() {
+        if registered_path(browser)?.as_deref() != Some(manifest) {
+            return Err(err("BRIDGE_REGISTER", "连接由其他位置管理，未移除其注册"));
+        }
+        return fs::remove_file(qa_registry_path(browser)?).map_err(|e| err("BRIDGE_REGISTER", e));
+    }
+    #[cfg(windows)]
+    {
+        registry::remove(browser, manifest)?;
+    }
+    Ok(())
+}
+pub fn status(s: &Store, browser: Browser) -> Result<Value> {
     let manifest = manifest_path()?;
     let config = read_json(&config_path());
     let host = read_json(&manifest);
-    let registration = registered_path()?;
     let owns_config = config.as_ref().is_some_and(|v| owned_config(s, v));
     let owns_host = host.as_ref().is_some_and(owned_manifest);
     let current_exe = std::env::current_exe().map_err(|e| err("BRIDGE_REGISTER", e))?;
@@ -198,21 +230,30 @@ pub fn status(s: &Store) -> Result<Value> {
         .as_ref()
         .and_then(|v| v["path"].as_str())
         .is_some_and(|p| PathBuf::from(p) == current_exe);
-    let state = if registration.as_ref().is_some_and(|p| p != &manifest) {
-        "foreign"
-    } else if registration.is_none() || config.is_none() || host.is_none() {
-        "missing"
-    } else if !owns_config || !owns_host || !host_current {
-        "stale"
-    } else {
-        "ready"
-    };
+    let mut browsers = Vec::new();
+    for candidate in Browser::ALL {
+        let registration = match registered_path(candidate) {
+            Ok(value) => value,
+            Err(error) => {
+                browsers.push(json!({"id":candidate.id(),"name":candidate.name(),"registrationState":"error","registered":false,"removable":false,"error":error}));
+                continue;
+            }
+        };
+        let state = registration_state(
+            registration.as_deref(),
+            &manifest,
+            config.is_some() && host.is_some(),
+            owns_config && owns_host && host_current,
+        );
+        browsers.push(json!({"id":candidate.id(),"name":candidate.name(),"registrationState":state,"registered":state=="ready","removable":owns_config && owns_host && registration.as_deref()==Some(manifest.as_path())}));
+    }
+    let selected = browsers.iter().find(|v| v["id"] == browser.id()).unwrap();
     Ok(
-        json!({"enabled":enabled(s),"extensionId":EXTENSION_ID.trim(),"protocol":1,"browser":"Chrome",
-        "registrationState":state,"registered":state=="ready","removable":owns_config && owns_host && state!="foreign"}),
+        json!({"enabled":enabled(s),"extensionId":EXTENSION_ID.trim(),"protocol":1,"browser":browser.name(),
+        "registrationState":selected["registrationState"],"registered":selected["registered"],"removable":selected["removable"],"registrationError":selected["error"],"browsers":browsers}),
     )
 }
-pub fn register(s: &Store) -> Result<Value> {
+pub fn register(s: &Store, browser: Browser) -> Result<Value> {
     let config = config_path();
     let parent = config
         .parent()
@@ -240,37 +281,43 @@ pub fn register(s: &Store) -> Result<Value> {
             .map_err(|e| err("BRIDGE_REGISTER", e))?;
         temp.persist(path).map_err(|e| err("BRIDGE_REGISTER", e))?;
     }
-    if std::env::var_os("SHIQIAN_QA_BRIDGE_NO_REGISTRY").is_none() {
-        #[cfg(windows)]
-        registry::set(&manifest)?;
-    }
+    register_path(browser, &manifest)?;
     s.conn.execute("INSERT INTO settings(key,value) VALUES('browserCaptureEnabled','true') ON CONFLICT(key) DO UPDATE SET value='true'",[]).map_err(sql_err)?;
-    status(s)
+    status(s, browser)
 }
-pub fn unregister(s: &Store) -> Result<Value> {
-    s.conn
-        .execute("DELETE FROM settings WHERE key='browserCaptureEnabled'", [])
-        .map_err(sql_err)?;
+pub fn unregister(s: &Store, browser: Browser) -> Result<Value> {
     let config = config_path();
     let manifest = manifest_path()?;
-    let config_data = read_json(&config);
-    let host_data = read_json(&manifest);
-    // Never delete another library's connection, malformed data, or an unrelated registry target.
-    if !config_data.as_ref().is_some_and(|v| owned_config(s, v))
-        || !host_data.as_ref().is_some_and(owned_manifest)
+    if !read_json(&config)
+        .as_ref()
+        .is_some_and(|v| owned_config(s, v))
+        || !read_json(&manifest).as_ref().is_some_and(owned_manifest)
     {
         return Err(err(
             "BRIDGE_REGISTER",
             "连接配置不属于当前资料库，请先修复连接",
         ));
     }
-    if std::env::var_os("SHIQIAN_QA_BRIDGE_NO_REGISTRY").is_none() {
-        #[cfg(windows)]
-        registry::remove(&manifest)?;
+    if registered_path(browser)?.is_none() {
+        return status(s, browser);
     }
-    fs::remove_file(&manifest).map_err(|e| err("BRIDGE_REGISTER", e))?;
-    fs::remove_file(&config).map_err(|e| err("BRIDGE_REGISTER", e))?;
-    status(s)
+    // Remove only the selected browser and never a foreign key.
+    remove_path(browser, &manifest)?;
+    let mut shared = false;
+    for candidate in Browser::ALL {
+        // Unknown ownership must preserve shared files.
+        shared |= registered_path(candidate)
+            .map(|value| value.as_deref() == Some(manifest.as_path()))
+            .unwrap_or(true);
+    }
+    if !shared {
+        fs::remove_file(&manifest).map_err(|e| err("BRIDGE_REGISTER", e))?;
+        fs::remove_file(&config).map_err(|e| err("BRIDGE_REGISTER", e))?;
+        s.conn
+            .execute("DELETE FROM settings WHERE key='browserCaptureEnabled'", [])
+            .map_err(sql_err)?;
+    }
+    status(s, browser)
 }
 pub fn start(
     store: Arc<Mutex<Store>>,
@@ -479,8 +526,12 @@ pub fn start(
     });
 }
 fn forward(message: &Value, origin: &str) -> Result<Value> {
-    let raw = fs::read(config_path())
-        .map_err(|_| err("BRIDGE_NOT_REGISTERED", "请在拾签偏好设置连接 Chrome 扩展"))?;
+    let raw = fs::read(config_path()).map_err(|_| {
+        err(
+            "BRIDGE_NOT_REGISTERED",
+            "请在拾签偏好设置连接对应浏览器扩展",
+        )
+    })?;
     if raw.len() > 32768 {
         return Err(err("BRIDGE_CONFIG", "本机配置无效"));
     }

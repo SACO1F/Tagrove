@@ -87,3 +87,6 @@ mod web_reading;
 
 #[path = "../../src/image_capture.rs"]
 mod image_capture;
+
+#[path = "../../src/capture_browser.rs"]
+mod capture_browser;

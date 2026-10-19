@@ -18,3 +18,5 @@
 - 当前中英文使用说明、正式版验证摘要、插件说明及后续计划保留。
 - 旧测试报告、阶段使用说明、旧截图和一次性测试脚本从 main 分支清理；历史内容可从 v0.6.12 标签追溯。
 - Historical reports and interim assets are removed from the main branch; the v0.6.12 tag remains available for traceability.
+
+本地开发交付 / Local development: [v0.6.13 Edge 支持](release-v0.6.13.md)。

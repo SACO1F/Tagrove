@@ -1431,3 +1431,14 @@ Object.assign(english, {
 Object.assign(english, {
   开关设置必须为布尔值: "Switch settings must be true or false",
 });
+
+Object.assign(english, {
+  浏览器: "Browser",
+  选择采集浏览器: "Choose capture browser",
+  "{0} 扩展连接": "{0} extension connection",
+  "连接 {0} 扩展": "Connect {0} extension",
+  暂停全部浏览器采集: "Pause capture in all browsers",
+  "采集已启用；请在所选浏览器加载配套扩展。是否进行 AI 标注由标签选择和 AI 设置决定。": "Capture is enabled. Load the extension in the selected browser. AI tagging depends on your selected tags and AI settings.",
+  "Chrome 与 Edge 分别连接；移除仅影响所选浏览器，暂停会同时影响两者。": "Chrome and Edge connect separately. Remove affects the selected browser; Pause affects both.",
+  无法读取所选浏览器连接状态: "Cannot read the selected browser connection status",
+});

@@ -16,6 +16,7 @@ mod capture_options;
 mod web_reading;
 mod web_browser;
 pub mod capture_bridge;
+pub mod capture_browser;
 mod db;
 mod floating;
 mod fsops;
@@ -887,9 +888,9 @@ fn dispatch(state: &AppState, app: &tauri::AppHandle, action: &str, v: &Value) -
                 json!({"transfer":state.transfer.status(),"import":import,"ai":ai,"watch":watch,"index":index}),
             )
         }
-        "capture.bridge.status" => capture_bridge::status(&*state.store()?),
-        "capture.bridge.register" => capture_bridge::register(&*state.store()?),
-        "capture.bridge.unregister" => capture_bridge::unregister(&*state.store()?),
+        "capture.bridge.status" => capture_bridge::status(&*state.store()?, capture_browser::Browser::parse(&v["browser"])?),
+        "capture.bridge.register" => capture_bridge::register(&*state.store()?, capture_browser::Browser::parse(&v["browser"])?),
+        "capture.bridge.unregister" => capture_bridge::unregister(&*state.store()?, capture_browser::Browser::parse(&v["browser"])?),
         "capture.bridge.disable" => {
             state
                 .store()?
