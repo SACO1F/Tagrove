@@ -4,7 +4,7 @@
   "honestyRule": "Interface screenshots are real application output. Reference material (the photographs and documents pinned on the wall) is synthetic. The page states this distinction in its footer.",
   "realInterface": {
     "how": "Captured from the built desktop application through the project's own QA harness, not mocked in HTML. scripts/landing-captures.cjs launches src-tauri/target/release/shiqian.exe against an isolated library under qa/v0-landing/library over CDP, seeds the state through the app's own api actions (import, tag.create, annotation.apply, note.save, settings.save), then photographs the window with Playwright (animations disabled). Re-run: python scripts/make-landing-material.py && node scripts/landing-captures.cjs",
-    "build": "0.6.13 test build; layout matches the 0.6.12 stable release. Re-shoot against the stable build before a version-specific claim is made.",
+    "build": "0.6.13 test build, confirmed as the standing baseline for this page on 2026-10-19. Downloads still point at the 0.6.12 stable release; re-run the capture script after installing a new build.",
     "assets": {
       "ui/workspace.webp": "全部资料 with nine seeded items, sidebar groups, folder and tag index, masonry with a rendered PDF page.",
       "ui/search.webp": "Search for 外墙: three hits, each labelled 命中 · 标签, with the real 正文索引未开启 notice.",
@@ -25,5 +25,5 @@
       "logo.png": "Pre-existing project asset public/icon.png, the transparent logo source named in README and docs/brand-update-2026-10-19.zh-CN.md; resized 2048 to 512 for web."
     }
   },
-  "engineNote": "The Impeccable engine could not be installed on this host during the first pass (its binary is fetched from a github.com release URL, which is blocked here); a partial copy exists under ~/.impeccable/bin/0.1.14 and has not been verified by digest. Provenance is therefore recorded in this file rather than embedded in each image."
+  "engineNote": "The Impeccable engine could not be installed on this host: its binary is fetched from a github.com release URL, which is unreachable here, and the partial download was removed so a later launcher run re-fetches cleanly instead of executing a truncated file. Provenance is therefore recorded in this file rather than embedded in each image."
 }
