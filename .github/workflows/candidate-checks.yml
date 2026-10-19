@@ -1,0 +1,45 @@
+name: Candidate checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: candidate-checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows-core-and-build:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - name: Install frontend dependencies
+        run: npm ci
+      - name: Build production frontend
+        run: npm run build
+      - name: Check release version gates
+        run: python scripts/test-release-gates.py
+      - name: Run core regressions including crash recovery
+        run: cargo test --locked --manifest-path src-tauri/Cargo.toml --lib
+      - name: Build native application
+        run: cargo build --locked --release --manifest-path src-tauri/Cargo.toml
+
+# This workflow checks source/build health. It neither publishes a release nor
+# claims installer, physical mouse, mixed-DPI, or another computer acceptance.
