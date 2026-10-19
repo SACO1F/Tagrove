@@ -25,5 +25,15 @@
       "logo.png": "Pre-existing project asset public/icon.png, the transparent logo source named in README and docs/brand-update-2026-10-19.zh-CN.md; resized 2048 to 512 for web."
     }
   },
-  "engineNote": "The Impeccable engine could not be installed on this host: its binary is fetched from a github.com release URL, which is unreachable here, and the partial download was removed so a later launcher run re-fetches cleanly instead of executing a truncated file. Provenance is therefore recorded in this file rather than embedded in each image."
+  "fonts": {
+    "how": "Self-hosted woff2 subsets fetched from Google Fonts on 2026-10-19 and committed under assets/fonts/. The page declares Inter in its stack but never loaded it, so every Latin run rendered in the platform fallback; these files close that gap.",
+    "latinOnly": true,
+    "cjk": "Chinese text stays on the native face (Microsoft YaHei UI / PingFang SC). No CJK webfont ships: the audience is Windows and a full family is tens of megabytes.",
+    "assets": {
+      "fonts/inter-latin-var.woff2": "Inter, variable weight 400-700, latin subset, 48 KB. SIL Open Font License.",
+      "fonts/instrument-serif-latin.woff2": "Instrument Serif, roman, latin subset, 21 KB. Carries the English gloss voice. SIL Open Font License.",
+      "fonts/instrument-serif-latin-italic.woff2": "Instrument Serif, italic, latin subset, 22 KB. Carries the headline tagline. SIL Open Font License."
+    }
+  },
+  "engineNote": "The Impeccable engine could not be installed earlier on this host: its binary is fetched from a github.com release URL, which timed out there, and the partial download was removed so a later launcher run re-fetches cleanly instead of executing a truncated file. Provenance was therefore recorded in this file rather than embedded in each image. On 2026-10-19 the launcher did bootstrap successfully through this machine's local proxy (127.0.0.1:7890), so impeccable context and detect now run."
 }

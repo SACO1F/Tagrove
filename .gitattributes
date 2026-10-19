@@ -13,6 +13,8 @@
 *.mjs text eol=lf
 *.py text eol=lf
 *.svg text eol=lf
+*.woff binary
+*.woff2 binary
 *.png binary
 *.jpg binary
 *.ico binary
