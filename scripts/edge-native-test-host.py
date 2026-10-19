@@ -1,6 +1,6 @@
 """Register a unique QA-only Edge host. Never touches the production host key."""
 from pathlib import Path
-import json,sys,winreg
+import json,sys,winreg,os
 
 root=Path(__file__).resolve().parent.parent
 qa=root/'qa/v0613-edge'
@@ -10,8 +10,12 @@ key=rf'Software\Microsoft\Edge\NativeMessagingHosts\{host}'
 if sys.argv[1]=='register':
     data=json.loads(manifest.read_text(encoding='utf-8'))
     assert data['name']==host and data['type']=='stdio'
-    assert Path(data['path']).resolve()==(root/'releases/v0.6.13/Shiqian-v0.6.13-Windows-x64.exe').resolve()
-    assert data['allowed_origins']==['chrome-extension://emppinjophbaookhjdigajhimbafcplg/']
+    executable=Path(os.environ.get('FLOATING_TEST_EXE',str(root/'releases/v0.6.13/Shiqian-v0.6.13-Windows-x64.exe'))).resolve()
+    assert executable.is_relative_to((root/'releases').resolve())
+    assert Path(data['path']).resolve()==executable
+    development='chrome-extension://emppinjophbaookhjdigajhimbafcplg/'
+    store='chrome-extension://oeeppgdhbgppkjgmjdaebffdhcfgeidi/'
+    assert data['allowed_origins'] in [[development],[development,store]]
     try:
         with winreg.OpenKey(winreg.HKEY_CURRENT_USER,key) as handle:
             previous,kind=winreg.QueryValueEx(handle,'')

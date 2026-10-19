@@ -42,3 +42,11 @@ Edge 使用 Microsoft/Edge/NativeMessagingHosts 注册位置；扩展来源仍�
 - 通过代理完成 NSIS 组件准备与安装包构建，产物内嵌程序与实际测试 EXE 一致。
 
 本轮验证不是 Edge 商店签名、企业管理策略、所有 Edge 历史版本或干净系统安装验收。公开 v0.6.12 及其附件保持原样。
+
+## Edge 商店身份适配 · 2026-10-19
+
+用户从 Microsoft Partner Center 复制确认的 CRX ID 为 `oeeppgdhbgppkjgmjdaebffdhcfgeidi`。Store ID 和 Product ID 不用于 Native Messaging 来源验证。
+
+桌面主机同时支持该商店 ID 与原开发 ID `emppinjophbaookhjdigajhimbafcplg`，仍严格拒绝其他扩展来源。旧版单 ID 配置可识别为本资料库所有，但提示修复；修复会同时更新配置与原生主机白名单，保留独立的 Chrome、Edge 注册。Chrome 商店 ID 尚未取得，不能宣称已兼容 Chrome 商店安装。
+
+核心回归 226 通过、0 失败、3 忽略，新增旧配置迁移、双来源授权、未知来源与额外 ID 拒绝测试。新增程序另存于 `releases/v0.6.13-edge-store.1/`，实际原生主机验证结果随该目录交付，不替换旧 EXE。商店签名安装与公开下载链接仍须在提交审核前完成。

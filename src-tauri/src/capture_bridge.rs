@@ -1,7 +1,11 @@
 //! Chromium browser Native Messaging -> authenticated loopback transport -> one Store owner.
 //! No arbitrary commands, paths or database queries are exposed to the extension.
 use crate::{
-    capture_browser::{registration_state, Browser},
+    capture_browser::{
+        allowed_origins, authorized_origin, current_id_config, extension_ids, owned_id_config,
+        owned_origins, registration_state, Browser, DEVELOPMENT_EXTENSION_ID,
+        EDGE_STORE_EXTENSION_ID,
+    },
     db::Store,
     model::*,
     transfer, watch,
@@ -18,7 +22,7 @@ use std::{
 use tauri::{Emitter, Manager};
 use tauri_plugin_dialog::DialogExt;
 const HOST: &str = "local.shiqian.capture";
-const EXTENSION_ID: &str = include_str!("../../browser-extension/extension-id.txt");
+const EXTENSION_ID: &str = DEVELOPMENT_EXTENSION_ID;
 const MAX: usize = 256 * 1024;
 fn read_frame(input: &mut impl Read) -> Result<Value> {
     let mut len = [0u8; 4];
@@ -77,13 +81,12 @@ fn owned_config(s: &Store, value: &Value) -> bool {
     value["root"]
         .as_str()
         .is_some_and(|p| PathBuf::from(p) == s.root)
-        && value["extensionId"].as_str() == Some(EXTENSION_ID.trim())
+        && owned_id_config(value)
 }
 fn owned_manifest(value: &Value) -> bool {
     value["name"].as_str() == Some(HOST)
         && value["type"].as_str() == Some("stdio")
-        && value["allowed_origins"]
-            == json!([format!("chrome-extension://{}/", EXTENSION_ID.trim())])
+        && owned_origins(&value["allowed_origins"])
 }
 #[cfg(windows)]
 mod registry {
@@ -229,7 +232,11 @@ pub fn status(s: &Store, browser: Browser) -> Result<Value> {
     let host_current = host
         .as_ref()
         .and_then(|v| v["path"].as_str())
-        .is_some_and(|p| PathBuf::from(p) == current_exe);
+        .is_some_and(|p| PathBuf::from(p) == current_exe)
+        && host
+            .as_ref()
+            .is_some_and(|v| v["allowed_origins"] == allowed_origins())
+        && config.as_ref().is_some_and(current_id_config);
     let mut browsers = Vec::new();
     for candidate in Browser::ALL {
         let registration = match registered_path(candidate) {
@@ -249,7 +256,7 @@ pub fn status(s: &Store, browser: Browser) -> Result<Value> {
     }
     let selected = browsers.iter().find(|v| v["id"] == browser.id()).unwrap();
     Ok(
-        json!({"enabled":enabled(s),"extensionId":EXTENSION_ID.trim(),"protocol":1,"browser":browser.name(),
+        json!({"enabled":enabled(s),"extensionId":if browser == Browser::Edge {EDGE_STORE_EXTENSION_ID} else {EXTENSION_ID.trim()},"extensionIds":extension_ids(),"protocol":1,"browser":browser.name(),
         "registrationState":selected["registrationState"],"registered":selected["registered"],"removable":selected["removable"],"registrationError":selected["error"],"browsers":browsers}),
     )
 }
@@ -265,11 +272,11 @@ pub fn register(s: &Store, browser: Browser) -> Result<Value> {
     for (path, value) in [
         (
             &manifest,
-            json!({"name":HOST,"description":"Shiqian local capture bridge","path":exe,"type":"stdio","allowed_origins":[format!("chrome-extension://{}/",EXTENSION_ID.trim())]}),
+            json!({"name":HOST,"description":"Shiqian local capture bridge","path":exe,"type":"stdio","allowed_origins":allowed_origins()}),
         ),
         (
             &config,
-            json!({"root":s.root,"extensionId":EXTENSION_ID.trim(),"protocol":1}),
+            json!({"root":s.root,"extensionId":EXTENSION_ID.trim(),"extensionIds":extension_ids(),"protocol":1}),
         ),
     ] {
         let mut temp =
@@ -537,9 +544,7 @@ fn forward(message: &Value, origin: &str) -> Result<Value> {
     }
     let c: Value =
         serde_json::from_slice(&raw).map_err(|_| err("BRIDGE_CONFIG", "本机配置无效"))?;
-    if origin != format!("chrome-extension://{}/", EXTENSION_ID.trim())
-        || c["extensionId"].as_str() != Some(EXTENSION_ID.trim())
-    {
+    if !authorized_origin(&c, origin) {
         return Err(err("BRIDGE_AUTH", "未配对的扩展"));
     }
     let root = PathBuf::from(

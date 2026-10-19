@@ -19,7 +19,9 @@
 
 ---
 
-> **开发中 / In development: v0.6.13 Edge 支持。** 本地新增 Microsoft Edge 插件包和独立浏览器连接入口。当前公开正式版下载仍为下方 **v0.6.12**；Edge 安装步骤见[插件说明](browser-extension/README.md)。 / Local 0.6.13 development adds an Edge package and separate browser connections. The public stable downloads below remain 0.6.12.
+> **Edge 商店适配预发布版 / Edge store compatibility preview:** [v0.6.13-edge-store.1](https://github.com/SACO1F/Tagrove/releases/tag/v0.6.13-edge-store.1) 新增 Edge 独立连接，并兼容已确认的 Edge 商店 CRX ID；提供独立 EXE 和安装包，商店签名安装尚待验收。当前正式版仍为下方 **v0.6.12**。 / Adds independent Edge connections and the confirmed Edge store identity. Standalone EXE and installer are available; store-signed installation remains unverified. The stable release below remains v0.6.12.
+
+[网页采集隐私政策 / Web capture privacy policy](docs/privacy-policy.md) · [商店审核测试说明 / Store review testing](docs/store-review-v0.6.13-edge-store.1.md)
 
 **文件留在熟悉的位置，标签把它们重新联系起来。** 同一张效果图可以同时属于“项目参考”“建筑外墙”和“待讨论”；一份 PDF 可以与网页摘录、图片放在同一组搜索结果中。Tagrove 让整理与找回围绕用途展开，减少为了分类反复复制文件。
 
