@@ -39,3 +39,7 @@ This preview is the desktop companion for reviewing the Edge extension with CRX 
 核心测试 226 通过、0 失败、3 忽略。实际原生主机已验证商店来源请求、开发来源请求、旧配置迁移、未知来源拒绝、手选标签与幂等；真实 Edge 开发版扩展连接新桌面程序及保存通过。这些验证不等同于商店签名包的实际安装；后者仍待商店提供相应安装渠道后验收。本次安装包已校验包含同一测试 EXE，但未重跑干净系统或覆盖安装。
 
 Core tests: 226 passed, 0 failed, 3 ignored. Real native-host tests cover the store and development origins, migration, rejection of unknown origins, manual tags and idempotence. A real Edge development extension connected and saved to this desktop build. This does not constitute installation testing of the store-signed package, which remains pending an available store installation channel. The installer is checked to embed the same tested EXE; clean-system and upgrade installation were not rerun.
+
+补充验收：用户提供的商店公钥已推导为上述 CRX ID，且已在真实 Edge 以该公钥身份加载，完成连接、网页及摘录采集、手选标签、离线重试和幂等验证。它仍是开发者模式加载，不是商店签名安装。[完整记录](edge-store-public-key-verification.md)。
+
+Additional acceptance: the store public key derives the stated CRX ID. A real Edge instance loaded a QA copy under that exact identity and passed connection, page/excerpt capture, manual tags, offline retry and idempotence. This was sideloading, not store-signed installation. [Full verification record](edge-store-public-key-verification.md).
