@@ -4,7 +4,7 @@ use std::{path::Path, time::Instant};
 
 #[test]
 fn unchanged_refresh_does_not_write_or_change_annotations() {
-    let d = tempfile::tempdir().unwrap();
+    let d = crate::fsops::TmpDir::new();
     let mut s = Store::open(&d.path().join("library")).unwrap();
     let p = d.path().join("稳定.txt");
     std::fs::write(&p, b"stable").unwrap();
@@ -43,7 +43,7 @@ fn unchanged_refresh_does_not_write_or_change_annotations() {
 
 #[test]
 fn batch_query_preserves_tags_sources_ai_and_pagination() {
-    let d = tempfile::tempdir().unwrap();
+    let d = crate::fsops::TmpDir::new();
     let mut s = Store::open(&d.path().join("library")).unwrap();
     s.save_settings(&serde_json::json!({"key":"folderAutoTagging","value":false}))
         .unwrap();
@@ -95,7 +95,7 @@ fn batch_query_preserves_tags_sources_ai_and_pagination() {
 
 #[test]
 fn indexed_watch_candidates_match_component_scan() {
-    let d = tempfile::tempdir().unwrap();
+    let d = crate::fsops::TmpDir::new();
     let mut s = Store::open(&d.path().join("library")).unwrap();
     let base = d.path().join("关注目录");
     for rel in [
@@ -174,7 +174,7 @@ fn large_library_performance() {
         .split(',')
         .map(|v| v.parse::<usize>().expect("integer benchmark size"))
     {
-        let dir = tempfile::tempdir().unwrap();
+        let dir = crate::fsops::TmpDir::new();
         let mut s = Store::open(&dir.path().join("library")).unwrap();
         let tags: Vec<_> = (0..40)
             .map(|i| s.create_tag(&format!("项目{i}")).unwrap())

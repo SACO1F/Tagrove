@@ -66,8 +66,10 @@ impl Store {
             .into_iter()
             .filter(|id| tags.iter().any(|t| &t.id == id) && seen.insert(id.clone()))
             .collect();
-        // Saved shortcuts now define order, not visibility. Include all eligible
-        // ordinary tags, including those created before this behavior existed.
+        // Saved shortcuts define order, not visibility: every eligible ordinary
+        // tag stays in the palette, including ones created before it was saved.
+        // Consequence: an emptied selection cannot survive a read, so
+        // "clear the palette" is not a supported state.
         for tag in &tags {
             if seen.insert(tag.id.clone()) {
                 ids.push(tag.id.clone());

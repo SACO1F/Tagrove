@@ -291,8 +291,8 @@ mod tests {
         model::Query,
         transfer::{self, Control},
     };
-    fn setup() -> (tempfile::TempDir, Store, String, Tag) {
-        let d = tempfile::tempdir().unwrap();
+    fn setup() -> (crate::fsops::TmpDir, Store, String, Tag) {
+        let d = crate::fsops::TmpDir::new();
         let mut s = Store::open(&d.path().join("library")).unwrap();
         s.save_settings(&json!({"key":"folderAutoTagging","value":false}))
             .unwrap();

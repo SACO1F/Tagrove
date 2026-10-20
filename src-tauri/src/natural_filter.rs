@@ -168,7 +168,7 @@ mod tests {
     use super::*;
     #[test]
     fn review_alias_dates() {
-        let d = tempfile::tempdir().unwrap();
+        let d = crate::fsops::TmpDir::new();
         let mut s = Store::open(d.path()).unwrap();
         let t = s.create_tag("参考素材").unwrap();
         let r = s
@@ -181,7 +181,7 @@ mod tests {
     }
     #[test]
     fn unknown_and_stale_rejected() {
-        let d = tempfile::tempdir().unwrap();
+        let d = crate::fsops::TmpDir::new();
         let s = Store::open(d.path()).unwrap();
         assert!(s.natural_preview(&json!({"text":"漂亮的东西"})).is_err());
         assert!(s.natural_preview(&json!({"text":"不是图片"})).is_err());

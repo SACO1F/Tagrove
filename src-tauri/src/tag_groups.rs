@@ -146,7 +146,7 @@ mod tests {
     use super::*;
     #[test]
     fn category_lifecycle_preserves_tags_and_detects_concurrent_changes() {
-        let d = tempfile::tempdir().unwrap();
+        let d = crate::fsops::TmpDir::new();
         let mut s = Store::open(d.path()).unwrap();
         let tag = s.create_tag("数学").unwrap();
         let created = s
@@ -171,7 +171,7 @@ mod tests {
     }
     #[test]
     fn folder_and_unconfirmed_ai_tags_cannot_be_grouped() {
-        let d = tempfile::tempdir().unwrap();
+        let d = crate::fsops::TmpDir::new();
         let mut s = Store::open(&d.path().join("library")).unwrap();
         let p = d.path().join("文档.txt");
         std::fs::write(&p, "正文").unwrap();
@@ -195,7 +195,7 @@ mod tests {
     }
     #[test]
     fn group_order_and_orphan_cleanup_survive_restart() {
-        let d = tempfile::tempdir().unwrap();
+        let d = crate::fsops::TmpDir::new();
         let mut s = Store::open(d.path()).unwrap();
         let tag = s.create_tag("语文").unwrap();
         let first = s
@@ -220,7 +220,7 @@ mod tests {
     }
     #[test]
     fn duplicate_reserved_names_and_invalid_assignments_rejected() {
-        let d = tempfile::tempdir().unwrap();
+        let d = crate::fsops::TmpDir::new();
         let s = Store::open(d.path()).unwrap();
         assert!(s
             .tag_groups_update(&json!({"op":"create","name":"未分类","version":0}))

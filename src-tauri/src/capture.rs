@@ -380,7 +380,7 @@ mod tests {
     }
     #[test]
     fn capture_is_idempotent_validated_and_never_auto_labels_or_ai() {
-        let d = tempfile::tempdir().unwrap();
+        let d = crate::fsops::TmpDir::new();
         let mut s = Store::open(&d.path().join("library")).unwrap();
         let v = payload("学习资料 | 官网", "https://example.test/guide#one", "");
         let first = s.capture(&v).unwrap();
@@ -429,7 +429,7 @@ mod tests {
     }
     #[test]
     fn web_metadata_body_search_backup_and_transfer_keep_sources() {
-        let d = tempfile::tempdir().unwrap();
+        let d = crate::fsops::TmpDir::new();
         let mut sender = Store::open(&d.path().join("sender")).unwrap();
         let created = sender
             .capture(&payload(
@@ -547,7 +547,7 @@ mod legacy_tests {
     use super::*;
     #[test]
     fn actual_v3_columns_and_backups_remain_readable() {
-        let d = tempfile::tempdir().unwrap();
+        let d = crate::fsops::TmpDir::new();
         let mut old = Store::open(&d.path().join("old")).unwrap();
         old.create_tag("旧标签").unwrap();
         old.conn.execute_batch("DROP TABLE capture_receipts;ALTER TABLE files DROP COLUMN web_source;ALTER TABLE files DROP COLUMN web_key;DELETE FROM schema_migrations WHERE version=4;PRAGMA user_version=3;").unwrap();
@@ -569,7 +569,7 @@ mod maintenance_tests {
     }
     #[test]
     fn blocked_capture_directory_keeps_request_retriable() {
-        let d = tempfile::tempdir().unwrap();
+        let d = crate::fsops::TmpDir::new();
         let mut store = Store::open(d.path()).unwrap();
         let directory = d.path().join("captures");
         fs::write(&directory, b"synthetic obstruction").unwrap();
@@ -601,7 +601,7 @@ mod maintenance_tests {
     }
     #[test]
     fn sqlite_capacity_failure_rolls_back_and_same_id_recovers() {
-        let d = tempfile::tempdir().unwrap();
+        let d = crate::fsops::TmpDir::new();
         let mut store = Store::open(d.path()).unwrap();
         let baseline = store.capture(&json!({"requestId":id(),"kind":"web_page","title":"保留资料","url":"https://example.test/baseline","excerpt":""})).unwrap();
         let pages: i64 = store

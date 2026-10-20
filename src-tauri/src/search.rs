@@ -536,12 +536,12 @@ pub fn read_controlled(work: &Work, current: impl FnMut() -> Result<bool>) -> Re
 mod tests {
     use super::*;
     struct Fixture {
-        dir: tempfile::TempDir,
+        dir: crate::fsops::TmpDir,
         store: Store,
     }
     impl Fixture {
         fn new() -> Self {
-            let dir = tempfile::tempdir().unwrap();
+            let dir = crate::fsops::TmpDir::new();
             let store = Store::open(&dir.path().join("library")).unwrap();
             store.search_control("enable").unwrap();
             Self { dir, store }

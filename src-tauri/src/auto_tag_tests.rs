@@ -9,12 +9,12 @@ use std::{
 
 struct Fixture {
     store: Store,
-    dir: tempfile::TempDir,
+    dir: crate::fsops::TmpDir,
     files: PathBuf,
 }
 impl Fixture {
     fn new() -> Self {
-        let dir = tempfile::tempdir().unwrap();
+        let dir = crate::fsops::TmpDir::new();
         let files = dir.path().join("原文件");
         fs::create_dir_all(&files).unwrap();
         let store = Store::open(&dir.path().join("library")).unwrap();
@@ -1020,7 +1020,7 @@ fn scoped_ai_cancel_validates_whole_batch_before_changing_jobs() {
 
 #[test]
 fn floating_all_tags_migrates_sparse_order_and_adds_later_tags_without_folders() {
-    let dir = tempfile::tempdir().unwrap();
+    let dir = crate::fsops::TmpDir::new();
     let root = dir.path().join("library");
     let mut s = Store::open(&root).unwrap();
     let a = s.create_tag("existing A").unwrap();

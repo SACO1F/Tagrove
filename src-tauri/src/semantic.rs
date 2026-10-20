@@ -962,12 +962,12 @@ mod tests {
     use crate::{fsops, search};
     use std::{fs, path::Path};
     struct F {
-        d: tempfile::TempDir,
+        d: crate::fsops::TmpDir,
         s: Store,
     }
     impl F {
         fn new() -> Self {
-            let d = tempfile::tempdir().unwrap();
+            let d = crate::fsops::TmpDir::new();
             let s = Store::open(&d.path().join("library")).unwrap();
             s.search_control("enable").unwrap();
             Self { d, s }

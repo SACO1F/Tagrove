@@ -4,7 +4,18 @@
 use crate::model::*;
 
 #[cfg(windows)]
+pub struct FileTarget {
+    pub path: String,
+    pub bounds: windows::Win32::Foundation::RECT,
+}
+
+#[cfg(windows)]
 pub fn file_at_point(x: i32, y: i32) -> Result<String> {
+    target_at_point(x, y).map(|target| target.path)
+}
+
+#[cfg(windows)]
+pub fn target_at_point(x: i32, y: i32) -> Result<FileTarget> {
     use windows::{
         core::Interface,
         Win32::{
@@ -32,7 +43,7 @@ pub fn file_at_point(x: i32, y: i32) -> Result<String> {
         let browser: IShellBrowser = provider.QueryService(&SID_STopLevelBrowser)?;
         browser.QueryActiveShellView()
     }
-    let run = || -> windows::core::Result<String> {
+    let run = || -> windows::core::Result<FileTarget> {
         unsafe {
             CoInitializeEx(None, COINIT_APARTMENTTHREADED).ok()?;
             let _com = ComGuard;
@@ -116,12 +127,14 @@ pub fn file_at_point(x: i32, y: i32) -> Result<String> {
             let walker = automation.ControlViewWalker()?;
             let mut element = automation.ElementFromPoint(point)?;
             let mut item_name = None;
+            let mut bounds = windows::Win32::Foundation::RECT::default();
             for _ in 0..8 {
                 let kind = element.CurrentControlType()?;
                 if kind == UIA_ListItemControlTypeId || kind == UIA_DataItemControlTypeId {
                     let r = element.CurrentBoundingRectangle()?;
                     if x >= r.left && x < r.right && y >= r.top && y < r.bottom {
                         item_name = Some(element.CurrentName()?.to_string());
+                        bounds = r;
                     }
                     break;
                 }
@@ -164,7 +177,7 @@ pub fn file_at_point(x: i32, y: i32) -> Result<String> {
                     format!("Shell item has {} filesystem matches", paths.len()),
                 ));
             }
-            Ok(paths.into_iter().next().unwrap())
+            Ok(FileTarget { path: paths.into_iter().next().unwrap(), bounds })
         }
     };
     run().map_err(|e| {

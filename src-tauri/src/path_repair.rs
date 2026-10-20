@@ -575,7 +575,7 @@ pub fn apply(
 mod tests {
     use super::*;
     struct Fixture {
-        _dir: tempfile::TempDir,
+        _dir: crate::fsops::TmpDir,
         old: PathBuf,
         new: PathBuf,
         store: Store,
@@ -583,7 +583,7 @@ mod tests {
     }
     impl Fixture {
         fn new(count: usize) -> Self {
-            let dir = tempfile::tempdir().unwrap();
+            let dir = crate::fsops::TmpDir::new();
             let old = dir.path().join("原目录");
             let new = dir.path().join("新目录");
             fs::create_dir(&old).unwrap();

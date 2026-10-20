@@ -256,7 +256,7 @@ mod tests {
             ("xl/worksheets/sheet2.xml","<worksheet><sheetData><row r='5000'><c r='B5000' t='inlineStr'><is><t>蜂鸟命中</t></is></c></row></sheetData></worksheet>".into())]
     }
     fn record(path: &std::path::Path) -> FileRecord {
-        let dir = tempfile::tempdir().unwrap();
+        let dir = crate::fsops::TmpDir::new();
         let mut store = Store::open(dir.path()).unwrap();
         let meta = fsops::inspect(path).unwrap();
         store.add_file_with_ai(&meta, false).unwrap();
@@ -284,7 +284,7 @@ mod tests {
     }
     #[test]
     fn office_full_body_and_word_table_locations() {
-        let dir = tempfile::tempdir().unwrap();
+        let dir = crate::fsops::TmpDir::new();
         let path = dir.path().join("word.docx");
         archive(
             &path,
@@ -319,7 +319,7 @@ mod tests {
     }
     #[test]
     fn all_sheets_shared_strings_cached_values_and_coordinates() {
-        let dir = tempfile::tempdir().unwrap();
+        let dir = crate::fsops::TmpDir::new();
         let path = dir.path().join("book.xlsx");
         archive(&path, &book());
         let f = fsops::inspect(&path).unwrap();
@@ -341,7 +341,7 @@ mod tests {
     }
     #[test]
     fn shared_resources_loaded_once_and_non_body_word_text_excluded() {
-        let dir = tempfile::tempdir().unwrap();
+        let dir = crate::fsops::TmpDir::new();
         let path = dir.path().join("many.xlsx");
         let mut parts = book();
         parts[2].1 = format!(
@@ -384,7 +384,7 @@ mod tests {
     }
     #[test]
     fn csv_tsv_quotes_short_terms_and_encodings() {
-        let dir = tempfile::tempdir().unwrap();
+        let dir = crate::fsops::TmpDir::new();
         for (name, bytes) in [
             (
                 "csv.csv",
@@ -429,7 +429,7 @@ mod tests {
         assert!(out.text.truncated);
         assert!(out.text.body.len() <= READ_LIMIT);
         assert!(out.text.body.ends_with('\n'));
-        let dir = tempfile::tempdir().unwrap();
+        let dir = crate::fsops::TmpDir::new();
         let path = dir.path().join("rows.csv");
         std::fs::write(&path, "蜂鸟\n".repeat(10001)).unwrap();
         let text = indexed(&record(&path)).unwrap();
@@ -438,7 +438,7 @@ mod tests {
     }
     #[test]
     fn external_zip_traversal_corruption_and_changed_source_rejected() {
-        let dir = tempfile::tempdir().unwrap();
+        let dir = crate::fsops::TmpDir::new();
         let path = dir.path().join("bad.xlsx");
         for target in ["../../secret.xml", "https://example.com/data.xml"] {
             let mut parts = book();
@@ -461,7 +461,7 @@ mod tests {
     }
     #[test]
     fn old_derived_schema_migrates_and_requeues_without_changing_annotations() {
-        let dir = tempfile::tempdir().unwrap();
+        let dir = crate::fsops::TmpDir::new();
         let root = dir.path().join("library");
         let path = dir.path().join("old.md");
         std::fs::write(&path, "旧版正文").unwrap();

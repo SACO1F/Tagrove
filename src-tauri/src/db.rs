@@ -389,7 +389,7 @@ impl Store {
         Ok(json!(colors))
     }
     pub fn bootstrap(&self) -> Result<Value> {
-        let (all,inbox,starred,unavailable):(i64,i64,i64,i64)=self.conn.query_row("SELECT COUNT(*),COALESCE(SUM(NOT EXISTS(SELECT 1 FROM file_tags WHERE file_id=f.id)),0),COALESCE(SUM(favorite),0),COALESCE(SUM(status IN ('missing','offline','inaccessible')),0) FROM files f WHERE removed_at IS NULL",[],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?,r.get(3)?))).map_err(sql_err)?;
+        let (all,inbox,starred,unavailable):(i64,i64,i64,i64)=self.conn.query_row("SELECT COUNT(*),COALESCE(SUM((NOT EXISTS(SELECT 1 FROM file_tags WHERE file_id=f.id) OR EXISTS(SELECT 1 FROM file_tags WHERE file_id=f.id AND source='ai' AND COALESCE(json_extract(ai_meta,'$.confirmed'),0)=0))),0),COALESCE(SUM(favorite),0),COALESCE(SUM(status IN ('missing','offline','inaccessible')),0) FROM files f WHERE removed_at IS NULL",[],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?,r.get(3)?))).map_err(sql_err)?;
         let mut settings = serde_json::Map::new();
         let mut st = self
             .conn
@@ -426,7 +426,7 @@ impl Store {
             args.push(sv(&q.capture_kind));
         }
         match q.scope.as_str() {
-            "inbox" => sql.push_str(" AND NOT EXISTS(SELECT 1 FROM file_tags WHERE file_id=f.id)"),
+            "inbox" => sql.push_str(" AND (NOT EXISTS(SELECT 1 FROM file_tags WHERE file_id=f.id) OR EXISTS(SELECT 1 FROM file_tags WHERE file_id=f.id AND source='ai' AND COALESCE(json_extract(ai_meta,'$.confirmed'),0)=0))"),
             "starred" => sql.push_str(" AND f.favorite=1"),
             "unavailable" => sql.push_str(" AND f.status IN ('missing','offline','inaccessible')"),
             _ => {}

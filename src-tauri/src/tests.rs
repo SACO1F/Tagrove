@@ -24,7 +24,7 @@ fn native_shell_target_probe() {
 }
 
 #[test]
-fn floating_presets_initialize_once_and_preserve_empty_choice() {
+fn floating_presets_initialize_once_and_reexpand_an_emptied_selection() {
     let mut f = Fixture::new();
     let existing = f.store.create_tag("灵感").unwrap();
     let presets = f.store.floating_presets().unwrap();
@@ -34,8 +34,16 @@ fn floating_presets_initialize_once_and_preserve_empty_choice() {
         .unwrap()
         .contains(&json!(existing.id)));
     assert_eq!(f.store.floating_presets().unwrap()["ids"], presets["ids"]);
+    // The palette always holds every eligible ordinary tag and the saved list
+    // only orders it, so an emptied selection is not a state a read can observe.
+    let pool: Vec<Value> = presets["tags"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|tag| tag["id"].clone())
+        .collect();
     f.store.save_floating_presets(&[]).unwrap();
-    assert_eq!(f.store.floating_presets().unwrap()["ids"], json!([]));
+    assert_eq!(f.store.floating_presets().unwrap()["ids"], json!(pool));
     assert!(f.store.save_floating_presets(&["missing".into()]).is_err());
     assert!(f
         .store
@@ -120,12 +128,12 @@ fn floating_presets_follow_rename_delete_and_backup_restore() {
 
 struct Fixture {
     store: Store,
-    _dir: tempfile::TempDir,
+    _dir: crate::fsops::TmpDir,
     files: std::path::PathBuf,
 }
 impl Fixture {
     fn new() -> Self {
-        let dir = tempfile::tempdir().unwrap();
+        let dir = crate::fsops::TmpDir::new();
         let files = dir.path().join("原文件");
         fs::create_dir(&files).unwrap();
         let mut store = Store::open(&dir.path().join("library")).unwrap();

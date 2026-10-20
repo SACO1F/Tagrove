@@ -610,14 +610,14 @@ mod tests {
     use super::*;
     use std::path::PathBuf;
     struct Fixture {
-        _dir: tempfile::TempDir,
+        _dir: crate::fsops::TmpDir,
         s: Store,
         root: PathBuf,
         r: Rule,
     }
     impl Fixture {
         fn new() -> Self {
-            let d = tempfile::tempdir().unwrap();
+            let d = crate::fsops::TmpDir::new();
             let root = d.path().join("监听资料");
             fs::create_dir(&root).unwrap();
             let s = Store::open(&d.path().join("library")).unwrap();

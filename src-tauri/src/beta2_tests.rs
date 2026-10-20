@@ -8,7 +8,7 @@ use crate::{
 use serde_json::json;
 #[test]
 fn native_fractional_palette_geometry_normalizes_without_weakening_settings_validation() {
-    let dir = tempfile::tempdir().unwrap();
+    let dir = crate::fsops::TmpDir::new();
     let mut s = Store::open(&dir.path().join("library")).unwrap();
     // 349 physical pixels / 125% DPI is 279.2 logical pixels. Previously
     // floating::resize rounded this to 279 and failed before collapsing.
@@ -33,7 +33,7 @@ use std::{
 
 #[test]
 fn staged_transfer_keeps_queries_and_note_edits_responsive_and_rolls_back_cancel() {
-    let root = tempfile::tempdir().unwrap();
+    let root = crate::fsops::TmpDir::new();
     let files = root.path().join("files");
     fs::create_dir(&files).unwrap();
     let original = files.join("large.txt");
@@ -149,7 +149,7 @@ fn diagnostic_allowlist_omits_all_private_text_and_export_does_not_overwrite() {
     assert!(!report.contains("PRIVATE_"));
     assert!(!report.contains("SECRET"));
     assert!(report.contains("导入：失败"));
-    let root = tempfile::tempdir().unwrap();
+    let root = crate::fsops::TmpDir::new();
     let path = root.path().join("report.md");
     support::export_report(&path, &report).unwrap();
     assert_eq!(fs::read_to_string(&path).unwrap(), report);
@@ -159,7 +159,7 @@ fn diagnostic_allowlist_omits_all_private_text_and_export_does_not_overwrite() {
 
 #[test]
 fn recovery_notice_survives_restart_and_backup_status_is_local() {
-    let root = tempfile::tempdir().unwrap();
+    let root = crate::fsops::TmpDir::new();
     let library_path = root.path().join("library");
     let mut library = Store::open(&library_path).unwrap();
     library.recovery_notice = "synthetic interrupted task".into();
@@ -195,7 +195,7 @@ fn recovery_notice_survives_restart_and_backup_status_is_local() {
 
 #[test]
 fn retry_only_failed_ai_preserves_completed_and_cancelled_tasks() {
-    let root = tempfile::tempdir().unwrap();
+    let root = crate::fsops::TmpDir::new();
     let mut library = Store::open(&root.path().join("library")).unwrap();
     library.conn.execute("INSERT INTO settings(key,value) VALUES('ai',?)", [json!({"enabled":true,"endpoint":"https://example.test/v1","model":"synthetic","allowNewTags":true}).to_string()]).unwrap();
     for (i, state) in [
@@ -226,7 +226,7 @@ fn retry_only_failed_ai_preserves_completed_and_cancelled_tasks() {
 
 #[test]
 fn floating_position_is_local_validated_and_removed_from_transport_backup() {
-    let root = tempfile::tempdir().unwrap();
+    let root = crate::fsops::TmpDir::new();
     let mut store = Store::open(&root.path().join("library")).unwrap();
     store
         .save_settings(&json!({"key":"floatingPosition","value":{"x":-1200,"y":80}}))
@@ -262,7 +262,7 @@ fn floating_position_is_local_validated_and_removed_from_transport_backup() {
 
 #[test]
 fn column_controls_preference_is_boolean_and_persists() {
-    let root = tempfile::tempdir().unwrap();
+    let root = crate::fsops::TmpDir::new();
     let path = root.path().join("library");
     let mut store = Store::open(&path).unwrap();
     assert!(store.bootstrap().unwrap()["settings"]["showColumnControls"].is_null());
@@ -297,7 +297,7 @@ fn column_controls_preference_is_boolean_and_persists() {
 
 #[test]
 fn appearance_preferences_validate_and_survive_reopen() {
-    let root = tempfile::tempdir().unwrap();
+    let root = crate::fsops::TmpDir::new();
     let path = root.path().join("library");
     let mut store = Store::open(&path).unwrap();
     for color in [
@@ -354,7 +354,7 @@ fn appearance_preferences_validate_and_survive_reopen() {
 
 #[test]
 fn legacy_backup_restores_reading_without_restart_and_never_overwrites_backup() {
-    let dir = tempfile::tempdir().unwrap();
+    let dir = crate::fsops::TmpDir::new();
     let mut s = Store::open(&dir.path().join("library")).unwrap();
     let original = dir.path().join("sample.md");
     fs::write(&original, "# original").unwrap();
@@ -390,7 +390,7 @@ fn legacy_backup_restores_reading_without_restart_and_never_overwrites_backup() 
 
 #[test]
 fn interrupted_restore_revokes_uploads_and_finishes_before_marker_removal() {
-    let dir = tempfile::tempdir().unwrap();
+    let dir = crate::fsops::TmpDir::new();
     let root = dir.path().join("library");
     let mut s = Store::open(&root).unwrap();
     let p = dir.path().join("private.md");
@@ -427,7 +427,7 @@ fn interrupted_restore_revokes_uploads_and_finishes_before_marker_removal() {
 
 #[test]
 fn extended_diagnostics_are_numeric_allowlisted_and_read_only() {
-    let dir = tempfile::tempdir().unwrap();
+    let dir = crate::fsops::TmpDir::new();
     let s = Store::open(&dir.path().join("library")).unwrap();
     let before: i64 = s
         .conn
@@ -453,7 +453,7 @@ fn extended_diagnostics_are_numeric_allowlisted_and_read_only() {
 
 #[test]
 fn sqlite_runtime_probe_is_read_only_and_capabilities_really_work() {
-    let dir = tempfile::tempdir().unwrap();
+    let dir = crate::fsops::TmpDir::new();
     let s = Store::open(&dir.path().join("library")).unwrap();
     let before: i64 = s
         .conn
@@ -511,7 +511,7 @@ fn sqlite_runtime_probe_is_read_only_and_capabilities_really_work() {
 
 #[test]
 fn tag_drop_tilt_preference_is_boolean_and_survives_restart() {
-    let root = tempfile::tempdir().unwrap();
+    let root = crate::fsops::TmpDir::new();
     let mut store = Store::open(root.path()).unwrap();
     for value in [true, false] {
         store.save_settings(&json!({"key":"tagDropTilt","value":value})).unwrap();

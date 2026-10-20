@@ -13,7 +13,7 @@ mod tests {
     use crate::fsops;
     #[test]
     fn reader_state_reopens_and_rejects_stale_revision() {
-        let root = tempfile::tempdir().unwrap();
+        let root = crate::fsops::TmpDir::new();
         let path = root.path().join("source.md");
         std::fs::write(&path, "# example").unwrap();
         let library = root.path().join("library");
@@ -48,7 +48,7 @@ mod tests {
     }
     #[test]
     fn reader_state_rejects_document_text_and_unbounded_values() {
-        let root = tempfile::tempdir().unwrap();
+        let root = crate::fsops::TmpDir::new();
         let path = root.path().join("test.md");
         std::fs::write(&path, "text").unwrap();
         let mut store = Store::open(&root.path().join("library")).unwrap();

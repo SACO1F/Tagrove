@@ -4,12 +4,12 @@ use serde_json::{json, Value};
 use std::fs;
 
 struct Fixture {
-    dir: tempfile::TempDir,
+    dir: crate::fsops::TmpDir,
     store: Store,
 }
 impl Fixture {
     fn new() -> Self {
-        let dir = tempfile::tempdir().unwrap();
+        let dir = crate::fsops::TmpDir::new();
         let store = Store::open(&dir.path().join("library")).unwrap();
         Self { dir, store }
     }
@@ -328,4 +328,26 @@ fn review_list_is_paged_literal_filtered_and_disabled_ai_still_reviewable() {
             .len(),
         50
     );
+}
+
+#[test]
+fn inbox_includes_pending_ai_even_with_manual_tags_and_counts_files_once() {
+    let mut f = Fixture::new();
+    let a = f.add("pending.md");
+    let b = f.add("untagged.md");
+    f.store.conn.execute("DELETE FROM file_tags WHERE file_id=?", [&b.id]).unwrap();
+    let manual = f.store.create_tag("manual").unwrap();
+    f.store.conn.execute("INSERT INTO file_tags(file_id,tag_id) VALUES(?,?)", params![a.id, manual.id]).unwrap();
+    let first = f.suggestion(&a.id, "first");
+    let second = f.suggestion(&a.id, "second");
+    let mut q = Query::default();
+    q.scope = "inbox".into();
+    assert_eq!(f.store.query(&q).unwrap()["total"], 2);
+    assert_eq!(f.store.bootstrap().unwrap()["counts"]["inbox"], 2);
+    f.commit(f.payload("accept", &[(&a.id, &first)]));
+    assert_eq!(f.store.query(&q).unwrap()["total"], 2);
+    f.commit(f.payload("accept", &[(&a.id, &second)]));
+    assert_eq!(f.store.query(&q).unwrap()["total"], 1);
+    assert_eq!(f.store.bootstrap().unwrap()["counts"]["inbox"], 1);
+    assert_eq!(f.store.query(&q).unwrap()["files"][0]["id"], b.id);
 }

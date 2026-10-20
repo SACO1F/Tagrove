@@ -973,7 +973,7 @@ fn dispatch(state: &AppState, app: &tauri::AppHandle, action: &str, v: &Value) -
                 .ok_or_else(|| err("INVALID_INPUT", "缺少置顶状态"))?,
         ),
         "theme.sync" => floating::sync_theme(app, str_arg(v, "theme")?),
-        "floating.drag" => floating::start_drag(app, state, str_arg(v, "tagId")?),
+        "floating.drag" => floating::start_drag(app, state, str_arg(v, "tagId")?, v["accent"].as_str()),
         "floating.cancel" => {
             state.drag_cancel.store(true, Ordering::Relaxed);
             Ok(json_ok())

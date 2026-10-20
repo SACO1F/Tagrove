@@ -7,13 +7,13 @@ use crate::{
 use serde_json::json;
 use std::{fs, path::Path, sync::atomic::Ordering, time::Instant};
 struct Fixture {
-    _root: tempfile::TempDir,
+    _root: crate::fsops::TmpDir,
     store: Store,
     files: std::path::PathBuf,
 }
 impl Fixture {
     fn new() -> Self {
-        let root = tempfile::tempdir().unwrap();
+        let root = crate::fsops::TmpDir::new();
         let files = root.path().join("文件");
         fs::create_dir(&files).unwrap();
         let store = Store::open(&root.path().join("库")).unwrap();
@@ -409,7 +409,7 @@ fn transfer_changed_manifest_requires_new_preview() {
 }
 #[test]
 fn beta_wal_recovers_after_real_process_abort() {
-    let root = tempfile::tempdir().unwrap();
+    let root = crate::fsops::TmpDir::new();
     let dbroot = root.path().join("crash-library");
     let store = Store::open(&dbroot).unwrap();
     drop(store);

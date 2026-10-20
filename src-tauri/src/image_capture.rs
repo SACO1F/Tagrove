@@ -641,7 +641,7 @@ mod tests {
     }
     #[test]
     fn chosen_original_preserves_source_tags_and_receipt() {
-        let dir = tempfile::tempdir().unwrap();
+        let dir = crate::fsops::TmpDir::new();
         let path = dir.path().join("downloaded.png");
         fs::write(&path, bytes(ImageFormat::Png)).unwrap();
         let mut store = Store::open(&dir.path().join("library")).unwrap();
@@ -781,7 +781,7 @@ mod tests {
     #[test]
     fn added_formats_survive_refresh_preview_and_package() {
         for fmt in [ImageFormat::Gif, ImageFormat::Bmp] {
-            let dir = tempfile::tempdir().unwrap();
+            let dir = crate::fsops::TmpDir::new();
             let mut store = Store::open(dir.path()).unwrap();
             let prepared = inspect_bytes(
                 bytes(fmt),
@@ -907,7 +907,7 @@ mod tests {
     }
     #[test]
     fn receipts_content_dedupe_and_failed_storage_preserve_data() {
-        let d = tempfile::tempdir().unwrap();
+        let d = crate::fsops::TmpDir::new();
         let mut store = Store::open(d.path()).unwrap();
         let a = req("第一来源");
         let first = store.commit_image(&a, prepared()).unwrap();
@@ -940,7 +940,7 @@ mod tests {
             .image_receipt(&a)
             .unwrap_err()
             .starts_with("CAPTURE_REMOVED"));
-        let other = tempfile::tempdir().unwrap();
+        let other = crate::fsops::TmpDir::new();
         let mut blocked = Store::open(other.path()).unwrap();
         fs::write(other.path().join("captured-images"), b"obstruction").unwrap();
         let r = req("恢复");
@@ -958,7 +958,7 @@ mod tests {
     }
     #[test]
     fn image_package_contains_original_and_source_backup_does_not_invent_originals() {
-        let d = tempfile::tempdir().unwrap();
+        let d = crate::fsops::TmpDir::new();
         let mut sender = Store::open(&d.path().join("sender")).unwrap();
         let request = req("图片 / : 标题");
         let result = sender.commit_image(&request, prepared()).unwrap();
@@ -1052,7 +1052,7 @@ mod tests {
     }
     #[test]
     fn v4_upgrade_keeps_protective_backup() {
-        let d = tempfile::tempdir().unwrap();
+        let d = crate::fsops::TmpDir::new();
         let old = Store::open(d.path()).unwrap();
         old.conn
             .execute_batch("DELETE FROM schema_migrations WHERE version=5;PRAGMA user_version=4;")

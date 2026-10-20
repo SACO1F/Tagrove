@@ -69,7 +69,7 @@ fn checkpoint(s: &Store, db: &str, mode: &str) {
 
 #[test]
 fn o4_restore_to_new_library_rebuilds_index_preserves_exact_annotations() {
-    let d = tempfile::tempdir().unwrap();
+    let d = crate::fsops::TmpDir::new();
     let mut s = Store::open(&d.path().join("source")).unwrap();
     let p = d.path().join("original.md");
     let id = add(&mut s, &p, "# recoveryneedle\nOriginal remains unchanged.");
@@ -121,7 +121,7 @@ fn o4_restore_to_new_library_rebuilds_index_preserves_exact_annotations() {
 
 #[test]
 fn o4_detached_writer_cancel_rebuild_rejects_delayed_result() {
-    let d = tempfile::tempdir().unwrap();
+    let d = crate::fsops::TmpDir::new();
     let mut s = Store::open(&d.path().join("library")).unwrap();
     let id = add(&mut s, &d.path().join("sample.md"), "recoveryneedle");
     let before = snapshot(&s, &id);
@@ -149,7 +149,7 @@ fn o4_detached_writer_cancel_rebuild_rejects_delayed_result() {
 
 #[test]
 fn o4_parallel_fts_writer_annotation_backup_and_passive_checkpoints() {
-    let d = tempfile::tempdir().unwrap();
+    let d = crate::fsops::TmpDir::new();
     let mut s = Store::open(&d.path().join("library")).unwrap();
     let mut ids = vec![];
     for n in 0..48 {
@@ -223,7 +223,7 @@ fn o4_parallel_fts_writer_annotation_backup_and_passive_checkpoints() {
 
 #[test]
 fn o4_semantic_writer_checkpoint_and_cancel_keeps_manual_annotations() {
-    let d = tempfile::tempdir().unwrap();
+    let d = crate::fsops::TmpDir::new();
     let mut s = Store::open(&d.path().join("library")).unwrap();
     let mut ids = vec![];
     for n in 0..24 {
@@ -330,7 +330,7 @@ fn o4_transaction_exit_child() {
 
 #[test]
 fn o4_process_exit_before_and_after_commit_recovers_atomic_state() {
-    let d = tempfile::tempdir().unwrap();
+    let d = crate::fsops::TmpDir::new();
     for phase in ["before", "after"] {
         let root = d.path().join(phase);
         let mut s = Store::open(&root).unwrap();

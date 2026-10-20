@@ -114,7 +114,7 @@ mod tests {
     use super::*;
     #[test]
     fn tier_budget_clear_preserves_unknown_files_and_directories() {
-        let d = tempfile::tempdir().unwrap();
+        let d = crate::fsops::TmpDir::new();
         let c = d.path().join("cache");
         fs::create_dir(&c).unwrap();
         for i in 0..4 {
@@ -136,7 +136,7 @@ mod tests {
     }
     #[test]
     fn entry_budget_applies_independently_of_bytes() {
-        let d = tempfile::tempdir().unwrap();
+        let d = crate::fsops::TmpDir::new();
         fs::create_dir(d.path().join("cache")).unwrap();
         for i in 0..3 {
             fs::write(

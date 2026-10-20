@@ -48,7 +48,7 @@ mod tests {
     }
     #[test]
     fn copies_preserve_provenance_receipts_conflicts_and_undo() {
-        let d = tempfile::tempdir().unwrap();
+        let d = crate::fsops::TmpDir::new();
         let mut s = Store::open(&d.path().join("lib")).unwrap();
         let fid = capture(
             &mut s,
@@ -115,7 +115,7 @@ mod tests {
     }
     #[test]
     fn current_copy_search_reindexes_without_stale_original_body() {
-        let d = tempfile::tempdir().unwrap();
+        let d = crate::fsops::TmpDir::new();
         let mut s = Store::open(d.path()).unwrap();
         let fid = capture(&mut s, "资料", "https://example.test/", "旧正文独有");
         s.search_control("enable").unwrap();
@@ -152,7 +152,7 @@ mod tests {
     }
     #[test]
     fn website_filters_are_exact_host_and_collections_remember_conditions() {
-        let d = tempfile::tempdir().unwrap();
+        let d = crate::fsops::TmpDir::new();
         let mut s = Store::open(d.path()).unwrap();
         capture(&mut s, "A", "https://example.test/a", "摘录");
         capture(&mut s, "B", "http://example.test:8080/b", "");
@@ -189,7 +189,7 @@ mod tests {
     }
     #[test]
     fn copy_backup_and_package_keep_original_and_edited_content() {
-        let d = tempfile::tempdir().unwrap();
+        let d = crate::fsops::TmpDir::new();
         let mut s = Store::open(&d.path().join("lib")).unwrap();
         let fid = capture(&mut s, "采集标题", "https://example.test/a", "原始正文");
         update(&mut s, &fid, "阅读副本");

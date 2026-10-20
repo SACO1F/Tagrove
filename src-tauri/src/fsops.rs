@@ -38,6 +38,26 @@ pub fn canonical_display(path: &Path) -> Result<String> {
         Ok(p.strip_prefix(r"\\?\").unwrap_or(&p).to_string())
     }
 }
+/// Test fixtures must hand out the same path spelling the store keeps:
+/// fs::canonicalize expands Windows 8.3 short names, so a temp dir under a
+/// short user segment would never match the stored long path.
+#[cfg(test)]
+pub(crate) struct TmpDir {
+    _inner: tempfile::TempDir,
+    path: std::path::PathBuf,
+}
+#[cfg(test)]
+impl TmpDir {
+    pub(crate) fn new() -> Self {
+        let inner = tempfile::tempdir().unwrap();
+        let path = std::path::PathBuf::from(canonical_display(inner.path()).unwrap());
+        Self { _inner: inner, path }
+    }
+    pub(crate) fn path(&self) -> &std::path::Path {
+        &self.path
+    }
+}
+
 pub fn is_hidden(meta: &Metadata) -> bool {
     #[cfg(windows)]
     {
@@ -634,7 +654,7 @@ mod office_save_tests {
             ("xlsx", "xl/workbook.xml"),
             ("pptx", "ppt/presentation.xml"),
         ] {
-            let dir = tempfile::tempdir().unwrap();
+            let dir = crate::fsops::TmpDir::new();
             let path = dir.path().join(format!("document.{ext}"));
             document(&path, part, "old");
             let mut store = Store::open(&dir.path().join("library")).unwrap();
@@ -695,7 +715,7 @@ mod office_save_tests {
     }
     #[test]
     fn ordinary_file_replacement_still_requires_relink() {
-        let dir = tempfile::tempdir().unwrap();
+        let dir = crate::fsops::TmpDir::new();
         let path = dir.path().join("note.md");
         fs::write(&path, "first").unwrap();
         let mut store = Store::open(&dir.path().join("library")).unwrap();

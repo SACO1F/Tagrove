@@ -337,8 +337,8 @@ impl Store {
 #[cfg(test)]
 mod tests {
     use super::*;
-    fn fixture() -> (tempfile::TempDir, Store, Vec<String>, Tag, Tag) {
-        let dir = tempfile::tempdir().unwrap();
+    fn fixture() -> (crate::fsops::TmpDir, Store, Vec<String>, Tag, Tag) {
+        let dir = crate::fsops::TmpDir::new();
         let mut s = Store::open(&dir.path().join("library")).unwrap();
         s.save_settings(&json!({"key":"folderAutoTagging","value":false}))
             .unwrap();

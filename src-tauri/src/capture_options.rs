@@ -92,7 +92,7 @@ mod tests {
     fn request()->Value{json!({"requestId":id(),"kind":"web_page","title":"正则学习资料","url":"https://example.test/tutorial#testing","excerpt":"","pageText":"程序设计课程与正则表达式练习"})}
     #[test]
     fn browser_options_queue_ai_preserve_manual_tags_and_retries(){
-        let dir=tempfile::tempdir().unwrap();let mut s=Store::open(dir.path()).unwrap();
+        let dir=crate::fsops::TmpDir::new();let mut s=Store::open(dir.path()).unwrap();
         s.conn.execute("INSERT INTO settings VALUES('ai',?)",[json!({"enabled":true,"endpoint":"http://localhost:11434/v1","model":"fixture","allowNewTags":true}).to_string()]).unwrap();
         let manual=s.create_tag("学习").unwrap();let mut r=request();r["tagIds"]=json!([manual.id]);
         let result=s.capture(&r).unwrap();let fid=result["id"].as_str().unwrap();let f=s.file(fid).unwrap();assert_eq!(f.tags[0].source,"manual");assert_eq!(f.web_source.as_ref().unwrap().reading.as_ref().unwrap().text,"程序设计课程与正则表达式练习");
@@ -107,7 +107,7 @@ mod tests {
     }
     #[test]
     fn browser_catalog_excludes_folders_and_pending_ai_and_disabled_ai_stays_off(){
-        let dir=tempfile::tempdir().unwrap();let mut s=Store::open(dir.path()).unwrap();let manual=s.create_tag("研究").unwrap();let folder=s.create_tag_with_source("文件夹","folder").unwrap();s.create_tag_with_source("待审","ai").unwrap();
+        let dir=crate::fsops::TmpDir::new();let mut s=Store::open(dir.path()).unwrap();let manual=s.create_tag("研究").unwrap();let folder=s.create_tag_with_source("文件夹","folder").unwrap();s.create_tag_with_source("待审","ai").unwrap();
         assert_eq!(s.browser_tag_catalog("研究").unwrap()["tags"][0]["id"],manual.id);
         assert_eq!(s.browser_tag_catalog("文件夹").unwrap()["tags"],json!([]));assert_eq!(s.browser_tag_catalog("待审").unwrap()["tags"],json!([]));
         let mut invalid=request();invalid["tagIds"]=json!([folder.id]);assert!(s.capture(&invalid).is_err());assert_eq!(s.query(&Query::default()).unwrap()["total"],0);
@@ -116,7 +116,7 @@ mod tests {
     #[test]
     fn image_capture_options_queue_and_retry_are_idempotent(){
         use std::io::Cursor;
-        let dir=tempfile::tempdir().unwrap();let mut s=Store::open(dir.path()).unwrap();s.conn.execute("INSERT INTO settings VALUES('ai',?)",[json!({"enabled":true,"endpoint":"http://localhost:11434/v1","model":"fixture","allowNewTags":true}).to_string()]).unwrap();let tag=s.create_tag("图片").unwrap();
+        let dir=crate::fsops::TmpDir::new();let mut s=Store::open(dir.path()).unwrap();s.conn.execute("INSERT INTO settings VALUES('ai',?)",[json!({"enabled":true,"endpoint":"http://localhost:11434/v1","model":"fixture","allowNewTags":true}).to_string()]).unwrap();let tag=s.create_tag("图片").unwrap();
         let r=crate::image_capture::Request::parse(&json!({"requestId":id(),"kind":"web_image","title":"风景","url":"https://example.test/photo","imageUrl":"https://example.test/a.png","tagIds":[tag.id]})).unwrap();
         let mut data=Cursor::new(vec![]);image::DynamicImage::new_rgb8(10,8).write_to(&mut data,image::ImageFormat::Png).unwrap();
         let make=||crate::image_capture::inspect_bytes(data.get_ref().clone(),&r.image_url,&r.image_url,None).unwrap();let result=s.commit_image(&r,make()).unwrap();let fid=result["id"].as_str().unwrap();let before=s.file(fid).unwrap();assert_eq!(before.tags[0].source,"manual");assert_eq!(result["aiQueued"],false);assert!(s.ai_task(fid).unwrap().is_none());assert_eq!(s.commit_image(&r,make()).unwrap()["duplicate"],true);assert_eq!(s.file(fid).unwrap().version,before.version);
@@ -128,7 +128,7 @@ mod capture_policy_tests {
     use super::*;
     #[test]
     fn selected_tags_skip_auto_ai_for_links_excerpts_and_images_but_untagged_still_queue() {
-        let dir=tempfile::tempdir().unwrap();let mut s=Store::open(dir.path()).unwrap();s.conn.execute("INSERT INTO settings VALUES('ai',?)",[json!({"enabled":true,"endpoint":"http://localhost:11434/v1","model":"fixture","allowNewTags":true}).to_string()]).unwrap();let tag=s.create_tag("手动选择").unwrap();
+        let dir=crate::fsops::TmpDir::new();let mut s=Store::open(dir.path()).unwrap();s.conn.execute("INSERT INTO settings VALUES('ai',?)",[json!({"enabled":true,"endpoint":"http://localhost:11434/v1","model":"fixture","allowNewTags":true}).to_string()]).unwrap();let tag=s.create_tag("手动选择").unwrap();
         for kind in ["web_page","web_excerpt"] {for tagged in [true,false] {
             let mut req=json!({"requestId":id(),"kind":kind,"title":"fixture","url":format!("https://example.test/{}/{}",kind,tagged),"excerpt":if kind=="web_excerpt"{"synthetic text"}else{""}});
             if tagged {req["tagIds"]=json!([tag.id]);}

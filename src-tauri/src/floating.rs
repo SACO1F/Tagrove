@@ -316,13 +316,48 @@ pub fn finish(app: &tauri::AppHandle, result: Result<Value>) {
     let _ = app.emit("tag-drag-end", ());
     let _ = app.emit("library-changed", ());
 }
-pub fn start_drag(app: &tauri::AppHandle, state: &AppState, tag_id: &str) -> Result<Value> {
+pub fn start_drag(app: &tauri::AppHandle, state: &AppState, tag_id: &str, accent: Option<&str>) -> Result<Value> {
     if !state.store()?.tags()?.iter().any(|t| t.id == tag_id) {
         return Err(err("TAG_NOT_FOUND", "标签已删除"));
     }
     if state.drag_active.swap(true, Ordering::SeqCst) {
         return Err(err("DRAG_BUSY", "正在拖动标签"));
     }
+    // A transparent, non-activating window gives Shell items the same drop feedback
+    // as in-app cards, without selecting files or intercepting pointer hit testing.
+    #[cfg(windows)]
+    let overlay = (|| -> Result<tauri::WebviewWindow> {
+        let accent = accent.filter(|color| color.len() == 7 && color.starts_with('#') && color[1..].bytes().all(|b| b.is_ascii_hexdigit())).unwrap_or("#315c9c");
+        let theme_script = format!("(() => {{ const apply = () => document.documentElement.style.setProperty('--accent', {}); if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', apply, {{once:true}}); else apply(); }})()", json!(accent));
+        let window = if let Some(window) = app.get_webview_window("tag-drop-overlay") {
+            window.eval(&theme_script).map_err(|e| err("WINDOW_ERROR", e))?;
+            window
+        } else {
+            let mut builder = tauri::WebviewWindowBuilder::new(
+                app, "tag-drop-overlay",
+                tauri::WebviewUrl::App("tag-drop-overlay.html".into()),
+            )
+            .initialization_script(theme_script)
+            .title("Tagrove tag target")
+            .decorations(false).transparent(true).shadow(false)
+            .always_on_top(true).skip_taskbar(true).resizable(false)
+            .focused(false).focusable(false).visible(false);
+            if std::env::var_os("SHIQIAN_DATA_DIR").is_some() {
+                builder = builder.data_directory(state.store()?.root.join("webview"));
+            }
+            builder.build().map_err(|e| err("WINDOW_ERROR", e))?
+        };
+        window.set_ignore_cursor_events(true).map_err(|e| err("WINDOW_ERROR", e))?;
+        Ok(window)
+    })();
+    #[cfg(windows)]
+    let overlay = match overlay {
+        Ok(window) => window,
+        Err(e) => {
+            state.drag_active.store(false, Ordering::SeqCst);
+            return Err(e);
+        }
+    };
     state.drag_cancel.store(false, Ordering::Relaxed);
     let app = app.clone();
     let state = state.clone();
@@ -337,6 +372,7 @@ pub fn start_drag(app: &tauri::AppHandle, state: &AppState, tag_id: &str) -> Res
                     WindowsAndMessaging::{GetAncestor, GetCursorPos, WindowFromPoint, GA_ROOT},
                 },
             };
+            let mut last_shell_probe = std::time::Instant::now() - std::time::Duration::from_secs(1);
             let started = std::time::Instant::now();
             loop {
                 if state.drag_cancel.load(Ordering::Relaxed)
@@ -362,6 +398,23 @@ pub fn start_drag(app: &tauri::AppHandle, state: &AppState, tag_id: &str) -> Res
                         let _=w.emit("tag-drag-point",json!({"tagId":tid,"x":(point.x-origin.x) as f64/scale,"y":(point.y-origin.y) as f64/scale,"over":over_main,"drop":!down}));
                     }
                 }
+                if over_main || !down {
+                    let _ = overlay.hide();
+                } else if last_shell_probe.elapsed() >= std::time::Duration::from_millis(100) {
+                    last_shell_probe = std::time::Instant::now();
+                    match shell_target::target_at_point(point.x, point.y) {
+                        Ok(target) => {
+                            let r = target.bounds;
+                            let _ = overlay.set_position(tauri::PhysicalPosition::new(r.left, r.top));
+                            let _ = overlay.set_size(tauri::PhysicalSize::new(
+                                (r.right - r.left).max(1) as u32,
+                                (r.bottom - r.top).max(1) as u32,
+                            ));
+                            let _ = overlay.show();
+                        }
+                        Err(_) => { let _ = overlay.hide(); }
+                    }
+                }
                 if !down {
                     if !over_main {
                         let result =
@@ -381,6 +434,8 @@ pub fn start_drag(app: &tauri::AppHandle, state: &AppState, tag_id: &str) -> Res
         }
         #[cfg(not(windows))]
         finish(&app, Err(err("UNSUPPORTED", "请把文件拖到浮窗标签上")));
+        #[cfg(windows)]
+        let _ = overlay.hide();
         state.drag_active.store(false, Ordering::SeqCst);
     });
     Ok(json_ok())

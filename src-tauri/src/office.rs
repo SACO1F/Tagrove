@@ -712,9 +712,9 @@ mod tests {
         assert_eq!(column("CW1"), None);
         assert_eq!(column("AA7"), Some(26));
     }
-    pub(super) fn archive(entries: &[(&str, &str)]) -> (tempfile::TempDir, zip::ZipArchive<File>) {
+    pub(super) fn archive(entries: &[(&str, &str)]) -> (crate::fsops::TmpDir, zip::ZipArchive<File>) {
         use std::io::Write;
-        let dir = tempfile::tempdir().unwrap();
+        let dir = crate::fsops::TmpDir::new();
         let path = dir.path().join("office.zip");
         let mut z = zip::ZipWriter::new(File::create(&path).unwrap());
         for (name, text) in entries {
@@ -777,7 +777,7 @@ mod tests {
     #[test]
     fn embedded_images_reused_and_external_blocked() {
         use std::io::{Cursor, Write};
-        let dir = tempfile::tempdir().unwrap();
+        let dir = crate::fsops::TmpDir::new();
         let path = dir.path().join("images.docx");
         let mut png = Cursor::new(vec![]);
         image::DynamicImage::new_rgb8(64, 32)
