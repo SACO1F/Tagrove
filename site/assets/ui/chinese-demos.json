@@ -1,0 +1,55 @@
+{
+  "run": "D:\\AI\\Shiqian\\qa\\landing-zh-2026-10-19T18-25-27-587Z",
+  "language": "zh",
+  "source": "Actual app compositor capture with presentation pointer; synthetic library; no UI text replacements.",
+  "demos": [
+    {
+      "name": "palette-zh",
+      "video": "palette-zh.mp4",
+      "videoBytes": 66055,
+      "videoFps": 30,
+      "gif": "palette-zh.gif",
+      "gifBytes": 347797,
+      "gifFrames": 145,
+      "gifFps": 20,
+      "captureFrames": 166,
+      "source": "D:\\AI\\Shiqian\\qa\\landing-zh-2026-10-19T18-25-27-587Z\\frames\\palette-zh"
+    },
+    {
+      "name": "reader-pdf-zh",
+      "video": "reader-pdf-zh.mp4",
+      "videoBytes": 195713,
+      "videoFps": 30,
+      "gif": "reader-pdf-zh.gif",
+      "gifBytes": 1694521,
+      "gifFrames": 141,
+      "gifFps": 20,
+      "captureFrames": 141,
+      "source": "D:\\AI\\Shiqian\\qa\\landing-zh-2026-10-19T18-25-27-587Z\\frames\\reader-pdf-zh"
+    },
+    {
+      "name": "search-zh",
+      "video": "search-zh.mp4",
+      "videoBytes": 208715,
+      "videoFps": 30,
+      "gif": "search-zh.gif",
+      "gifBytes": 974250,
+      "gifFrames": 144,
+      "gifFps": 20,
+      "captureFrames": 141,
+      "source": "D:\\AI\\Shiqian\\qa\\landing-zh-2026-10-19T18-25-27-587Z\\frames\\search-zh"
+    },
+    {
+      "name": "workspace-zh",
+      "video": "workspace-zh.mp4",
+      "videoBytes": 328517,
+      "videoFps": 30,
+      "gif": "workspace-zh.gif",
+      "gifBytes": 1370341,
+      "gifFrames": 71,
+      "gifFps": 20,
+      "captureFrames": 87,
+      "source": "D:\\AI\\Shiqian\\qa\\landing-zh-2026-10-19T18-25-27-587Z\\frames\\workspace-zh"
+    }
+  ]
+}

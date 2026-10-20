@@ -1,0 +1,3611 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tagrove · 拾签 — 顺手贴上标签，随时找回资料。</title>
+    <meta
+      name="description"
+      content="本地文件、图片与网页参考工作台。原件留在原处，用标签联系资料，需要时随手找回。"
+    />
+    <meta name="color-scheme" content="light" />
+    <meta property="og:type" content="website" />
+    <meta
+      property="og:title"
+      content="Tagrove · 拾签 — 顺手贴上标签，随时找回资料。"
+    />
+    <meta
+      property="og:description"
+      content="本地文件、图片与网页参考工作台。原件留在原处，用标签联系资料，需要时随手找回。"
+    />
+    <meta property="og:image" content="https://tagrove.pages.dev/assets/ui/workspace-zh.webp" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="canonical" href="https://tagrove.pages.dev/zh.html" />
+    <link
+      rel="alternate"
+      hreflang="en"
+      href="https://tagrove.pages.dev/"
+    />
+    <link
+      rel="alternate"
+      hreflang="zh-CN"
+      href="https://tagrove.pages.dev/zh.html"
+    />
+    <link
+      rel="alternate"
+      hreflang="x-default"
+      href="https://tagrove.pages.dev/"
+    />
+    <link rel="icon" type="image/png" href="assets/logo.png" />
+    <style>
+      /* Self-hosted Latin faces. CJK stays on the platform face (Microsoft YaHei UI /
+   PingFang SC): the audience is Windows, and a full CJK webfont is not worth the
+   bytes. Both faces are SIL OFL; see assets/PROVENANCE.json. */
+      @font-face {
+        font-family: "Inter";
+        font-style: normal;
+        font-weight: 400 700;
+        font-display: swap;
+        src: url("assets/fonts/inter-latin-var.woff2") format("woff2");
+        unicode-range:
+          U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+          U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+          U+2212, U+2215, U+FEFF, U+FFFD;
+      }
+      @font-face {
+        font-family: "Instrument Serif";
+        font-style: normal;
+        font-weight: 400;
+        font-display: swap;
+        src: url("assets/fonts/instrument-serif-latin.woff2") format("woff2");
+        unicode-range:
+          U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+          U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+          U+2212, U+2215, U+FEFF, U+FFFD;
+      }
+      @font-face {
+        font-family: "Instrument Serif";
+        font-style: italic;
+        font-weight: 400;
+        font-display: swap;
+        src: url("assets/fonts/instrument-serif-latin-italic.woff2")
+          format("woff2");
+        unicode-range:
+          U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+          U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+          U+2212, U+2215, U+FEFF, U+FFFD;
+      }
+
+      /* ============ A · 参考墙 / The Pin-Up Wall ============ */
+      :root {
+        --ultra: #315c9c;
+        --ultra-deep: #21406f;
+        --ultra-soft: #e8eef7;
+        --teal: #2c6654;
+        --coral: #c2543f;
+        --sand: #9a7420;
+        --graphite: #4e5965;
+        --plum: #6c4898;
+        --ink: #22282f;
+        --body: #465261;
+        --muted: #5f6976;
+        --faint: #5a6472;
+        --paper: #fffdf8;
+        --paper-2: #f8f5ee;
+        --ground: #efe9df;
+        --line: rgba(34, 40, 47, 0.13);
+        --line-2: rgba(34, 40, 47, 0.07);
+        --r: 14px;
+        --r-sm: 10px;
+        --sh-1:
+          0 1px 2px rgba(41, 52, 68, 0.07), 0 2px 6px rgba(41, 52, 68, 0.05);
+        --sh-2:
+          0 2px 4px rgba(41, 52, 68, 0.07), 0 14px 34px rgba(41, 52, 68, 0.13);
+        --sh-3:
+          0 4px 8px rgba(41, 52, 68, 0.09), 0 26px 60px rgba(41, 52, 68, 0.19);
+        --sans:
+          Inter, "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei",
+          "PingFang SC", sans-serif;
+        --serif: "Instrument Serif", Georgia, "Times New Roman", serif;
+        --mono: "Cascadia Code", Consolas, "SF Mono", monospace;
+        --text-min: 12px;
+  --sheet: var(--sheet);
+  --danger: var(--danger);
+  --max: 1240px;
+      }
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+      html {
+        scroll-behavior: smooth;
+        scroll-padding-top: 78px;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        html {
+          scroll-behavior: auto;
+        }
+      }
+      body {
+        margin: 0;
+        font-family: var(--sans);
+        color: var(--ink);
+        background: var(--ground);
+        font-size: 16px;
+        line-height: 1.62;
+        -webkit-font-smoothing: antialiased;
+        text-rendering: optimizeLegibility;
+        font-variant-numeric: tabular-nums;
+        caret-color: var(--ultra);
+      }
+      ::selection {
+        background: var(--ultra);
+        color: var(--sheet);
+      }
+      ::-webkit-scrollbar {
+        width: 13px;
+        height: 13px;
+      }
+      ::-webkit-scrollbar-track {
+        background: var(--paper-2);
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #c3cbd6;
+        border: 3px solid var(--paper-2);
+        border-radius: 99px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: var(--ultra);
+      }
+      a {
+        color: inherit;
+        text-underline-offset: 3px;
+        text-decoration-thickness: 1px;
+        text-decoration-color: color-mix(
+          in srgb,
+          var(--ultra) 45%,
+          transparent
+        );
+      }
+      a:hover {
+        text-decoration-color: var(--ultra);
+      }
+      a:focus-visible,
+      button:focus-visible,
+      input:focus-visible,
+      [tabindex]:focus-visible {
+        outline: 2px solid var(--ultra);
+        outline-offset: 3px;
+        border-radius: 4px;
+      }
+      h1,
+      h2,
+      h3,
+      h4 {
+        margin: 0;
+        line-height: 1.18;
+        letter-spacing: -0.02em;
+        font-weight: 700;
+        text-wrap: balance;
+        word-break: keep-all;
+        line-break: strict;
+        overflow-wrap: anywhere;
+      }
+      p {
+        margin: 0;
+      }
+      img {
+        display: block;
+        max-width: 100%;
+      }
+      .wrap {
+        max-width: var(--max);
+        margin: 0 auto;
+        padding: 0 26px;
+      }
+      /* the English gloss is its own voice: serif, never a second sans colour */
+      .en {
+        font-family: var(--serif);
+        font-weight: 400;
+        font-size: 0.95em;
+        letter-spacing: 0.004em;
+        color: var(--muted);
+      }
+
+      /* ---------- shared components ---------- */
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        height: 26px;
+        padding: 0 11px;
+        border-radius: 999px;
+        font-size: 12.5px;
+        font-weight: 600;
+        letter-spacing: 0.01em;
+        background: var(--bg, var(--ultra-soft));
+        color: var(--fg, var(--ultra-deep));
+        border: 1px solid
+          color-mix(in srgb, var(--fg, var(--ultra)) 22%, transparent);
+        white-space: nowrap;
+      }
+      .chip[data-t="reference"] {
+        --bg: #e6efe9;
+        --fg: var(--teal);
+      }
+      .chip[data-t="facade"] {
+        --bg: #e7eef7;
+        --fg: var(--ultra-deep);
+      }
+      .chip[data-t="discuss"] {
+        --bg: #fbeae5;
+        --fg: var(--danger);
+      }
+      .chip[data-t="materials"] {
+        --bg: #f5efdf;
+        --fg: #7a5b13;
+      }
+      .chip[data-t="interior"] {
+        --bg: #efeaf6;
+        --fg: var(--plum);
+      }
+      .chip[data-t="drawings"] {
+        --bg: #e9ebee;
+        --fg: #3f4954;
+      }
+      .chip[data-t="cost"] {
+        --bg: #f5efdf;
+        --fg: #7a5b13;
+      }
+      .chip[data-t="web"] {
+        --bg: #e6eef2;
+        --fg: #286f73;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 9px;
+        padding: 13px 22px;
+        border-radius: var(--r-sm);
+        border: 1px solid transparent;
+        font: inherit;
+        font-size: 15px;
+        font-weight: 650;
+        letter-spacing: 0.01em;
+        cursor: pointer;
+        text-decoration: none;
+        transition:
+          background 0.16s ease,
+          box-shadow 0.16s ease,
+          transform 0.16s ease,
+          border-color 0.16s ease;
+      }
+      .btn-primary {
+        background: var(--ultra);
+        color: var(--sheet);
+        box-shadow: var(--sh-1);
+      }
+      .btn-primary:hover {
+        background: var(--ultra-deep);
+        box-shadow: var(--sh-2);
+        transform: translateY(-1px);
+      }
+      .btn-primary:active {
+        background: var(--ultra-deep);
+        transform: translateY(0);
+        box-shadow: var(--sh-1);
+      }
+      .btn-ghost {
+        background: var(--paper);
+        color: var(--ink);
+        border-color: var(--line);
+        box-shadow: var(--sh-1);
+      }
+      .btn-ghost:hover {
+        border-color: var(--ultra);
+        color: var(--ultra-deep);
+      }
+      .btn-ghost:active {
+        background: var(--paper-2);
+        transform: translateY(0);
+        box-shadow: var(--sh-1);
+      }
+      .btn[aria-pressed="true"] {
+        border-color: var(--ultra);
+        color: var(--ultra-deep);
+        background: var(--ultra-soft);
+      }
+      .btn svg {
+        flex: none;
+      }
+      .card {
+        background: var(--paper);
+        border: 1px solid var(--line);
+        border-radius: var(--r);
+        box-shadow: var(--sh-2);
+      }
+      .rule {
+        height: 1px;
+        background: var(--line);
+        border: 0;
+        margin: 0;
+      }
+
+      /* ---------- top bar ---------- */
+      .top {
+        position: sticky;
+        top: 0;
+        z-index: 60;
+        background: rgba(255, 253, 248, 0.92);
+        backdrop-filter: saturate(140%) blur(8px);
+        border-bottom: 1px solid var(--line);
+      }
+      .top-in {
+        max-width: var(--max);
+        margin: 0 auto;
+        padding: 11px 26px;
+        display: flex;
+        align-items: center;
+        gap: 22px;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        text-decoration: none;
+        font-weight: 750;
+        letter-spacing: -0.01em;
+        font-size: 17px;
+      }
+      .brand img {
+        width: 30px;
+        height: 30px;
+      }
+      .nav {
+        display: flex;
+        gap: 20px;
+        margin-left: auto;
+        font-size: 14.5px;
+        color: var(--body);
+      }
+      .nav a {
+        text-decoration: none;
+        padding: 4px 0;
+        border-bottom: 2px solid transparent;
+        transition:
+          color 0.15s,
+          border-color 0.15s;
+      }
+      .nav a:hover {
+        color: var(--ultra-deep);
+        border-color: var(--ultra);
+      }
+      .top .btn {
+        padding: 9px 15px;
+        font-size: 14px;
+      }
+
+      /* ---------- THE WALL ---------- */
+      .wall {
+        position: relative;
+        overflow: hidden;
+        background: var(--ground) url("assets/plaster.jpg") repeat;
+        background-size: 768px 576px;
+        padding: 44px 0 62px;
+      }
+      .wall::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background:
+          radial-gradient(
+            120% 78% at 78% 8%,
+            rgba(255, 255, 255, 0.55),
+            transparent 62%
+          ),
+          linear-gradient(180deg, transparent 62%, rgba(120, 105, 86, 0.13));
+      }
+      .wall-in {
+        position: relative;
+        z-index: 2;
+        max-width: var(--max);
+        margin: 0 auto;
+        padding: 0 26px;
+      }
+      .wall-grid {
+        display: grid;
+        grid-template-columns: repeat(12, 1fr);
+        gap: 22px;
+        align-items: start;
+      }
+      .pin {
+        position: relative;
+      }
+      .pin::before,
+      .pin::after {
+        content: "";
+        position: absolute;
+        top: -9px;
+        width: 15px;
+        height: 15px;
+        border-radius: 50%;
+        z-index: 4;
+        background: radial-gradient(
+          circle at 33% 30%,
+          #f6e3b0,
+          #c99a3d 52%,
+          #7d5a17 100%
+        );
+        box-shadow:
+          0 2px 4px rgba(60, 44, 10, 0.4),
+          inset 0 -1px 2px rgba(255, 255, 255, 0.5);
+      }
+      .pin::before {
+        left: 22px;
+      }
+      .pin::after {
+        right: 22px;
+      }
+      .pin.one::after {
+        display: none;
+      }
+      .pin.one::before {
+        left: 50%;
+        transform: translateX(-50%);
+      }
+
+      /* plaque = the offer, printed on paper and taped to the wall */
+      .plaque {
+        grid-column: 1 / span 5;
+        grid-row: 1;
+        transform: rotate(-0.7deg);
+        z-index: 3;
+      }
+      .plaque-in {
+        padding: 34px 32px 30px;
+      }
+      .plaque h1 {
+        font-size: clamp(34px, 4.1vw, 52px);
+        letter-spacing: -0.028em;
+        line-height: 1.1;
+      }
+      /* the English tagline belongs to the headline; the gloss belongs to the description */
+      .plaque .enline {
+        margin-top: 12px;
+        font-family: var(--serif);
+        font-style: italic;
+        font-size: 20px;
+        line-height: 1.3;
+        color: var(--ultra-deep);
+      }
+      .plaque .sub {
+        margin-top: 16px;
+        font-size: 16.5px;
+        color: var(--body);
+        max-width: 34ch;
+      }
+      .plaque .sub-en {
+        margin-top: 5px;
+        font-size: 15.5px;
+        color: var(--muted);
+        max-width: 38ch;
+      }
+      .plaque .cta {
+        margin-top: 26px;
+        display: flex;
+        gap: 11px;
+        flex-wrap: wrap;
+      }
+      .facts {
+        margin-top: 20px;
+        padding-top: 16px;
+        border-top: 1px dashed var(--line);
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 16px;
+        font-size: 12.5px;
+        color: var(--muted);
+      }
+      .facts span {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .facts i {
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: var(--teal);
+        flex: none;
+      }
+
+      /* palette widget: the real desktop floating tool, pinned top-right */
+      .palette {
+        grid-column: 8 / span 5;
+        grid-row: 1;
+        transform: rotate(0.5deg);
+        z-index: 5;
+      }
+      .palette-in {
+        padding: 0;
+        overflow: hidden;
+      }
+      /* one elevation per container: inside the demo card this is a region */
+      .demo .palette-in {
+        background: none;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+      }
+      .demo .pal-head {
+        padding-bottom: 9px;
+        border-bottom: 1px solid var(--line);
+      }
+      .pal-head {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        padding: 10px 13px;
+        background: linear-gradient(180deg, #fbf9f4, #f2eee5);
+        border-bottom: 1px solid var(--line);
+      }
+      .grip {
+        display: grid;
+        grid-template-columns: repeat(2, 3px);
+        gap: 3px;
+        padding: 3px;
+        cursor: grab;
+        color: #a9b2bd;
+      }
+      .grip i {
+        width: 3px;
+        height: 3px;
+        border-radius: 50%;
+        background: currentColor;
+        display: block;
+      }
+      .pal-head b {
+        font-size: 13.5px;
+        font-weight: 650;
+      }
+      .pal-head .win {
+        margin-left: auto;
+        display: flex;
+        gap: 5px;
+        color: #b3bcc6;
+      }
+      .pal-search {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 12px 13px 8px;
+        padding: 8px 11px;
+        background: var(--sheet);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        color: var(--faint);
+        font-size: 13.5px;
+      }
+      .pal-body {
+        padding: 4px 13px 14px;
+      }
+      .pal-group {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 12px;
+        color: var(--muted);
+        margin: 2px 0 9px;
+      }
+      .pal-group b {
+        font-family: var(--mono);
+        font-size: var(--text-min);;
+        color: var(--faint);
+        font-weight: 500;
+      }
+      .pal-add {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 11px;
+        padding: 6px 13px;
+        border-radius: 999px;
+        background: var(--accent-soft, #e8eef7);
+        color: var(--ultra-deep);
+        font-size: 12.5px;
+        font-weight: 600;
+        border: 1px solid var(--line-2);
+      }
+      .pal-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+      }
+      .tagbtn {
+        cursor: grab;
+        touch-action: none;
+        user-select: none;
+        font: inherit;
+        transition:
+          transform 0.15s ease,
+          box-shadow 0.15s ease,
+          opacity 0.2s ease;
+      }
+      .tagbtn:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--sh-1);
+      }
+      .tagbtn[aria-pressed="true"] {
+        box-shadow:
+          0 0 0 2px var(--ultra),
+          var(--sh-1);
+      }
+      .pal-foot {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 9px 13px;
+        border-top: 1px solid var(--line-2);
+        font-size: var(--text-min);;
+        color: var(--faint);
+      }
+
+      /* pinned material cards */
+      .item {
+        grid-row: span 2;
+        position: relative;
+        transition:
+          transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1),
+          opacity 0.35s ease,
+          filter 0.35s ease;
+      }
+      .item .frame {
+        overflow: hidden;
+        border-radius: var(--r) var(--r) 4px 4px;
+        background: #e9e4da;
+        border: 1px solid var(--line);
+        box-shadow: var(--sh-2);
+      }
+      .item img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        aspect-ratio: 4/3;
+      }
+      .item .meta {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 9px 3px 0;
+      }
+      .item .name {
+        font-size: 13px;
+        font-weight: 600;
+        letter-spacing: -0.005em;
+        word-break: keep-all;
+        line-break: strict;
+      }
+      .item .date {
+        font-family: var(--mono);
+        font-size: var(--text-min);;
+        color: var(--faint);
+      }
+      .item .tags {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        margin-top: 9px;
+      }
+      .item.drop-ok .frame {
+        box-shadow:
+          0 0 0 3px var(--ultra),
+          var(--sh-3);
+      }
+      .item.dim {
+        opacity: 0.3;
+        filter: grayscale(0.85);
+      }
+      .item.lit .frame {
+        box-shadow:
+          0 0 0 2px var(--ultra),
+          var(--sh-3);
+      }
+      .i-a {
+        grid-column: 1 / span 4;
+        transform: rotate(-1.2deg);
+      }
+      .i-b {
+        grid-column: 5 / span 3;
+        transform: rotate(0.8deg);
+      }
+      .i-c {
+        grid-column: 8 / span 3;
+        transform: rotate(-0.6deg);
+      }
+      .i-d {
+        grid-column: 11 / span 2;
+        transform: rotate(1.4deg);
+      }
+      .i-e {
+        grid-column: 2 / span 3;
+        transform: rotate(1deg);
+      }
+      .i-f {
+        grid-column: 5 / span 3;
+        transform: rotate(-0.9deg);
+      }
+      .i-g {
+        grid-column: 8 / span 4;
+        transform: rotate(0.6deg);
+      }
+      /* doc + web cards are drawn by code, not photos */
+      .doc,
+      .web {
+        padding: 16px 16px 14px;
+        box-shadow: var(--sh-2);
+        border: 1px solid var(--line);
+        border-radius: var(--r);
+        background: var(--paper);
+      }
+      .doc .glyph {
+        width: 42px;
+        height: 52px;
+        border-radius: 5px;
+        background: linear-gradient(160deg, #c2361f, #9b2a16);
+        color: var(--sheet);
+        display: grid;
+        place-items: center;
+        font-size: var(--text-min);;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        box-shadow: var(--sh-1);
+      }
+      .doc .glyph.xlsx {
+        background: linear-gradient(160deg, #1f7a4d, #155f3c);
+      }
+      .doc .name {
+        margin-top: 11px;
+      }
+      .doc .sz {
+        margin-top: 12px;
+        font-family: var(--mono);
+        font-size: var(--text-min);;
+        color: var(--faint);
+      }
+      /* the narrow column gets a smaller sheet so the card never reads as half-empty */
+      .doc.sm {
+        padding: 14px;
+      }
+      .doc.sm .glyph {
+        width: 34px;
+        height: 42px;
+      }
+      .doc.sm .name {
+        margin-top: 10px;
+        font-size: 12.5px;
+      }
+      .web .src {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        font-size: var(--text-min);;
+        color: var(--muted);
+        margin-bottom: 9px;
+      }
+      .web .src svg {
+        flex: none;
+        color: var(--graphite);
+      }
+      .web .ttl {
+        font-size: 14.5px;
+        line-height: 1.35;
+        font-weight: 650;
+        letter-spacing: -0.01em;
+      }
+      .web p {
+        margin-top: 6px;
+        font-size: 12.5px;
+        color: var(--muted);
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+      .wall-note {
+        grid-column: 1/-1;
+        margin-top: 26px;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        flex-wrap: wrap;
+        font-size: 13px;
+        color: var(--body);
+      }
+      .wall-note .btn {
+        padding: 8px 14px;
+        font-size: 13px;
+      }
+      .hint {
+        font-size: 12.5px;
+        color: var(--muted);
+        background: rgba(255, 253, 248, 0.8);
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 6px 13px;
+      }
+      .dragging {
+        position: fixed;
+        z-index: 99;
+        pointer-events: none;
+        transform: translate(-50%, -50%) rotate(-3deg);
+        box-shadow: var(--sh-3);
+      }
+      .toast {
+        position: fixed;
+        left: 50%;
+        bottom: 34px;
+        transform: translateX(-50%) translateY(14px);
+        z-index: 98;
+        background: var(--ink);
+        color: var(--sheet);
+        padding: 11px 18px;
+        border-radius: 999px;
+        font-size: 13.5px;
+        opacity: 0;
+        pointer-events: none;
+        transition:
+          opacity 0.22s ease,
+          transform 0.22s ease;
+        box-shadow: var(--sh-3);
+      }
+      .toast.on {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+      }
+
+      /* ---------- sections ---------- */
+      .band {
+        background: var(--paper);
+        border-top: 1px solid var(--line);
+        padding: 78px 0;
+      }
+      .band.alt {
+        background: var(--paper-2);
+      }
+      .band.paper {
+        background: var(--ground) url("assets/plaster.jpg") repeat;
+        background-size: 768px 576px;
+      }
+      .sec-head {
+        max-width: 74ch;
+        margin-bottom: 40px;
+      }
+      .sec-head h2 {
+        font-size: clamp(27px, 3.1vw, 38px);
+        letter-spacing: -0.024em;
+      }
+      .sec-head p {
+        margin-top: 13px;
+        color: var(--body);
+        font-size: 16.5px;
+        max-width: 62ch;
+      }
+      .sec-head.tight {
+        margin-bottom: 26px;
+      }
+      .sec-head .en {
+        display: block;
+        margin-top: 6px;
+        font-size: 15.5px;
+      }
+
+      /* mechanism: three ruled rows, not three cards */
+      .mech {
+        border-top: 1px solid var(--line);
+      }
+      .mech-row {
+        display: grid;
+        grid-template-columns: 5.5ch 1fr 1.15fr;
+        gap: 26px;
+        padding: 26px 0;
+        border-bottom: 1px solid var(--line);
+        align-items: baseline;
+      }
+      .mech-row .k {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--ultra);
+        letter-spacing: 0.04em;
+      }
+      .mech-row h3 {
+        font-size: 21px;
+        letter-spacing: -0.018em;
+      }
+      .mech-row p {
+        color: var(--body);
+        font-size: 15.5px;
+      }
+      .mech-row .en {
+        display: block;
+        margin-top: 5px;
+        font-size: 14.5px;
+      }
+
+      /* capabilities: alternating rows */
+      .caps {
+        display: grid;
+        gap: 14px;
+      }
+      .cap {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 44px;
+        align-items: center;
+        padding: 34px 0;
+        border-bottom: 1px solid var(--line-2);
+      }
+      .cap:last-child {
+        border-bottom: 0;
+      }
+      .cap:nth-child(even) .cap-txt {
+        order: 2;
+      }
+      .cap-txt h3 {
+        font-size: 24px;
+        letter-spacing: -0.02em;
+      }
+      .cap-txt .en {
+        display: block;
+        margin-top: 5px;
+        font-size: 14.5px;
+      }
+      .cap-txt p {
+        margin-top: 13px;
+        color: var(--body);
+        font-size: 15.5px;
+        max-width: 52ch;
+      }
+      .cap-txt ul {
+        margin: 14px 0 0;
+        padding: 0;
+        list-style: none;
+        display: grid;
+        gap: 7px;
+      }
+      .cap-txt li {
+        position: relative;
+        padding-left: 19px;
+        font-size: 14.5px;
+        color: var(--body);
+      }
+      .cap-txt li::before {
+        content: "";
+        position: absolute;
+        left: 2px;
+        top: 0.62em;
+        width: 7px;
+        height: 7px;
+        border-radius: 2px;
+        background: var(--ultra);
+        opacity: 0.55;
+      }
+      .shot {
+        border-radius: var(--r);
+        overflow: hidden;
+        border: 1px solid var(--line);
+        box-shadow: var(--sh-3);
+        background: var(--sheet);
+      }
+      .shot img {
+        width: 100%;
+        height: auto;
+      }
+      .shot.tall {
+        max-width: 330px;
+        margin: 0 auto;
+        border-radius: var(--r);
+      }
+      .mock-cap {
+        margin: 12px 0 0;
+        padding-top: 10px;
+        border-top: 1px dashed var(--line);
+        font-size: var(--text-min);;
+        color: var(--faint);
+      }
+      .specimen {
+        margin: 34px 0 0;
+        max-width: 920px;
+      }
+      .specimen img {
+        width: 100%;
+        height: auto;
+        border: 1px solid var(--line);
+        border-radius: var(--r);
+        box-shadow: var(--sh-2);
+      }
+      .specimen figcaption {
+        margin-top: 12px;
+        font-size: 13px;
+        color: var(--muted);
+        max-width: 64ch;
+      }
+
+      /* code-drawn UI mocks */
+      .mock {
+        padding: 14px;
+        border-radius: var(--r);
+        border: 1px solid var(--line);
+        background: var(--paper);
+        box-shadow: var(--sh-2);
+      }
+      .mock-bar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding-bottom: 11px;
+        margin-bottom: 12px;
+        border-bottom: 1px solid var(--line-2);
+        font-size: 12px;
+        color: var(--faint);
+      }
+      .mock-bar b {
+        font-size: 13px;
+        color: var(--ink);
+        font-weight: 650;
+      }
+      .mock-bar .sp {
+        margin-left: auto;
+      }
+      .rows {
+        display: grid;
+        gap: 7px;
+      }
+      .row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 9px 11px;
+        border-radius: 8px;
+        background: var(--sheet);
+        border: 1px solid var(--line-2);
+        font-size: 13.5px;
+      }
+      .row.on {
+        border-color: var(--ultra);
+        background: var(--ultra-soft);
+      }
+      .row .thumb {
+        width: 30px;
+        height: 30px;
+        border-radius: 5px;
+        background: linear-gradient(150deg, #dfe6ee, #c9d5e2);
+        flex: none;
+      }
+      .row .nm {
+        font-weight: 600;
+        letter-spacing: -0.005em;
+      }
+      .row .why {
+        margin-left: auto;
+        font-family: var(--mono);
+        font-size: var(--text-min);;
+        color: var(--ultra-deep);
+        background: var(--sheet);
+        border: 1px solid var(--line);
+        padding: 2px 7px;
+        border-radius: 999px;
+      }
+      .row .why.no {
+        color: var(--danger);
+        background: #fdf6f4;
+        border-color: rgba(194, 84, 63, 0.28);
+      }
+
+      /* handover */
+      .steps {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 0;
+        border: 1px solid var(--line);
+        border-radius: var(--r);
+        overflow: hidden;
+        background: var(--paper);
+        box-shadow: var(--sh-2);
+      }
+      .step {
+        padding: 24px 22px;
+        border-right: 1px solid var(--line);
+      }
+      .step:last-child {
+        border-right: 0;
+      }
+      .step .n {
+        font-family: var(--mono);
+        font-size: var(--text-min);;
+        color: var(--ultra);
+        letter-spacing: 0.05em;
+      }
+      .step h3 {
+        margin-top: 9px;
+        font-size: 16.5px;
+        letter-spacing: -0.015em;
+      }
+      .step p {
+        margin-top: 8px;
+        font-size: 14px;
+        color: var(--body);
+      }
+      .deliver {
+        margin-top: 22px;
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14.5px;
+      }
+      .deliver th {
+        text-align: left;
+        font-size: 12px;
+        letter-spacing: 0.06em;
+        color: var(--faint);
+        font-weight: 600;
+        padding: 0 14px 9px 0;
+        border-bottom: 1px solid var(--line);
+      }
+      .deliver td {
+        padding: 13px 14px 13px 0;
+        border-bottom: 1px solid var(--line-2);
+        vertical-align: top;
+        color: var(--body);
+      }
+      .deliver td:first-child {
+        font-weight: 650;
+        color: var(--ink);
+        white-space: nowrap;
+      }
+
+      /* themes strip */
+      .themes {
+        display: flex;
+        gap: 9px;
+        flex-wrap: wrap;
+        margin-top: 20px;
+      }
+      .sw {
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        border: 1px solid rgba(34, 40, 47, 0.12);
+        box-shadow: var(--sh-1);
+        position: relative;
+      }
+      .sw.def::after {
+        content: "";
+        position: absolute;
+        inset: -5px;
+        border-radius: 50%;
+        border: 1.5px solid var(--ultra);
+      }
+      .theme-lab {
+        margin-top: 12px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+
+      /* limits */
+      .limits {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0 44px;
+      }
+      .limits div {
+        display: flex;
+        gap: 12px;
+        padding: 15px 0;
+        border-bottom: 1px solid var(--line-2);
+        font-size: 14.5px;
+        color: #414c59;
+      }
+      .limits b {
+        flex: none;
+        width: 20px;
+        height: 20px;
+        border-radius: 5px;
+        display: grid;
+        place-items: center;
+        background: #fbeae5;
+        color: var(--danger);
+        font-size: 12px;
+        font-weight: 800;
+        margin-top: 2px;
+      }
+
+      /* download */
+      .dl {
+        display: grid;
+        grid-template-columns: 1.35fr 1fr;
+        gap: 40px;
+        align-items: start;
+      }
+      .dl-list {
+        display: grid;
+        gap: 11px;
+      }
+      .dl-item {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        padding: 16px 18px;
+        border-radius: var(--r-sm);
+        background: var(--paper);
+        border: 1px solid var(--line);
+        text-decoration: none;
+        box-shadow: var(--sh-1);
+        transition:
+          box-shadow 0.16s,
+          transform 0.16s,
+          border-color 0.16s;
+      }
+      .dl-item:hover {
+        box-shadow: var(--sh-2);
+        transform: translateY(-2px);
+        border-color: var(--ultra);
+      }
+      .dl-item.main {
+        background: var(--ultra);
+        border-color: var(--ultra);
+        color: var(--sheet);
+        box-shadow: var(--sh-2);
+      }
+      .dl-item.main:hover {
+        background: var(--ultra-deep);
+      }
+      .dl-item .t {
+        display: block;
+        font-weight: 650;
+        font-size: 15.5px;
+        letter-spacing: -0.01em;
+      }
+      .dl-item .d {
+        display: block;
+        font-size: 13px;
+        opacity: 0.78;
+        margin-top: 3px;
+      }
+      .dl-item .go {
+        margin-left: auto;
+        font-size: 13px;
+        font-weight: 600;
+        white-space: nowrap;
+      }
+      .dl-side {
+        padding: 24px;
+        border-radius: var(--r);
+        background: var(--paper);
+        border: 1px solid var(--line);
+        box-shadow: var(--sh-1);
+      }
+      .dl-side h3 {
+        font-size: 15px;
+        letter-spacing: -0.01em;
+      }
+      .dl-side ul {
+        margin: 12px 0 0;
+        padding: 0;
+        list-style: none;
+        display: grid;
+        gap: 10px;
+        font-size: 13.5px;
+        color: var(--body);
+      }
+      .dl-side li {
+        display: flex;
+        gap: 9px;
+      }
+      .dl-side li::before {
+        content: "—";
+        color: var(--ultra);
+        flex: none;
+      }
+      .dl-side .links {
+        margin-top: 18px;
+        padding-top: 16px;
+        border-top: 1px solid var(--line-2);
+        display: grid;
+        gap: 7px;
+        font-size: 13.5px;
+      }
+
+      /* footer */
+      footer {
+        background: var(--ink);
+        color: #c9d2dd;
+        padding: 44px 0 40px;
+        font-size: 14px;
+      }
+      footer .wrap {
+        display: flex;
+        gap: 26px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      footer img {
+        width: 26px;
+        height: 26px;
+      }
+      footer b {
+        color: var(--sheet);
+        font-size: 15.5px;
+        letter-spacing: -0.01em;
+      }
+      footer .f-en {
+        margin-left: auto;
+        font-size: 12.5px;
+        color: #8d97a4;
+      }
+      footer a {
+        color: #c9d2dd;
+      }
+      .synth {
+        width: 100%;
+        font-size: 12.5px;
+        color: #8d97a4;
+        border-top: 1px solid rgba(255, 255, 255, 0.12);
+        padding-top: 16px;
+        margin-top: 6px;
+      }
+
+      /* reveal stays additive: content is never hidden, only nudged */
+      .rv {
+        transform: translateY(9px);
+        transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+      }
+      .rv.in {
+        transform: none;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .rv {
+          transform: none;
+          transition: none;
+        }
+        .item,
+        .tagbtn,
+        .btn,
+        .dl-item {
+          transition: none;
+        }
+        .item {
+          transform: none !important;
+        }
+      }
+
+      /* ---------- responsive ---------- */
+      @media (max-width: 1080px) {
+        .wall-grid {
+          grid-template-columns: repeat(8, 1fr);
+        }
+        .plaque {
+          grid-column: 1 / span 8;
+          transform: none;
+        }
+        .palette {
+          grid-column: 1 / span 8;
+          grid-row: auto;
+          transform: none;
+          margin-top: 22px;
+        }
+        .i-a {
+          grid-column: 1 / span 4;
+        }
+        .i-b {
+          grid-column: 5 / span 4;
+        }
+        .i-c {
+          grid-column: 1 / span 4;
+        }
+        .i-d {
+          grid-column: 5 / span 4;
+        }
+        .i-e {
+          grid-column: 1 / span 4;
+        }
+        .i-f {
+          grid-column: 5 / span 4;
+        }
+        .i-g {
+          grid-column: 1 / span 8;
+        }
+        .cap {
+          grid-template-columns: 1fr;
+          gap: 26px;
+        }
+        .cap:nth-child(even) .cap-txt {
+          order: 0;
+        }
+        .dl {
+          grid-template-columns: 1fr;
+        }
+        .steps {
+          grid-template-columns: 1fr 1fr;
+        }
+        .step:nth-child(2) {
+          border-right: 0;
+        }
+        .step:nth-child(-n + 2) {
+          border-bottom: 1px solid var(--line);
+        }
+        .limits {
+          grid-template-columns: 1fr;
+        }
+      }
+      @media (max-width: 720px) {
+        .nav {
+          display: none;
+        }
+        .top-in {
+          gap: 12px;
+        }
+        .brand {
+          font-size: 16px;
+        }
+        .wall {
+          padding: 26px 0 40px;
+        }
+        .wall-grid {
+          grid-template-columns: 1fr;
+          gap: 18px;
+        }
+        .plaque,
+        .palette,
+        .i-a,
+        .i-b,
+        .i-c,
+        .i-d,
+        .i-e,
+        .i-f,
+        .i-g {
+          grid-column: 1/-1;
+        }
+        .wall-note {
+          flex-direction: column;
+          align-items: stretch;
+          gap: 10px;
+        }
+        .wall-note .btn {
+          width: 100%;
+        }
+        .hint {
+          max-width: 100%;
+          overflow-wrap: anywhere;
+        }
+        .pin::before {
+          left: 18px;
+        }
+        .pin::after {
+          right: 18px;
+        }
+        .plaque-in {
+          padding: 26px 20px 24px;
+        }
+        .plaque h1 {
+          font-size: clamp(26px, 7.4vw, 34px);
+        }
+        .plaque .enline {
+          font-size: 18px;
+        }
+        .plaque .sub {
+          font-size: 15.5px;
+        }
+        .plaque .cta {
+          flex-direction: column;
+          align-items: stretch;
+        }
+        .plaque .cta .btn {
+          width: 100%;
+        }
+        .mech-row {
+          grid-template-columns: 1fr;
+          gap: 8px;
+        }
+        .band {
+          padding: 52px 0;
+        }
+        .specimen {
+          margin-top: 26px;
+        }
+        .steps {
+          grid-template-columns: 1fr;
+        }
+        .step {
+          border-right: 0;
+          border-bottom: 1px solid var(--line);
+        }
+      }
+
+      /* English-first hero: one introduction, one self-contained practice board. */
+      :root {
+        --max: 1360px;
+      }
+      .wall {
+        padding: 52px 0 48px;
+      }
+      .hero-layout {
+        display: grid;
+        grid-template-columns: minmax(280px, 0.85fr) minmax(0, 1.65fr);
+        gap: 40px;
+        align-items: center;
+      }
+      .plaque {
+        grid-column: auto;
+        grid-row: auto;
+        transform: none;
+      }
+      .plaque::before,
+      .plaque::after {
+        display: none;
+      }
+      .plaque-in {
+        padding: 0;
+        background: none;
+        border: 0;
+        box-shadow: none;
+      }
+      .plaque h1 {
+        font-size: clamp(40px, 4vw, 58px);
+        line-height: 1.04;
+        letter-spacing: -0.045em;
+        max-width: 11ch;
+        word-break: normal;
+        overflow-wrap: normal;
+        text-wrap: initial;
+      }
+      .plaque h1 em {
+        font-family: var(--serif);
+        font-weight: 400;
+        color: var(--ultra-deep);
+      }
+      .plaque .sub {
+        max-width: 36ch;
+        font-size: 17px;
+        margin-top: 22px;
+        line-height: 1.65;
+      }
+      .plaque .cta {
+        margin-top: 26px;
+        gap: 12px;
+        align-items: flex-start;
+        flex-direction: column;
+      }
+      .plaque .cta .btn {
+        width: auto;
+        min-height: 48px;
+      }
+      .text-link {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--ultra-deep);
+        padding: 6px 0;
+      }
+      .facts {
+        display: grid;
+        gap: 8px;
+        font-size: 13px;
+        margin-top: 24px;
+        padding-top: 20px;
+        max-width: 35ch;
+      }
+      .demo {
+        min-width: 0;
+        background: rgba(255, 253, 248, 0.72);
+        border: 1px solid rgba(94, 80, 58, 0.2);
+        border-radius: 18px;
+        box-shadow: var(--sh-2);
+        overflow: hidden;
+      }
+      .demo-heading {
+        padding: 18px 20px;
+        border-bottom: 1px solid var(--line);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        background: var(--paper);
+      }
+      .demo-heading h2 {
+        font-size: 16px;
+        letter-spacing: -0.015em;
+      }
+      .demo-label {
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: var(--text-min);;
+        color: var(--teal);
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+      .demo-label::before {
+        content: "";
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--teal);
+      }
+      .demo-instructions {
+        padding: 12px 20px;
+        font-size: 13px;
+        color: var(--body);
+        border-bottom: 1px solid var(--line);
+      }
+      .demo-body {
+        display: grid;
+        grid-template-columns: 178px minmax(0, 1fr);
+        align-items: start;
+        gap: 16px;
+        padding: 20px;
+      }
+      .palette {
+        grid-column: auto;
+        grid-row: auto;
+        transform: none;
+        margin: 0;
+        z-index: 3;
+      }
+      .palette::before,
+      .palette::after {
+        display: none;
+      }
+      .palette-in {
+        border-radius: 10px;
+        box-shadow: var(--sh-1);
+      }
+      .pal-head {
+        padding: 12px;
+      }
+      .pal-head b {
+        font-size: 13px;
+      }
+      .pal-body {
+        padding: 12px;
+      }
+      .pal-tags {
+        gap: 8px;
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .tagbtn {
+        height: auto;
+        min-height: 44px;
+        padding: 7px 10px;
+        cursor: grab;
+        font-size: 12px;
+        justify-content: flex-start;
+        white-space: normal;
+        text-align: left;
+        border-radius: 7px;
+        line-height: 1.35;
+        touch-action: pan-y;
+      }
+      .tagbtn::before {
+        content: "";
+        width: 6px;
+        height: 6px;
+        flex: none;
+        background: var(--fg, var(--ultra));
+        border-radius: 50%;
+      }
+      .tagbtn[aria-pressed="true"] {
+        background: var(--ultra-soft);
+        box-shadow: 0 0 0 2px var(--ultra);
+      }
+      .pal-foot {
+        padding: 10px 12px;
+        font-size: var(--text-min);;
+        line-height: 1.5;
+      }
+      .wall-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+        align-items: stretch;
+        min-width: 0;
+      }
+      .item {
+        margin: 0;
+        grid-column: auto;
+        grid-row: auto;
+        transform: none;
+        min-width: 0;
+        background: var(--paper);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 7px;
+        box-shadow: var(--sh-1);
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        transition:
+          opacity 0.2s,
+          box-shadow 0.2s;
+      }
+      .item::before,
+      .item::after {
+        display: none;
+      }
+      .item .frame {
+        border: 0;
+        border-radius: 5px;
+        box-shadow: none;
+      }
+      .item img {
+        height: 112px;
+        aspect-ratio: auto;
+        object-fit: cover;
+      }
+      .item .meta {
+        display: block;
+        padding: 8px 3px 0;
+      }
+      .item .name {
+        font-size: 12px;
+        line-height: 1.4;
+        word-break: normal;
+        overflow-wrap: anywhere;
+      }
+      .item .date {
+        display: none;
+      }
+      .item .tags {
+        gap: 4px;
+        margin-top: auto;
+        padding: 9px 2px 2px;
+      }
+      .item .chip {
+        font-size: var(--text-min);;
+        padding: 3px 7px;
+        height: auto;
+        min-height: 22px;
+        white-space: normal;
+        line-height: 1.3;
+      }
+      .item .doc {
+        padding: 12px 8px 4px;
+        border: 0;
+        border-radius: 5px;
+        box-shadow: none;
+        min-height: 154px;
+        background: var(--paper-2);
+      }
+      .item .doc .glyph {
+        width: 32px;
+        height: 38px;
+        font-size: var(--text-min);;
+      }
+      .item .doc .sz {
+        font-size: var(--text-min);;
+        margin-top: 8px;
+      }
+      .item.lit,
+      .item.drop-ok {
+        box-shadow:
+          0 0 0 2px var(--ultra),
+          var(--sh-1);
+      }
+      .item.dim {
+        opacity: 0.45;
+        filter: none;
+      }
+      .item.lit .frame,
+      .item.drop-ok .frame {
+        box-shadow: none;
+      }
+      .wall-note {
+        margin: 0;
+        padding: 14px 20px;
+        border-top: 1px solid var(--line);
+        background: var(--paper);
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+      .hint {
+        flex: 1 0 100%;
+        font-size: 12px;
+        min-height: 36px;
+        border: 0;
+        border-radius: 0;
+        background: none;
+        padding: 0;
+        line-height: 1.5;
+      }
+      .wall-note .btn {
+        font-size: 12px;
+        padding: 8px 12px;
+        min-height: 44px;
+        width: auto;
+      }
+      .demo-caption {
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 14px;
+        text-align: center;
+      }
+      .dragging {
+        min-height: 32px;
+        max-width: 180px;
+        touch-action: none;
+      }
+      .toast {
+        max-width: calc(100vw - 32px);
+        border-radius: 10px;
+      }
+      footer .f-en,
+      .synth {
+        color: #abb5c3;
+      }
+      @media (min-width: 1550px) {
+        .wall {
+          padding: 64px 0 60px;
+        }
+        .hero-layout {
+          gap: 56px;
+        }
+        .demo-body {
+          grid-template-columns: 190px minmax(0, 1fr);
+          gap: 20px;
+        }
+        .item img {
+          height: 128px;
+        }
+      }
+      @media (max-width: 1100px) {
+        .hero-layout {
+          grid-template-columns: minmax(240px, 0.8fr) minmax(0, 1.4fr);
+          gap: 24px;
+        }
+        .demo-body {
+          grid-template-columns: 145px minmax(0, 1fr);
+          padding: 14px;
+          gap: 12px;
+        }
+        .item img {
+          height: 96px;
+        }
+        .plaque h1 {
+          font-size: 44px;
+        }
+        .tagbtn {
+          font-size: var(--text-min);;
+        }
+        .demo-heading,
+        .demo-instructions {
+          padding-left: 14px;
+          padding-right: 14px;
+        }
+        .item .doc {
+          min-height: 138px;
+        }
+      }
+      @media (max-width: 860px) {
+        .hero-layout {
+          grid-template-columns: 1fr;
+          gap: 30px;
+        }
+        .plaque h1 {
+          max-width: 16ch;
+          font-size: 54px;
+        }
+        .plaque .sub {
+          max-width: 52ch;
+        }
+        .plaque .cta {
+          flex-direction: row;
+          align-items: center;
+        }
+        .facts {
+          max-width: none;
+          display: flex;
+          gap: 10px 20px;
+        }
+        .demo-body {
+          grid-template-columns: 180px minmax(0, 1fr);
+          padding: 20px;
+          gap: 20px;
+        }
+        .item img {
+          height: 130px;
+        }
+        .item .doc {
+          min-height: 172px;
+        }
+        .nav {
+          gap: 12px;
+          font-size: 12px;
+        }
+        .top-in {
+          gap: 16px;
+        }
+        .top .btn {
+          margin-left: auto;
+        }
+      }
+      @media (max-width: 540px) {
+        .wrap,
+        .wall-in {
+          padding-left: 18px;
+          padding-right: 18px;
+        }
+        .wall {
+          padding: 32px 0;
+        }
+        .top-in {
+          padding: 10px 18px;
+        }
+        .top .btn {
+          font-size: 12px;
+          padding: 9px 12px;
+        }
+        .plaque h1 {
+          font-size: 46px;
+          max-width: 12ch;
+        }
+        .plaque .sub {
+          font-size: 16px;
+        }
+        .plaque .cta {
+          flex-direction: column;
+          align-items: stretch;
+        }
+        .plaque .cta .btn {
+          width: 100%;
+        }
+        .text-link {
+          text-align: center;
+        }
+        .facts {
+          display: grid;
+        }
+        .demo-body {
+          grid-template-columns: 1fr;
+          gap: 14px;
+          padding: 12px;
+        }
+        .pal-tags {
+          flex-direction: row;
+          flex-wrap: wrap;
+        }
+        .tagbtn {
+          flex: 1 1 42%;
+          font-size: 12px;
+          touch-action: pan-y;
+        }
+        .pal-head,
+        .pal-foot {
+          display: none;
+        }
+        .pal-body {
+          padding: 10px;
+        }
+        .item img {
+          height: 104px;
+        }
+        .item .doc {
+          min-height: 146px;
+        }
+        .demo-heading {
+          padding: 14px 12px;
+        }
+        .demo-heading h2 {
+          font-size: 15px;
+        }
+        .demo-label {
+          font-size: var(--text-min);;
+        }
+        .demo-instructions {
+          padding: 10px 12px;
+          font-size: 12px;
+        }
+        .wall-note {
+          padding: 12px;
+          flex-direction: row;
+          align-items: center;
+        }
+        .wall-note .btn {
+          width: auto;
+          flex: 1;
+        }
+        .hint {
+          flex-basis: 100%;
+        }
+        .demo-caption {
+          text-align: left;
+        }
+        .dl-item {
+          padding: 14px 12px;
+          gap: 10px;
+        }
+        .dl-item .go {
+          font-size: var(--text-min);;
+        }
+        .dl-item .d {
+          font-size: 12px;
+        }
+        .mock {
+          padding: 10px;
+        }
+        .mock-bar {
+          flex-wrap: wrap;
+        }
+        .row {
+          padding: 8px;
+          gap: 7px;
+          font-size: 12px;
+        }
+        .row .thumb {
+          width: 22px;
+          height: 22px;
+        }
+      }
+
+      /* GIF demos load on request and can always return to a still poster. */
+      .motion-demo {
+        background: var(--paper);
+      }
+      .motion-controls {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 12px 14px;
+        border-top: 1px solid var(--line);
+        font-size: 12px;
+        color: var(--body);
+      }
+      .motion-controls > span {
+        max-width: 30ch;
+        line-height: 1.45;
+      }
+      .motion-toggle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        flex: none;
+        min-height: 44px;
+        padding: 8px 12px;
+        font: 600 12px var(--sans);
+        color: var(--ultra-deep);
+        background: var(--ultra-soft);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background 0.16s;
+      }
+      .motion-toggle:hover {
+        background: #dce6f5;
+      }
+      .motion-toggle[aria-pressed="true"] {
+        background: var(--ultra);
+        color: var(--sheet);
+      }
+      .motion-toggle[aria-pressed="true"] svg {
+        display: none;
+      }
+      .capture-flow {
+        padding: 24px;
+        background: var(--paper);
+        border: 1px solid var(--line);
+        border-radius: var(--r);
+        box-shadow: var(--sh-2);
+      }
+      .capture-flow-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+        padding-bottom: 18px;
+        border-bottom: 1px solid var(--line);
+      }
+      .flow-kicker {
+        font-size: var(--text-min);;
+        letter-spacing: 0.1em;
+        font-weight: 650;
+        color: var(--ultra-deep);
+      }
+      .flow-type {
+        font-size: var(--text-min);;
+        color: var(--muted);
+      }
+      .capture-steps {
+        list-style: none;
+        padding: 0;
+        margin: 24px 0;
+        display: grid;
+        gap: 22px;
+      }
+      .capture-steps li {
+        display: grid;
+        grid-template-columns: 30px minmax(0, 1fr);
+        gap: 14px;
+      }
+      .flow-number {
+        display: grid;
+        place-items: center;
+        align-self: start;
+        width: 30px;
+        height: 30px;
+        background: var(--ultra-soft);
+        color: var(--ultra-deep);
+        border-radius: 50%;
+        font: 500 var(--text-min) var(--mono);
+      }
+      .capture-steps h4 {
+        font-size: 16px;
+        line-height: 1.4;
+      }
+      .capture-steps p {
+        font-size: 13px;
+        color: var(--body);
+        margin-top: 5px;
+      }
+      .clip-sample {
+        margin-top: 12px;
+        padding: 14px;
+        background: var(--paper-2);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+      }
+      .clip-sample > span {
+        font-size: var(--text-min);;
+        color: var(--muted);
+        letter-spacing: 0.08em;
+      }
+      .clip-sample strong {
+        display: block;
+        margin-top: 5px;
+        font-size: 14px;
+      }
+      .clip-sample small {
+        display: block;
+        font-size: var(--text-min);;
+        color: var(--teal);
+        margin-top: 10px;
+      }
+      .flow-tags {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        margin-top: 12px;
+      }
+      .flow-note {
+        font-size: 12px;
+        color: var(--muted);
+        padding-top: 14px;
+        border-top: 1px solid var(--line);
+      }
+      @media (max-width: 540px) {
+        .motion-controls {
+          padding: 10px;
+          gap: 8px;
+        }
+        .motion-controls > span {
+          font-size: var(--text-min);;
+        }
+        .motion-toggle {
+          font-size: var(--text-min);;
+          padding: 8px 10px;
+        }
+        .capture-flow {
+          padding: 18px;
+        }
+        .capture-steps li {
+          gap: 10px;
+        }
+      }
+
+      /* Continuous 30 fps clips. Leaving restores the poster and resets the timeline. */
+      .demo-screen {
+        position: relative;
+        overflow: hidden;
+        background: var(--paper);
+      }
+      .demo-screen > img {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+      .demo-screen > video {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        opacity: 0;
+        pointer-events: none;
+      }
+      .motion-demo[data-playing="true"] .demo-screen > video {
+        opacity: 1;
+      }
+      .motion-demo[data-playing="true"] .demo-screen > img {
+        visibility: hidden;
+      }
+      .motion-hint {
+        display: block;
+        font-size: var(--text-min);;
+        color: var(--muted);
+        margin-top: 4px;
+        font-weight: 400;
+      }
+      @media (hover: none) {
+        .motion-hint {
+          display: none;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .motion-hint {
+          display: none;
+        }
+      }
+
+      /* Language links are native navigation; both pages include matching demo media. */
+      .language-switch {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 48px;
+        min-height: 44px;
+        padding: 8px 10px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        text-decoration: none;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--body);
+        white-space: nowrap;
+        transition:
+          background 0.16s,
+          border-color 0.16s;
+      }
+      .language-switch:hover {
+        background: var(--ultra-soft);
+        border-color: var(--ultra);
+      }
+      @media (max-width: 980px) {
+        .nav {
+          display: none;
+        }
+        .language-switch {
+          margin-left: auto;
+        }
+        .top .btn {
+          margin-left: 0;
+        }
+      }
+      @media (max-width: 540px) {
+        .top-in {
+          gap: 8px;
+        }
+        .language-switch {
+          font-size: 12px;
+          min-width: 44px;
+          padding: 8px;
+        }
+        .top .btn {
+          padding: 9px 10px;
+        }
+        .brand {
+          gap: 7px;
+        }
+      }
+      html[lang="zh-CN"] .plaque h1 {
+        font-size: clamp(38px, 4vw, 54px);
+        max-width: 9em;
+        line-height: 1.16;
+        letter-spacing: -0.035em;
+        text-wrap: balance;
+      }
+      html[lang="zh-CN"] .plaque h1 em {
+        font-family: var(--sans);
+        font-style: normal;
+        font-weight: 700;
+      }
+      html[lang="zh-CN"] .plaque .sub {
+        max-width: 26em;
+      }
+      @media (max-width: 540px) {
+        html[lang="zh-CN"] .plaque h1 {
+          font-size: clamp(32px, 8.8vw, 44px);
+        }
+      }
+
+      @media (max-width: 360px) {
+        .brand img {
+          display: none;
+        }
+        .top-in {
+          padding-inline: 12px;
+        }
+        .brand {
+          font-size: 14px;
+        }
+        .top .btn {
+          font-size: 13px;;
+        }
+      }
+
+      /* Touch: actionable controls reach 44px on coarse pointers; the
+         desktop visual size is untouched. */
+      @media (pointer: coarse) {
+        .btn,
+        .top .btn,
+        .nav a,
+        .brand,
+        .text-link,
+        .tagbtn,
+        .motion-toggle,
+        .dl-item,
+        .links a {
+          min-height: 44px;
+        }
+        .nav a,
+        .text-link,
+        .links a,
+        .motion-toggle {
+          display: inline-flex;
+          align-items: center;
+        }
+        .links a {
+          padding-block: 10px;
+        }
+      }
+</style>
+  </head>
+  <body>
+    <header class="top">
+      <div class="top-in">
+        <a class="brand" href="#top"
+          ><img src="assets/logo.png" alt="" />Tagrove · 拾签</a>
+        <nav class="nav" aria-label="页面导航">
+          <a href="#mech">工作原理</a><a href="#caps">功能</a><a href="#hand">资料交接</a><a href="#limits">安装须知</a>
+        </nav>
+        <a
+          class="language-switch"
+          href="index.html"
+          hreflang="en"
+          lang="en"
+          aria-label="切换为英文"
+          >English</a>
+        <a
+          class="btn btn-primary"
+          href="https://github.com/SACO1F/Tagrove/releases/download/v0.6.12/Shiqian-v0.6.12-Windows-x64-setup.exe"
+          >下载 v0.6.12</a>
+      </div>
+    </header>
+    <script>
+      (function () {
+        var link = document.querySelector(".language-switch");
+        if (link)
+          link.addEventListener("click", function () {
+            var target = new URL(link.href);
+            target.hash = window.location.hash;
+            link.href = target.href;
+          });
+      })();
+    </script>
+
+    <main id="top">
+      <section class="wall" aria-labelledby="h1">
+        <div class="wall-in">
+          <div class="hero-layout">
+            <div class="plaque">
+              <div class="plaque-in">
+                <h1 id="h1">顺手贴上标签，<br /><em>随时找回资料。</em></h1>
+                <p class="sub">
+                  把文件、图片和网页参考联系起来。原件留在原处，需要时找回真正用得上的资料。
+                </p>
+                <div class="cta">
+                  <a
+                    class="btn btn-primary"
+                    href="https://github.com/SACO1F/Tagrove/releases/download/v0.6.12/Shiqian-v0.6.12-Windows-x64-setup.exe"
+                    ><svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 16 16"
+                      fill="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path
+                        d="M1.5 1.5h5.8v5.8H1.5zM8.7 1.5h5.8v5.8H8.7zM1.5 8.7h5.8v5.8H1.5zM8.7 8.7h5.8v5.8H8.7z"
+                      /></svg>下载 Windows 安装包</a><a class="text-link" href="#mech"
+                    >看看它怎么做 <span aria-hidden="true">↓</span></a>
+                </div>
+                <div class="facts">
+                  <span><i></i>原件留在原处，无需搬动</span><span><i></i>已验证 Windows 11 x64</span><span><i></i>本地资料库，无需账号</span>
+                </div>
+              </div>
+            </div>
+            <div class="demo-wrap">
+              <section class="demo" aria-labelledby="demo-title">
+                <div class="demo-heading">
+                  <h2 id="demo-title">动手贴一枚标签，试试看。</h2>
+                  <span class="demo-label">互动演示</span>
+                </div>
+                <p class="demo-instructions">
+                  <b>1.</b> 选一枚标签。 <b>2.</b> 拖到资料上，或点一下卡片贴上标签。
+                </p>
+                <div class="demo-body">
+                  <aside class="palette" aria-label="演示标签">
+                    <div class="card palette-in">
+                      <div class="pal-head"><b>你的标签</b></div>
+                      <div class="pal-body">
+                        <div class="pal-tags">
+                          <button
+                            type="button"
+                            class="chip tagbtn"
+                            data-tag="facade"
+                            data-t="facade"
+                            aria-pressed="false"
+                            aria-describedby="hint"
+                          >
+                            建筑外墙
+                          </button>
+                          <button
+                            type="button"
+                            class="chip tagbtn"
+                            data-tag="reference"
+                            data-t="reference"
+                            aria-pressed="false"
+                            aria-describedby="hint"
+                          >
+                            项目参考
+                          </button>
+                          <button
+                            type="button"
+                            class="chip tagbtn"
+                            data-tag="discuss"
+                            data-t="discuss"
+                            aria-pressed="false"
+                            aria-describedby="hint"
+                          >
+                            待讨论
+                          </button>
+                          <button
+                            type="button"
+                            class="chip tagbtn"
+                            data-tag="materials"
+                            data-t="materials"
+                            aria-pressed="false"
+                            aria-describedby="hint"
+                          >
+                            材料做法
+                          </button>
+                          <button
+                            type="button"
+                            class="chip tagbtn"
+                            data-tag="drawings"
+                            data-t="drawings"
+                            aria-pressed="false"
+                            aria-describedby="hint"
+                          >
+                            节点图纸
+                          </button>
+                          <button
+                            type="button"
+                            class="chip tagbtn"
+                            data-tag="web"
+                            data-t="web"
+                            aria-pressed="false"
+                            aria-describedby="hint"
+                          >
+                            网页收藏
+                          </button>
+                        </div>
+                      </div>
+                      <div class="pal-foot">
+                        拖动标签，或选中标签后点击卡片。
+                      </div>
+                    </div>
+                  </aside>
+                  <div class="wall-grid" id="wall">
+                    <article
+                      class="item"
+                      data-tags="reference facade"
+                      tabindex="0"
+                      role="button"
+                      aria-label="将选中标签贴到「江畔塔楼-黄昏.jpg」"
+                      aria-describedby="hint"
+                    >
+                      <div class="frame">
+                        <img
+                          src="assets/tower-dusk.jpg"
+                          alt="示意资料：黄昏中的玻璃塔楼"
+                          width="300"
+                          height="200"
+                        />
+                      </div>
+                      <div class="meta">
+                        <span class="name">江畔塔楼-黄昏.jpg</span>
+                      </div>
+                      <div class="tags"></div>
+                    </article>
+                    <article
+                      class="item"
+                      data-tags="facade materials"
+                      tabindex="0"
+                      role="button"
+                      aria-label="将选中标签贴到「混凝土立面.jpg」"
+                      aria-describedby="hint"
+                    >
+                      <div class="frame">
+                        <img
+                          src="assets/facade-detail.jpg"
+                          alt="示意资料：混凝土立面与窗套细部"
+                          width="300"
+                          height="200"
+                        />
+                      </div>
+                      <div class="meta">
+                        <span class="name">混凝土立面.jpg</span>
+                      </div>
+                      <div class="tags"></div>
+                    </article>
+                    <article
+                      class="item"
+                      data-tags="reference discuss"
+                      tabindex="0"
+                      role="button"
+                      aria-label="将选中标签贴到「方案文本-初稿.pdf」"
+                      aria-describedby="hint"
+                    >
+                      <div class="doc">
+                        <div class="glyph">PDF</div>
+                        <p class="name">方案文本-初稿.pdf</p>
+                        <p class="sz">52.3 MB · 2024 年 10 月 12 日</p>
+                      </div>
+                      <div class="tags"></div>
+                    </article>
+                    <article
+                      class="item"
+                      data-tags="materials discuss"
+                      tabindex="0"
+                      role="button"
+                      aria-label="将选中标签贴到「外墙材料样板.jpg」"
+                      aria-describedby="hint"
+                    >
+                      <div class="frame">
+                        <img
+                          src="assets/material-board.jpg"
+                          alt="示意资料：混凝土、橡木、水磨石与金属样板"
+                          width="300"
+                          height="200"
+                        />
+                      </div>
+                      <div class="meta">
+                        <span class="name">外墙材料样板.jpg</span>
+                      </div>
+                      <div class="tags"></div>
+                    </article>
+                  </div>
+                </div>
+                <div class="wall-note">
+                  <p class="hint" id="hint" role="status" aria-live="polite">
+                    选择标签查看匹配的资料，再点击卡片贴上标签。
+                  </p>
+                  <button
+                    type="button"
+                    class="btn btn-ghost"
+                    id="regroup"
+                    aria-pressed="false"
+                  >
+                    按标签分组</button><button type="button" class="btn btn-ghost" id="clearTag">
+                    重置演示
+                  </button>
+                </div>
+              </section>
+              <p class="demo-caption">
+                资料为示意内容；同一份文件，可以同时属于多个标签。
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+      <section class="band" id="mech">
+        <div class="wrap">
+          <div class="sec-head rv">
+            <h2>文件不搬家，标签把它们联系起来。</h2>
+            <p>
+              一张效果图可以同时属于「项目参考」「建筑外墙」和「待讨论」。图片、PDF 与网页摘录可以出现在同一组搜索结果中，不必为了分类反复复制文件。
+            </p>
+          </div>
+          <div class="mech rv">
+            <div class="mech-row">
+              <span class="k">01</span>
+              <h3>原件留在原处</h3>
+              <p>
+                加入资料库时，原件通常留在原来的路径。你继续用熟悉的工具编辑，拾签负责记录标签与来源。原件移动后，重新关联即可。
+              </p>
+            </div>
+            <div class="mech-row">
+              <span class="k">02</span>
+              <h3>一份文件，多个标签</h3>
+              <p>
+                普通标签与文件夹自动标签分开管理，支持别名、颜色、合并与重命名同步。按住 Ctrl 点击多选，即可批量贴上标签。
+              </p>
+            </div>
+            <div class="mech-row">
+              <span class="k">03</span>
+              <h3>看得见命中依据</h3>
+              <p>
+                名称、标签、别名、备注和已索引正文一起参与检索。每条结果都会显示命中位置，让你知道它为什么被找到。
+              </p>
+            </div>
+          </div>
+          <figure class="specimen rv">
+            <img
+              width="1360"
+              height="870"
+              src="assets/ui/annotation-zh.webp"
+              alt="拾签真实界面：带有多个标签的 Markdown 文档，右侧详情展示可编辑的中文正文"
+              loading="lazy"
+            />
+            <figcaption>
+              真实界面：一份 Markdown 带有多个标签，右侧详情可以直接阅读和编辑正文。
+            </figcaption>
+          </figure>
+        </div>
+      </section>
+      <section class="band alt" id="caps">
+        <div class="wrap">
+          <div class="sec-head rv">
+            <h2>从收进来，到用得上。</h2>
+            <p>
+              收集、标注、查找、阅读与分享，把散落在文件夹、硬盘和浏览器标签页里的参考资料接起来。
+            </p>
+          </div>
+          <div class="caps">
+            <article class="cap rv">
+              <div class="cap-txt">
+                <h3>先看到内容，再看文件名。</h3>
+                <p>
+                  图片、PDF 与网页资料混排在同一面资料墙上。列数、侧栏和详情宽度都能调整，收藏、备注与来源信息就在手边。
+                </p>
+                <ul>
+                  <li>
+                    瀑布流与列表两种布局；Ctrl＋滚轮调整列数。
+                  </li>
+                  <li>
+                    点击文件展开右侧详情，再次点击收拢。
+                  </li>
+                  <li>
+                    待整理、我的收藏、最近加入与需要关注，均有分组入口。
+                  </li>
+                </ul>
+              </div>
+              <div class="shot motion-demo">
+                <div class="demo-screen">
+                  <img
+                    width="1360"
+                    height="870"
+                    src="assets/ui/workspace-zh.webp"
+                    alt="拾签中文工作区：图片、文档与标签索引"
+                    loading="lazy"
+                  /><video
+                    id="demo-workspace-en"
+                    width="1360"
+                    height="870"
+                    muted
+                    playsinline
+                    loop
+                    preload="none"
+                    data-src="assets/ui/workspace-zh.mp4"
+                    aria-hidden="true"
+                    tabindex="-1"
+                  ></video>
+                </div>
+                <div class="motion-controls">
+                  <span
+                    >在工作区打开一份参考资料<small class="motion-hint"
+                      >悬浮播放 · 移出重置</small></span><button
+                    type="button"
+                    class="motion-toggle"
+                    aria-pressed="false"
+                    aria-controls="demo-workspace-en"
+                    aria-label="播放工作区演示"
+                  >
+                    <svg
+                      width="12"
+                      height="12"
+                      viewBox="0 0 12 12"
+                      fill="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path d="M3 1.5v9l7-4.5z" /></svg><span>播放演示</span>
+                  </button>
+                </div>
+              </div>
+            </article>
+            <article class="cap rv">
+              <div class="cap-txt">
+                <h3>小小标签浮窗，整理更顺手。</h3>
+                <p>
+                  把标签留在置顶的桌面浮窗里。展开分类、搜索，用手柄排序或跨分类整理。把标签拖到文件上，也可以把一批文件拖到标签上。
+                </p>
+                <ul>
+                  <li>
+                    普通标签、文件夹标签与 AI 建议分开显示。
+                  </li>
+                  <li>
+                    顶部可收起为标题栏，也可控制是否置顶。
+                  </li>
+                  <li>
+                    查看最近三步操作；Ctrl＋Z 撤销支持的上一步。
+                  </li>
+                </ul>
+              </div>
+              <div class="shot tall motion-demo">
+                <div class="demo-screen">
+                  <img
+                    width="360"
+                    height="520"
+                    src="assets/ui/palette-zh.webp"
+                    alt="中文标签浮窗，包含标签分类与拖动手柄"
+                    loading="lazy"
+                  /><video
+                    id="demo-palette-en"
+                    width="360"
+                    height="520"
+                    muted
+                    playsinline
+                    loop
+                    preload="none"
+                    data-src="assets/ui/palette-zh.mp4"
+                    aria-hidden="true"
+                    tabindex="-1"
+                  ></video>
+                </div>
+                <div class="motion-controls">
+                  <span
+                    >在标签浮窗中搜索标签<small class="motion-hint"
+                      >悬浮播放 · 移出重置</small></span><button
+                    type="button"
+                    class="motion-toggle"
+                    aria-pressed="false"
+                    aria-controls="demo-palette-en"
+                    aria-label="播放标签浮窗演示"
+                  >
+                    <svg
+                      width="12"
+                      height="12"
+                      viewBox="0 0 12 12"
+                      fill="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path d="M3 1.5v9l7-4.5z" /></svg><span>播放演示</span>
+                  </button>
+                </div>
+              </div>
+            </article>
+            <article class="cap rv">
+              <div class="cap-txt">
+                <h3>记得多少，就搜多少。</h3>
+                <p>
+                  名称、标签、别名、备注和已索引正文一起参与搜索。可选的语义结果作为补充，每条结果都说明它为什么出现。
+                </p>
+                <ul>
+                  <li>
+                    Ctrl＋F 打开搜索，命中片段会标出位置。
+                  </li>
+                  <li>
+                    类型、状态、包含或排除标签、目录与日期可组合保存为集合。
+                  </li>
+                  <li>
+                    不支持、损坏、加密或超限的文件有明确状态；扫描件暂不自动 OCR。
+                  </li>
+                </ul>
+              </div>
+              <div class="shot motion-demo">
+                <div class="demo-screen">
+                  <img
+                    width="1360"
+                    height="870"
+                    src="assets/ui/search-zh.webp"
+                    alt="中文搜索结果与命中标签依据"
+                    loading="lazy"
+                  /><video
+                    id="demo-search-en"
+                    width="1360"
+                    height="870"
+                    muted
+                    playsinline
+                    loop
+                    preload="none"
+                    data-src="assets/ui/search-zh.mp4"
+                    aria-hidden="true"
+                    tabindex="-1"
+                  ></video>
+                </div>
+                <div class="motion-controls">
+                  <span
+                    >通过标签找回参考资料<small class="motion-hint"
+                      >悬浮播放 · 移出重置</small></span><button
+                    type="button"
+                    class="motion-toggle"
+                    aria-pressed="false"
+                    aria-controls="demo-search-en"
+                    aria-label="播放搜索演示"
+                  >
+                    <svg
+                      width="12"
+                      height="12"
+                      viewBox="0 0 12 12"
+                      fill="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path d="M3 1.5v9l7-4.5z" /></svg><span>播放演示</span>
+                  </button>
+                </div>
+              </div>
+            </article>
+            <article class="cap rv">
+              <div class="cap-txt">
+                <h3>浏览器里看到好的，顺手收进来。</h3>
+                <p>
+                  Chrome 与 Edge 扩展可以保存网页、选中文字和图片。先预览、再选标签、后入库；在线阅读或保留采集副本，来源地址始终可追溯。
+                </p>
+                <ul>
+                  <li>
+                    通过工具栏保存整页，也可右键保存链接、摘录或图片。
+                  </li>
+                  <li>
+                    桌面程序离线时，采集内容留在队列中等待入库。
+                  </li>
+                  <li>
+                    失败时可查看环节、错误码与脱敏诊断；不读取浏览器 Cookie。
+                  </li>
+                </ul>
+              </div>
+              <div
+                class="capture-flow"
+                aria-label="网页采集流程示意"
+              >
+                <div class="capture-flow-top">
+                  <span class="flow-kicker">从浏览器，到本地资料库</span><span class="flow-type">流程示意</span>
+                </div>
+                <ol class="capture-steps">
+                  <li>
+                    <span class="flow-number">01</span>
+                    <div>
+                      <h4>留下有用的部分</h4>
+                      <p>整张网页、选中的段落，或一张图片。</p>
+                      <div class="clip-sample">
+                        <span>网页摘录</span><strong>建筑外墙如何回应城市街道</strong>
+                        <p>“留给下一次方案讨论的一段参考……”</p>
+                        <small>保留来源地址</small>
+                      </div>
+                    </div>
+                  </li>
+                  <li>
+                    <span class="flow-number">02</span>
+                    <div>
+                      <h4>补上用途与背景</h4>
+                      <p>预览采集内容，选上合适的标签。</p>
+                      <div class="flow-tags">
+                        <span class="chip" data-t="reference"
+                          >项目参考</span><span class="chip" data-t="discuss">待讨论</span>
+                      </div>
+                    </div>
+                  </li>
+                  <li>
+                    <span class="flow-number">03</span>
+                    <div>
+                      <h4>和本地文件一起找回</h4>
+                      <p>
+                        保存到正在运行的桌面程序；暂时无法连接时，先留在采集队列里。
+                      </p>
+                    </div>
+                  </li>
+                </ol>
+                <p class="flow-note">
+                  网页采集流程示意。当前浏览器扩展使用中文界面。
+                </p>
+              </div>
+            </article>
+            <article class="cap rv">
+              <div class="cap-txt">
+                <h3>不用换软件，先看清它。</h3>
+                <p>
+                  图片围绕鼠标位置缩放；PDF 连续阅读并支持文字层选取；Markdown 可写回原文件。本地 HTML 可查看静态内容或源码，Office 文档可借助本机 Microsoft Office 或 WPS 显示原排版。
+                </p>
+                <ul>
+                  <li>
+                    拖动调整详情宽度，在内容、标注和信息页签之间切换。
+                  </li>
+                  <li>
+                    阅读 DOCX、XLSX、CSV 等受支持内容，必要时使用内容预览。
+                  </li>
+                  <li>
+                    扫描件没有文字层时会明确说明；看到预览不代表已经 OCR。
+                  </li>
+                </ul>
+              </div>
+              <div class="shot motion-demo">
+                <div class="demo-screen">
+                  <img
+                    width="1360"
+                    height="870"
+                    src="assets/ui/reader-pdf-zh.webp"
+                    alt="中文 PDF 阅读器，展示连续页面与缩放控件"
+                    loading="lazy"
+                  /><video
+                    id="demo-reader-pdf-en"
+                    width="1360"
+                    height="870"
+                    muted
+                    playsinline
+                    loop
+                    preload="none"
+                    data-src="assets/ui/reader-pdf-zh.mp4"
+                    aria-hidden="true"
+                    tabindex="-1"
+                  ></video>
+                </div>
+                <div class="motion-controls">
+                  <span
+                    >连续滚动阅读 PDF<small class="motion-hint"
+                      >悬浮播放 · 移出重置</small></span><button
+                    type="button"
+                    class="motion-toggle"
+                    aria-pressed="false"
+                    aria-controls="demo-reader-pdf-en"
+                    aria-label="播放 PDF 阅读器演示"
+                  >
+                    <svg
+                      width="12"
+                      height="12"
+                      viewBox="0 0 12 12"
+                      fill="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path d="M3 1.5v9l7-4.5z" /></svg><span>播放演示</span>
+                  </button>
+                </div>
+              </div>
+            </article>
+            <article class="cap rv">
+              <div class="cap-txt">
+                <h3>本地整理完整，AI 按需开启。</h3>
+                <p>
+                  AI 标注与语义检索是两个独立的可选服务。建议经你审核后才成为普通标签，语义检索需要 Embeddings 模型。开启前核对服务地址、模型、密钥与发送范围：分析内容会发送到你配置的服务，可能计费。
+                </p>
+                <ul>
+                  <li>
+                    采集时已手动选过标签的内容，不再自动提交 AI 标注。
+                  </li>
+                  <li>
+                    为新导入文件生成语义向量，仍需确认。
+                  </li>
+                  <li>
+                    操作记录与识别任务分开查看。
+                  </li>
+                </ul>
+              </div>
+              <div class="mock">
+                <div class="mock-bar">
+                  <b>审核 AI 建议</b><span class="sp">由你决定是否采用</span>
+                </div>
+                <div class="rows">
+                  <div class="row">
+                    <span class="thumb" aria-hidden="true"></span><span class="nm">清水混凝土</span><span class="why">采纳</span>
+                  </div>
+                  <div class="row">
+                    <span class="thumb" aria-hidden="true"></span><span class="nm">竖向遮阳</span><span class="why">采纳</span>
+                  </div>
+                  <div class="row">
+                    <span class="thumb" aria-hidden="true"></span><span class="nm">夜景</span><span class="why no">拒绝</span>
+                  </div>
+                </div>
+                <p class="mock-cap">
+                  界面示意，非真实模型输出。
+                </p>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+      <section class="band" id="hand">
+        <div class="wrap">
+          <div class="sec-head rv">
+            <h2>交给同事，也交清楚背景。</h2>
+            <p>
+              交接的不只是文件。导出含原件的资料包，让同事在另一台电脑导入标签、备注、来源和原来的组织方式。
+            </p>
+          </div>
+          <div class="steps rv">
+            <div class="step">
+              <span class="n">01 · 你的电脑</span>
+              <h3>选中文件，导出资料包</h3>
+              <p>
+                核对范围与数量，再决定是否包含原件。
+              </p>
+            </div>
+            <div class="step">
+              <span class="n">02 · 发送</span>
+              <h3>把资料包发给同事</h3>
+              <p>
+                通过你们已经在用的可靠渠道发送压缩包。
+              </p>
+            </div>
+            <div class="step">
+              <span class="n">03 · 同事的电脑</span>
+              <h3>安装后导入</h3>
+              <p>
+                同名冲突会提示处理，不会静默覆盖现有资料。
+              </p>
+            </div>
+            <div class="step">
+              <span class="n">04 · 核对</span>
+              <h3>一起检查交接结果</h3>
+              <p>
+                核对文件夹、数量与标签，再确认原件能够打开。
+              </p>
+            </div>
+          </div>
+          <table class="deliver rv">
+            <thead>
+              <tr>
+                <th scope="col">交付内容</th>
+                <th scope="col">里面有什么</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>程序或安装包</td>
+                <td>安装拾签，不包含你的文件与资料库。</td>
+              </tr>
+              <tr>
+                <td>标注备份</td>
+                <td>
+                  恢复资料库信息；普通原文件不在其中。
+                </td>
+              </tr>
+              <tr>
+                <td>含原件资料包</td>
+                <td>
+                  跨电脑交接文件、标签和备注等信息，导入时保留原来的父文件夹分组。
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <section class="band alt">
+        <div class="wrap">
+          <div class="sec-head rv">
+            <h2>留一点空间，给自己的偏好。</h2>
+            <p>
+              12 种主题色、浅色与深色模式、可调整字号，以及中英双语。默认主题色为群青；切换主题时，个人标签配色仍会保留。
+            </p>
+          </div>
+          <div
+            class="themes rv"
+            role="img"
+            aria-label="12 种主题色，默认为群青"
+          >
+            <span
+              class="sw def"
+              style="background: #315c9c"
+              title="群青（默认）"
+            ></span><span class="sw" style="background: #2c6654" title="荷叶绿"></span><span class="sw" style="background: #6c4898" title="紫色"></span><span class="sw" style="background: #984661" title="玫瑰"></span><span class="sw" style="background: #805716" title="琥珀"></span><span
+              class="sw"
+              style="background: #4e5965"
+              title="石墨"
+            ></span><span class="sw" style="background: #286f73" title="青色"></span><span
+              class="sw"
+              style="background: #94523a"
+              title="陶土"
+            ></span><span class="sw" style="background: #475781" title="靛蓝"></span><span
+              class="sw"
+              style="background: #ac352b"
+              title="朱红"
+            ></span><span class="sw" style="background: #626d20" title="苔绿"></span><span class="sw" style="background: #715044" title="可可"></span>
+          </div>
+          <p class="theme-lab">
+            中文／English · 浅色／深色 · 字号可调
+          </p>
+          <figure class="specimen rv">
+            <img
+              width="1360"
+              height="870"
+              src="assets/ui/workspace-dark-zh.webp"
+              alt="拾签真实中文界面的深色工作区"
+              loading="lazy"
+            />
+            <figcaption>
+              同一份资料库切到深色主题，个人标签配色保持不变。
+            </figcaption>
+          </figure>
+        </div>
+      </section>
+      <section class="band" id="limits">
+        <div class="wrap">
+          <div class="sec-head rv">
+            <h2>安装前，先把这些说清楚。</h2>
+            <p>
+              当前版本仍有一些实际边界。在自己或同事的电脑上安装前，请先了解。
+            </p>
+          </div>
+          <div class="limits rv">
+            <div>
+              <b aria-hidden="true">!</b><span
+                >已验证 Windows 11 x64。Windows 10 尚未完成同等实机验证，不提供 macOS 或 Linux 安装包。</span>
+            </div>
+            <div>
+              <b aria-hidden="true">!</b><span
+                >本版未做商业代码签名，Windows 可能显示未知发布者提示。运行需要 WebView2，安装过程可能需要联网。</span>
+            </div>
+            <div>
+              <b aria-hidden="true">!</b><span
+                >暂未实现实时云同步。不要通过网盘文件夹并发使用活跃的 SQLite／WAL 资料库。</span>
+            </div>
+            <div>
+              <b aria-hidden="true">!</b><span
+                >独立 EXE 可以直接运行，但仍使用当前用户的资料库，并非把资料存放在 EXE 旁边的便携资料库。</span>
+            </div>
+            <div>
+              <b aria-hidden="true">!</b><span
+                >浏览器扩展目前需要通过开发者模式手动加载，界面为中文，使用时桌面程序必须保持运行。</span>
+            </div>
+            <div>
+              <b aria-hidden="true">!</b><span
+                >扫描件暂不自动 OCR，PPTX 与图片文字不在正文索引范围内。升级前请先导出标注备份。</span>
+            </div>
+          </div>
+        </div>
+      </section>
+      <section class="band paper" id="dl">
+        <div class="wrap">
+          <div class="sec-head rv">
+            <h2>从下一份参考资料开始。</h2>
+            <p>
+              下载 v0.6.12，附 SHA256 校验文件。升级前导出标注备份，重要原件另行备份；完全退出旧版后再安装。
+            </p>
+          </div>
+          <div class="dl">
+            <div class="dl-list rv">
+              <a
+                class="dl-item main"
+                href="https://github.com/SACO1F/Tagrove/releases/download/v0.6.12/Shiqian-v0.6.12-Windows-x64-setup.exe"
+                ><span
+                  ><span class="t">Windows 安装包</span><span class="d"
+                    >推荐用于日常使用与同事安装</span></span><span class="go">下载 →</span></a><a
+                class="dl-item"
+                href="https://github.com/SACO1F/Tagrove/releases/download/v0.6.12/Shiqian-v0.6.12-Windows-x64.exe"
+                ><span
+                  ><span class="t">直接运行 EXE</span><span class="d"
+                    >无需安装步骤 · 仍需 WebView2 · 沿用当前用户资料库</span></span><span class="go">下载 →</span></a><a
+                class="dl-item"
+                href="https://github.com/SACO1F/Tagrove/releases/download/v0.6.12/Shiqian-v0.6.12-Chrome-extension.zip"
+                ><span
+                  ><span class="t">Chrome 扩展 ZIP</span><span class="d"
+                    >解压后以开发者模式加载 · Edge 版见发布页</span></span><span class="go">下载 →</span></a><a
+                class="dl-item"
+                href="https://github.com/SACO1F/Tagrove/releases/download/v0.6.12/SHA256SUMS.txt"
+                ><span
+                  ><span class="t">SHA256 校验文件</span><span class="d">核对下载文件是否完整</span></span><span class="go">查看 →</span></a><a
+                class="dl-item"
+                href="https://github.com/SACO1F/Tagrove/releases/tag/v0.6.12"
+                ><span
+                  ><span class="t">发布说明与源码</span><span class="d"
+                    >版本更新内容及源码压缩包</span></span><span class="go">打开 →</span></a>
+            </div>
+            <aside class="dl-side rv">
+              <h3>装好后的前五分钟</h3>
+              <ul>
+                <li>
+                  拖一个小文件夹进来，给其中几份文件贴上同一个标签。
+                </li>
+                <li>
+                  按 Ctrl＋F 搜索这个标签，看看结果中的命中依据。
+                </li>
+                <li>完成一遍「贴上标签 → 找回资料」，试试是否适合你。</li>
+              </ul>
+              <div class="links">
+                <a
+                  href="https://github.com/SACO1F/Tagrove/blob/main/docs/user-manual-v0.6.12.en.md"
+                  >英文使用说明 →</a><a
+                  href="https://github.com/SACO1F/Tagrove/blob/main/docs/user-manual-v0.6.12.zh-CN.md"
+                  >中文使用说明 →</a><a
+                  href="https://github.com/SACO1F/Tagrove/blob/main/browser-extension/README.md"
+                  >扩展安装与连接 →</a><a
+                  href="https://github.com/SACO1F/Tagrove/blob/main/docs/privacy-policy.md"
+                  >网页采集隐私政策 →</a><a href="https://github.com/SACO1F/Tagrove"
+                  >GitHub · SACO1F/Tagrove →</a>
+              </div>
+            </aside>
+          </div>
+        </div>
+      </section>
+      <footer>
+        <div class="wrap">
+          <img src="assets/logo.png" alt="" /><b>Tagrove · 拾签</b><span>给文件一个被找到的理由。</span><span class="f-en"
+            >本地优先 · 资料库留在你自己的电脑上</span>
+          <p class="synth">
+            界面截图和动态演示采集自拾签 0.6.13 测试构建的真实中文界面，其界面布局与 0.6.12 一致。项目、图片、文件名和检索内容均为演示用虚构资料，不代表真实用户数据。首屏互动仅在当前网页内运行，不会访问或修改你的文件。
+          </p>
+        </div>
+      </footer>
+    </main>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script>
+      (function () {
+        "use strict";
+        var wall = document.getElementById("wall");
+        var items = Array.from(wall.querySelectorAll(".item"));
+        var buttons = Array.from(document.querySelectorAll(".tagbtn"));
+        var hint = document.getElementById("hint");
+        var regroup = document.getElementById("regroup");
+        var toastEl = document.getElementById("toast");
+        var names = {
+          facade: "建筑外墙",
+          reference: "项目参考",
+          discuss: "待讨论",
+          materials: "材料做法",
+          drawings: "节点图纸",
+          web: "网页收藏",
+        };
+        var initial = new Map(
+          items.map(function (item) {
+            return [item, item.dataset.tags];
+          }),
+        );
+        var active = null,
+          grouped = false,
+          drag = null,
+          ghost = null,
+          over = null,
+          timer;
+        function tags(item) {
+          return item.dataset.tags.split(/\s+/).filter(Boolean);
+        }
+        function render(item) {
+          item.querySelector(".tags").replaceChildren();
+          tags(item).forEach(function (tag) {
+            var chip = document.createElement("span");
+            chip.className = "chip";
+            chip.dataset.t = tag;
+            chip.textContent = names[tag];
+            item.querySelector(".tags").appendChild(chip);
+          });
+        }
+        function update() {
+          items.forEach(function (item) {
+            var match = tags(item).includes(active);
+            item.classList.toggle("dim", Boolean(active) && !match);
+            item.classList.toggle("lit", Boolean(active) && match);
+          });
+          buttons.forEach(function (button) {
+            button.setAttribute(
+              "aria-pressed",
+              String(button.dataset.tag === active),
+            );
+          });
+          hint.textContent = active
+            ? names[active] +
+              "已选 · " +
+              items.filter(function (item) {
+                return tags(item).includes(active);
+              }).length +
+              " 份匹配资料。点击任意卡片贴上这个标签。"
+            : "选择标签查看匹配的资料，再点击卡片贴上标签。";
+        }
+        function toast(message) {
+          toastEl.textContent = message;
+          toastEl.classList.add("on");
+          clearTimeout(timer);
+          timer = setTimeout(function () {
+            toastEl.classList.remove("on");
+          }, 3000);
+        }
+        function reorder() {
+          var sorted = grouped
+            ? items.slice().sort(function (a, b) {
+                return tags(a)[0].localeCompare(tags(b)[0]);
+              })
+            : items;
+          sorted.forEach(function (item) {
+            wall.appendChild(item);
+          });
+        }
+        function apply(item, tag) {
+          if (!tag) {
+            toast("请先选一枚标签，再点击资料卡片。");
+            return;
+          }
+          var current = tags(item);
+          if (current.includes(tag)) {
+            toast("这份资料已经有「" + names[tag] + "」标签。");
+            return;
+          }
+          current.push(tag);
+          item.dataset.tags = current.join(" ");
+          render(item);
+          update();
+          if (grouped) reorder();
+          toast("已贴上「" + names[tag] + "」，原件仍留在原处。");
+        }
+        items.forEach(function (item) {
+          render(item);
+          item.addEventListener("click", function () {
+            apply(item, active);
+          });
+          item.addEventListener("keydown", function (event) {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              apply(item, active);
+            }
+          });
+        });
+        function cleanup() {
+          if (ghost) ghost.remove();
+          if (over) over.classList.remove("drop-ok");
+          if (drag) {
+            var cancelledButton = drag.button;
+            setTimeout(function () {
+              delete cancelledButton.dataset.moved;
+            }, 0);
+            drag.button.removeEventListener("pointermove", move);
+            drag.button.removeEventListener("pointerup", finish);
+            drag.button.removeEventListener("pointercancel", cancel);
+            drag.button.removeEventListener("lostpointercapture", cancel);
+          }
+          ghost = null;
+          over = null;
+          drag = null;
+        }
+        function cancel() {
+          cleanup();
+        }
+        function move(event) {
+          if (!drag) return;
+          if (
+            !ghost &&
+            Math.hypot(event.clientX - drag.x, event.clientY - drag.y) > 7
+          ) {
+            ghost = drag.button.cloneNode(true);
+            ghost.removeAttribute("aria-describedby");
+            ghost.removeAttribute("aria-pressed");
+            ghost.setAttribute("aria-hidden", "true");
+            ghost.tabIndex = -1;
+            ghost.className = "chip dragging";
+            ghost.textContent = names[drag.tag];
+            document.body.appendChild(ghost);
+            drag.button.dataset.moved = "1";
+          }
+          if (!ghost) return;
+          ghost.style.left = event.clientX + "px";
+          ghost.style.top = event.clientY + "px";
+          var target = document.elementFromPoint(event.clientX, event.clientY);
+          var item = target && target.closest(".item");
+          if (item !== over) {
+            if (over) over.classList.remove("drop-ok");
+            over = item;
+            if (over) over.classList.add("drop-ok");
+          }
+        }
+        function finish() {
+          if (ghost && over) apply(over, drag.tag);
+          var button = drag && drag.button;
+          cleanup();
+          if (button)
+            setTimeout(function () {
+              delete button.dataset.moved;
+            }, 0);
+        }
+        buttons.forEach(function (button) {
+          button.addEventListener("click", function () {
+            if (button.dataset.moved) return;
+            active = active === button.dataset.tag ? null : button.dataset.tag;
+            update();
+          });
+          button.addEventListener("pointerdown", function (event) {
+            // Touch uses native scrolling plus the select-and-click alternative.
+            if (event.pointerType === "touch" || event.button !== 0) return;
+            cleanup();
+            drag = {
+              button: button,
+              tag: button.dataset.tag,
+              x: event.clientX,
+              y: event.clientY,
+            };
+            button.setPointerCapture(event.pointerId);
+            button.addEventListener("pointermove", move);
+            button.addEventListener("pointerup", finish);
+            button.addEventListener("pointercancel", cancel);
+            button.addEventListener("lostpointercapture", cancel);
+          });
+        });
+        document.addEventListener("keydown", function (event) {
+          if (event.key === "Escape") {
+            cleanup();
+            active = null;
+            update();
+          }
+        });
+        regroup.addEventListener("click", function () {
+          grouped = !grouped;
+          regroup.setAttribute("aria-pressed", String(grouped));
+          reorder();
+          toast(
+            grouped
+              ? "已按首枚标签分组，原件仍留在原处。"
+              : "已恢复原来的资料顺序。",
+          );
+        });
+        document
+          .getElementById("clearTag")
+          .addEventListener("click", function () {
+            cleanup();
+            active = null;
+            grouped = false;
+            regroup.setAttribute("aria-pressed", "false");
+            items.forEach(function (item) {
+              item.dataset.tags = initial.get(item);
+              render(item);
+            });
+            reorder();
+            update();
+            toast("演示已重置，换一枚标签试试。");
+          });
+        update();
+      })();
+    </script>
+
+    <script>
+      (function () {
+        "use strict";
+        var demos = Array.from(document.querySelectorAll(".motion-demo"));
+        var reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
+        var states = new Map();
+        var hoverArmed = false;
+        demos.forEach(function (demo) {
+          states.set(demo, { generation: 0, active: false });
+        });
+        function stop(demo) {
+          var state = states.get(demo);
+          state.generation += 1;
+          state.active = false;
+          var video = demo.querySelector("video");
+          var button = demo.querySelector(".motion-toggle");
+          video.pause();
+          try {
+            video.currentTime = 0;
+          } catch (_) {}
+          demo.dataset.playing = "false";
+          button.setAttribute("aria-pressed", "false");
+          button.removeAttribute("aria-busy");
+          button.querySelector("span").textContent = "播放演示";
+        }
+        function prepare(demo) {
+          var video = demo.querySelector("video");
+          if (!video.hasAttribute("src")) {
+            video.src = video.dataset.src;
+            video.preload = "auto";
+            video.load();
+          }
+          return video;
+        }
+        function start(demo, explicit) {
+          var state = states.get(demo);
+          if (state.active || document.hidden || (reduced.matches && !explicit))
+            return;
+          demos.forEach(function (other) {
+            if (other !== demo) stop(other);
+          });
+          var video = prepare(demo);
+          var button = demo.querySelector(".motion-toggle");
+          state.active = true;
+          var generation = ++state.generation;
+          video.muted = true;
+          try {
+            video.currentTime = 0;
+          } catch (_) {}
+          button.setAttribute("aria-pressed", "true");
+          button.setAttribute("aria-busy", "true");
+          button.querySelector("span").textContent = "加载中…";
+          video
+            .play()
+            .then(function () {
+              if (state.generation !== generation || !state.active) return;
+              demo.dataset.playing = "true";
+              button.removeAttribute("aria-busy");
+              button.querySelector("span").textContent = "停止演示";
+            })
+            .catch(function () {
+              if (state.generation === generation) stop(demo);
+            });
+        }
+        function hover(demo, event) {
+          if (
+            (event.pointerType === "mouse" || event.pointerType === "pen") &&
+            hoverArmed
+          )
+            start(demo, false);
+        }
+        document.addEventListener(
+          "pointermove",
+          function () {
+            hoverArmed = true;
+          },
+          { passive: true },
+        );
+        demos.forEach(function (demo) {
+          var video = demo.querySelector("video");
+          var button = demo.querySelector(".motion-toggle");
+          demo.addEventListener("pointerenter", function (event) {
+            hover(demo, event);
+          });
+          demo.addEventListener(
+            "pointermove",
+            function (event) {
+              if (!hoverArmed) hoverArmed = true;
+              hover(demo, event);
+            },
+            { passive: true },
+          );
+          demo.addEventListener("pointerleave", function () {
+            stop(demo);
+          });
+          demo.addEventListener("pointercancel", function () {
+            stop(demo);
+          });
+          demo.addEventListener("focusout", function (event) {
+            if (!demo.contains(event.relatedTarget)) stop(demo);
+          });
+          button.addEventListener("click", function () {
+            if (states.get(demo).active) stop(demo);
+            else start(demo, true);
+          });
+          video.addEventListener("error", function () {
+            stop(demo);
+          });
+          stop(demo);
+        });
+        function resetAll() {
+          hoverArmed = false;
+          demos.forEach(stop);
+        }
+        // No persisted playback state: reload, history restore and leaving all reset to zero.
+        window.addEventListener("pageshow", resetAll);
+        window.addEventListener("pagehide", resetAll);
+        document.addEventListener("visibilitychange", function () {
+          if (document.hidden) resetAll();
+        });
+        reduced.addEventListener("change", function (event) {
+          if (event.matches) resetAll();
+        });
+        if ("IntersectionObserver" in window) {
+          var observer = new IntersectionObserver(
+            function (entries) {
+              entries.forEach(function (entry) {
+                if (entry.isIntersecting) prepare(entry.target);
+                else stop(entry.target);
+              });
+            },
+            { rootMargin: "160px 0px" },
+          );
+          demos.forEach(function (demo) {
+            observer.observe(demo);
+          });
+        }
+      })();
+    </script>
+  </body>
+</html>

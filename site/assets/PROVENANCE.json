@@ -3,7 +3,7 @@
   "generatedAt": "2026-10-19",
   "honestyRule": "Interface screenshots are real application output. Reference material (the photographs and documents pinned on the wall) is synthetic. The page states this distinction in its footer.",
   "realInterface": {
-    "how": "Captured from the built desktop application through the project's own QA harness, not mocked in HTML. scripts/landing-captures.cjs launches src-tauri/target/release/shiqian.exe against an isolated library under qa/v0-landing/library over CDP, seeds the state through the app's own api actions (import, tag.create, annotation.apply, note.save, settings.save), then photographs the window with Playwright (animations disabled). Re-run: python scripts/make-landing-material.py && node scripts/landing-captures.cjs",
+    "how": "Real English desktop app, captured through the existing project QA interface with an isolated synthetic library. Run node site/scripts/capture-english.cjs from the repository root, or node scripts/capture-english.cjs from site/. Then run python site/scripts/encode-demos.py. Interface text and document content are rendered by the actual app; screenshot text is not painted over or replaced.",
     "build": "0.6.13 test build, confirmed as the standing baseline for this page on 2026-10-19. Downloads still point at the 0.6.12 stable release; re-run the capture script after installing a new build.",
     "assets": {
       "ui/workspace.webp": "全部资料 with nine seeded items, sidebar groups, folder and tag index, masonry with a rendered PDF page.",
@@ -11,8 +11,38 @@
       "ui/reader-pdf.webp": "Inspector reading the sample PDF in continuous mode with page navigation and fit controls.",
       "ui/annotation.webp": "A Markdown file carrying 参考 / 项目参考 / 待讨论 on its card, with the reader open beside it.",
       "ui/palette-light.webp": "The desktop floating tag palette, light theme, 未分类 group with per-tag nine-dot handles.",
-      "ui/workspace-dark.webp": "The same library in the dark theme."
-    }
+      "ui/workspace-dark.webp": "The same library in the dark theme.",
+      "ui/workspace-en.webp": "English workspace with eight synthetic references and English folders and tags.",
+      "ui/workspace-en.gif": "20 fps GIF export of the continuous compositor recording. Open a reference in the inspector.",
+      "ui/search-en.webp": "English search for Facade showing match evidence.",
+      "ui/search-en.gif": "20 fps GIF export of the continuous compositor recording. Open search, type Facade character by character, and inspect results.",
+      "ui/reader-pdf-en.webp": "English inspector reading an English PDF.",
+      "ui/reader-pdf-en.gif": "20 fps GIF export of the continuous compositor recording. Smoothly scroll the PDF reader forward and backward.",
+      "ui/annotation-en.webp": "English Markdown content in the actual inspector; English tags stored in the synthetic library.",
+      "ui/palette-en.webp": "English floating tag palette with English sample tags.",
+      "ui/palette-en.gif": "20 fps GIF export of the continuous compositor recording. Search and clear the floating tag palette.",
+      "ui/workspace-dark-en.webp": "Actual English desktop workspace using the dark theme.",
+      "ui/workspace-en.mp4": "30 fps actual English app recording. Open a reference in the inspector.",
+      "ui/palette-en.mp4": "30 fps actual English app recording. Search and clear the floating tag palette.",
+      "ui/search-en.mp4": "30 fps actual English app recording. Open search, type Facade character by character, and inspect results.",
+      "ui/reader-pdf-en.mp4": "30 fps actual English app recording. Smoothly scroll the PDF reader forward and backward.",
+      "ui/workspace-zh.webp": "真实中文界面。中文工作区打开示例 Markdown 文档。",
+      "ui/workspace-zh.mp4": "真实中文界面。中文工作区打开示例 Markdown 文档。",
+      "ui/workspace-zh.gif": "真实中文界面。中文工作区打开示例 Markdown 文档。",
+      "ui/search-zh.webp": "真实中文界面。在真实中文界面输入建筑外墙并查看搜索结果。",
+      "ui/search-zh.mp4": "真实中文界面。在真实中文界面输入建筑外墙并查看搜索结果。",
+      "ui/search-zh.gif": "真实中文界面。在真实中文界面输入建筑外墙并查看搜索结果。",
+      "ui/reader-pdf-zh.webp": "真实中文界面。连续滚动阅读带嵌入中文字体的两页示例 PDF。",
+      "ui/reader-pdf-zh.mp4": "真实中文界面。连续滚动阅读带嵌入中文字体的两页示例 PDF。",
+      "ui/reader-pdf-zh.gif": "真实中文界面。连续滚动阅读带嵌入中文字体的两页示例 PDF。",
+      "ui/palette-zh.webp": "真实中文界面。中文标签浮窗搜索标签、清除输入并恢复列表。",
+      "ui/palette-zh.mp4": "真实中文界面。中文标签浮窗搜索标签、清除输入并恢复列表。",
+      "ui/palette-zh.gif": "真实中文界面。中文标签浮窗搜索标签、清除输入并恢复列表。",
+      "ui/annotation-zh.webp": "真实中文界面，独立测试资料库和中文示例内容。",
+      "ui/workspace-dark-zh.webp": "真实中文界面，独立测试资料库和中文示例内容。"
+    },
+    "language": "en",
+    "legacyAssets": "Unsuffixed Chinese screenshots remain as historical source assets; the English page does not reference them."
   },
   "syntheticMaterial": {
     "how": "AI-generated stand-ins for a visitor's own reference material, produced with the Qoder Desktop image tool and re-encoded with Pillow (JPEG q84-88). They are not Tagrove users' files and not real project records. The same set is imported by qa/make-landing-material.py to drive the captures above.",
@@ -35,5 +65,17 @@
       "fonts/instrument-serif-latin-italic.woff2": "Instrument Serif, italic, latin subset, 22 KB. Carries the headline tagline. SIL Open Font License."
     }
   },
-  "engineNote": "The Impeccable engine could not be installed earlier on this host: its binary is fetched from a github.com release URL, which timed out there, and the partial download was removed so a later launcher run re-fetches cleanly instead of executing a truncated file. Provenance was therefore recorded in this file rather than embedded in each image. On 2026-10-19 the launcher did bootstrap successfully through this machine's local proxy (127.0.0.1:7890), so impeccable context and detect now run."
+  "engineNote": "The Impeccable engine could not be installed earlier on this host: its binary is fetched from a github.com release URL, which timed out there, and the partial download was removed so a later launcher run re-fetches cleanly instead of executing a truncated file. Provenance was therefore recorded in this file rather than embedded in each image. On 2026-10-19 the launcher did bootstrap successfully through this machine's local proxy (127.0.0.1:7890), so impeccable context and detect now run.",
+  "updatedAt": "2026-10-20",
+  "workflowIllustration": "The browser capture section is native HTML with English labels. It is explicitly a workflow illustration, because the shipping browser extension is Chinese-only.",
+  "motion": "Actual English app compositor recordings at continuous frame timestamps, encoded to 30 fps H.264 MP4 for inline hover playback. GIF exports are regenerated at 20 fps. A presentation pointer follows the recorded mouse events. The transparent floating window is flattened onto a paper backdrop for encoding. Mouse entry starts from zero; leaving, page refresh/history restore, hidden tabs and offscreen playback restore the still poster and reset time. Reduced-motion users opt in using the button; touch and keyboard have the same button alternative. Playback state is not persisted.",
+  "languages": {
+    "default": "en",
+    "pages": {
+      "en": "index.html",
+      "zh-CN": "zh.html"
+    },
+    "switching": "Native language links preserve the current section hash. Each page references its own localized static screenshots, 30 fps MP4 recordings, and demo copy. Refresh retains the language through its URL and resets playback.",
+    "chineseCapture": "node scripts/capture-chinese.cjs then python scripts/encode-demos.py --zh. Real Chinese UI, Chinese filenames, tags, Markdown text and an embedded-font Chinese PDF fixture. Isolated QA library only."
+  }
 }

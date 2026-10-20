@@ -35,3 +35,6 @@ public/pdf-assets/
 *.dpapi
 __pycache__/
 *.pyc
+
+# Capture-pipeline intermediates: the pages ship mp4 + webp only.
+site/assets/ui/*.gif
