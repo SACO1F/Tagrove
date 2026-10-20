@@ -20,6 +20,7 @@ type Feedback = {
   label: string;
   point: { x: number; y: number };
   bounds?: Bounds;
+  clip?: Bounds;
   fileId?: string;
   tilt?: string;
 };
@@ -27,16 +28,59 @@ type Annotation = { tagName: string; applied: number };
 function flatBounds(card: HTMLElement | null | undefined) {
   if (!card) return;
   const wrapper = card.closest<HTMLElement>(".masonry-item, .virtual-row");
-  if (wrapper && card.offsetParent === wrapper) {
-    const rect = wrapper.getBoundingClientRect();
-    return {
-      left: rect.left + card.offsetLeft,
-      top: rect.top + card.offsetTop,
-      width: card.offsetWidth,
-      height: card.offsetHeight,
-    };
+  const rect =
+    wrapper && card.offsetParent === wrapper
+      ? {
+          left: wrapper.getBoundingClientRect().left + card.offsetLeft,
+          top: wrapper.getBoundingClientRect().top + card.offsetTop,
+          width: card.offsetWidth,
+          height: card.offsetHeight,
+        }
+      : card.getBoundingClientRect();
+  let left = 0;
+  let top = 0;
+  let right = innerWidth;
+  let bottom = innerHeight;
+  for (let parent = card.parentElement; parent; parent = parent.parentElement) {
+    const style = getComputedStyle(parent);
+    const r = parent.getBoundingClientRect();
+    if (/(auto|scroll|hidden|clip)/.test(style.overflowX)) {
+      left = Math.max(left, r.left + parent.clientLeft);
+      right = Math.min(right, r.left + parent.clientLeft + parent.clientWidth);
+    }
+    if (/(auto|scroll|hidden|clip)/.test(style.overflowY)) {
+      top = Math.max(top, r.top + parent.clientTop);
+      bottom = Math.min(bottom, r.top + parent.clientTop + parent.clientHeight);
+    }
   }
-  return card.getBoundingClientRect();
+  if (
+    Math.min(right, rect.left + rect.width) <= Math.max(left, rect.left) ||
+    Math.min(bottom, rect.top + rect.height) <= Math.max(top, rect.top)
+  )
+    return;
+  return {
+    left: rect.left,
+    top: rect.top,
+    width: rect.width,
+    height: rect.height,
+    clip: { left, top, width: right - left, height: bottom - top },
+  };
+}
+
+// Fade only the cropped edges; keep a full card's border and shadow intact.
+function edgeMask(bounds: Bounds, clip: Bounds) {
+  return (["vertical", "horizontal"] as const)
+    .map((axis) => {
+      const start = axis === "vertical" ? "top" : "left";
+      const size = axis === "vertical" ? "height" : "width";
+      const direction = axis === "vertical" ? "bottom" : "right";
+      const end = clip[start] + clip[size];
+      const fade = Math.min(12, clip[size] / 4);
+      const fadeIn = bounds[start] < clip[start] ? fade : 0;
+      const fadeOut = bounds[start] + bounds[size] > end ? fade : 0;
+      return `linear-gradient(to ${direction}, transparent ${clip[start]}px, #000 ${clip[start] + fadeIn}px, #000 ${end - fadeOut}px, transparent ${end}px)`;
+    })
+    .join(", ");
 }
 
 export function TagDropFeedback({
@@ -84,14 +128,20 @@ export function TagDropFeedback({
       next?.left !== previous?.left ||
       next?.top !== previous?.top ||
       next?.width !== previous?.width ||
-      next?.height !== previous?.height
+      next?.height !== previous?.height ||
+      r?.clip.left !== feedback.clip?.left ||
+      r?.clip.top !== feedback.clip?.top ||
+      r?.clip.width !== feedback.clip?.width ||
+      r?.clip.height !== feedback.clip?.height
     )
-      setFeedback((old) => (old ? { ...old, bounds: next } : old));
+      setFeedback((old) =>
+        old ? { ...old, bounds: next, clip: r?.clip } : old,
+      );
   });
   useEffect(() => {
     const tilt = createTagDropTilt(tiltEnabled);
     let target: HTMLElement | null = null;
-    let targetBounds: Bounds | undefined;
+    let targetBounds: ReturnType<typeof flatBounds>;
     let pending = false;
     let dragging = false;
     let disposed = false;
@@ -126,19 +176,10 @@ export function TagDropFeedback({
         if (pending || disposed) return;
         clearTimeout(finishTimer);
         dragging = !p.drop && p.over;
-        const insideTarget =
-          target &&
-          targetBounds &&
-          p.x >= targetBounds.left &&
-          p.x <= targetBounds.left + targetBounds.width &&
-          p.y >= targetBounds.top &&
-          p.y <= targetBounds.top + targetBounds.height;
         const card = p.over
-          ? insideTarget
-            ? target
-            : document
-                .elementFromPoint(p.x, p.y)
-                ?.closest<HTMLElement>("[data-file-id]") || null
+          ? document
+              .elementFromPoint(p.x, p.y)
+              ?.closest<HTMLElement>("[data-file-id]") || null
           : null;
         // Read the flat card before any transform write; never measure its tilted rectangle.
         const measured =
@@ -149,6 +190,7 @@ export function TagDropFeedback({
               top: measured.top,
               width: measured.width,
               height: measured.height,
+              clip: measured.clip,
             }
           : undefined;
         if (card !== target) {
@@ -170,6 +212,7 @@ export function TagDropFeedback({
           bounds: r
             ? { left: r.left, top: r.top, width: r.width, height: r.height }
             : undefined,
+          clip: r?.clip,
           fileId: card?.dataset.fileId,
           tilt: transform,
         };
@@ -285,15 +328,29 @@ export function TagDropFeedback({
       className={`tag-drop-feedback phase-${feedback.phase} ${feedback.bounds ? "has-target" : "no-target"}`}
       aria-hidden="false"
     >
-      {feedback.bounds && (
+      {feedback.bounds && feedback.clip && (
         <div
-          className="tag-drop-frame"
-          data-target-file={feedback.fileId}
-          style={{ ...feedback.bounds, transform: feedback.tilt }}
+          className="tag-drop-clip"
+          style={{
+            clipPath: `inset(${feedback.clip.top}px ${Math.max(0, innerWidth - feedback.clip.left - feedback.clip.width)}px ${Math.max(0, innerHeight - feedback.clip.top - feedback.clip.height)}px ${feedback.clip.left}px)`,
+            maskImage: edgeMask(feedback.bounds, feedback.clip),
+            maskComposite: "intersect",
+          }}
         >
-          <div className="tag-drop-target-label">
-            {icon}
-            <span>{feedback.label}</span>
+          <div
+            className="tag-drop-frame"
+            data-target-file={feedback.fileId}
+            style={{ ...feedback.bounds, transform: feedback.tilt }}
+          >
+            <div
+              className="tag-drop-target-label"
+              style={{
+                top: Math.max(10, feedback.clip.top - feedback.bounds.top + 10),
+              }}
+            >
+              {icon}
+              <span>{feedback.label}</span>
+            </div>
           </div>
         </div>
       )}

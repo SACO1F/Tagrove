@@ -325,6 +325,11 @@
   z-index: 22;
   pointer-events: none;
 }
+.tag-drop-clip {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
 .tag-drop-frame {
   position: fixed;
   border: 2px solid var(--accent);

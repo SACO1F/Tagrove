@@ -634,12 +634,15 @@ export default function Floating() {
                             g.started = true;
                             setDragTag(tag.id);
                             setSelected(tag.id);
-                            void api("floating.drag", { tagId: tag.id }).catch(
-                              (error) => {
-                                setDragTag("");
-                                notify(message(error), true);
-                              },
-                            );
+                            void api("floating.drag", {
+                              tagId: tag.id,
+                              accent: getComputedStyle(document.documentElement)
+                                .getPropertyValue("--accent")
+                                .trim(),
+                            }).catch((error) => {
+                              setDragTag("");
+                              notify(message(error), true);
+                            });
                           }}
                           onPointerUp={() => {
                             if (!gesture.current?.started)
