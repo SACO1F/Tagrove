@@ -76,7 +76,12 @@
           U+2212, U+2215, U+FEFF, U+FFFD;
       }
 
-      /* ============ A · 参考墙 / The Pin-Up Wall ============ */
+      /* ============ A · 参考墙 / The Pin-Up Wall ============
+         Light-only by decision, not by omission: the page ground is a
+         photographic plaster wall and every interface screenshot was captured in
+         the light theme, so a dark variant needs its own asset set rather than a
+         colour swap. <meta name="color-scheme" content="light"> declares this to
+         the platform. The product itself does ship a dark theme. */
       :root {
         --ultra: #315c9c;
         --ultra-deep: #21406f;
@@ -1317,6 +1322,12 @@
         gap: 7px;
         font-size: 13.5px;
       }
+      /* 24px target floor for pointer users too (WCAG 2.5.8) */
+      .dl-side .links a {
+        display: inline-flex;
+        align-items: center;
+        min-height: 24px;
+      }
 
       /* footer */
       footer {
@@ -2352,17 +2363,17 @@
         .tagbtn,
         .motion-toggle,
         .dl-item,
-        .links a {
+        .dl-side .links a {
           min-height: 44px;
         }
         .nav a,
         .text-link,
-        .links a,
+        .dl-side .links a,
         .motion-toggle {
           display: inline-flex;
           align-items: center;
         }
-        .links a {
+        .dl-side .links a {
           padding-block: 10px;
         }
       }
